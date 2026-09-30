@@ -19,12 +19,12 @@ import whatsapp
 
 AHORA = dt.datetime(2026, 9, 30, 12, tzinfo=dt.timezone.utc)
 
-CHAT = """29/09/26, 15:04 - Los mensajes y las llamadas están cifrados de extremo a extremo.
-29/09/26, 15:05 - Maria Lopez: Vecinos, llevamos 2 dias sin agua en la manzana 12
+CHAT = """30/09/26, 01:04 - Los mensajes y las llamadas están cifrados de extremo a extremo.
+30/09/26, 01:05 - Maria Lopez: Vecinos, llevamos 2 dias sin agua en la manzana 12
 y nadie de Interagua responde
-29/09/26, 15:06 - +593 99 123 4567: <Multimedia omitido>
-29/09/26, 15:07 - Juan agregó a Pedro
-[30/09/26, 3:04:12 p. m.] Pedro Ruiz: La basura no la recogen desde el lunes, huele horrible
+30/09/26, 01:06 - +593 99 123 4567: <Multimedia omitido>
+30/09/26, 01:07 - Juan agregó a Pedro
+[30/09/26, 3:04:12 a. m.] Pedro Ruiz: La basura no la recogen desde el lunes, huele horrible
 30/9/2026 8:15 a. m. - Maria Lopez: Buenos dias a todos
 30/9/2026 8:16 a. m. - Maria Lopez: Otra vez sin luz desde las 6"""
 
@@ -105,8 +105,8 @@ class TestWhatsApp(_Tmp):
         self.assertIn("Vecinos, llevamos 2 dias sin agua en la manzana 12\ny nadie de Interagua responde", textos)
         self.assertTrue(any(t.startswith("La basura") for t in textos))
         self.assertFalse(any("Multimedia" in t or "cifrad" in t or "agregó" in t for t in textos))
-        self.assertEqual(msgs[0]["fecha"], "2026-09-29T15:05:00-05:00")
-        self.assertEqual([m for m in msgs if m["texto"].startswith("La basura")][0]["fecha"], "2026-09-30T15:04:00-05:00")
+        self.assertEqual(msgs[0]["fecha"], "2026-09-30T01:05:00-05:00")
+        self.assertEqual([m for m in msgs if m["texto"].startswith("La basura")][0]["fecha"], "2026-09-30T03:04:00-05:00")
 
     def test_anonimiza_y_usa_el_barrio_del_grupo(self):
         r = comunidad.importar_whatsapp("Chat de WhatsApp con Vecinos Sauces 8.txt", CHAT.encode("utf-8"), ahora=AHORA)

@@ -196,6 +196,7 @@
   #live[hidden]{display:none;}
   #vermas[hidden]{display:none;}
   #comVermas[hidden]{display:none;}
+  #emVermas[hidden]{display:none;}
   .modalbox{background:var(--card);border-radius:14px;max-width:720px;width:100%;
     max-height:calc(100vh - 48px);overflow-y:auto;
     padding:20px 22px 18px;position:relative;box-shadow:0 12px 44px rgba(0,0,0,.35);margin:auto 0;}
@@ -685,6 +686,21 @@
   <!-- Fase 20: lente Comunidad (comunidad.py). Temas para reportear en
        Guayaquil: problemas de barrio que se repiten, eventos, historias humanas. -->
   <section id="secComunidad" hidden>
+    <!-- Fase 21: EmergenciasEc (medio millon de seguidores, publica al momento) y la
+         gente que le responde o la etiqueta. Solo lo de las ultimas horas. -->
+    <div class="panel" style="border-left:4px solid #dc2626">
+      <h2 style="margin:0 0 4px">Al momento — <span id="emCuenta">@EmergenciasEc</span> y su gente</h2>
+      <p class="hint">Lo que publica la cuenta, lo que la gente le responde o le reporta etiquetandola, y las cuentas con las que mas interactua. Solo lo de las ultimas <span id="emVentana">10</span> horas, lo mas nuevo arriba. Son reportes sin verificar: sirven para saber que esta pasando y a quien preguntar.</p>
+      <div class="seg" id="emSeg" style="margin:6px 0 8px">
+        <button class="active" data-em="">Todo</button>
+        <button data-em="gente">Solo la gente</button>
+        <button data-em="cuenta">Solo la cuenta</button>
+      </div>
+      <div id="emList"></div>
+      <button class="vermas" id="emVermas" hidden>Ver mas</button>
+      <p class="hint" id="emRed"></p>
+      <p class="hint" id="emEstado"></p>
+    </div>
     <div class="panel" style="border-left:4px solid #0ea5e9">
       <h2 style="margin:0 0 4px">Comunidad Guayaquil — de que se queja la gente</h2>
       <p class="hint">Problemas que PERSONAS de Guayaquil mencionan en redes (X, Bluesky, YouTube, Facebook, grupos de WhatsApp que importes y las alertas de la gente). No son notas de prensa: la prensa solo se usa para marcar si el problema ya esta cubierto. Un problema sube cuando lo mencionan mas personas distintas, en mas dias, y cuando ningun medio lo publico. Los conteos son de lo que Spike logro captar, no de toda la ciudad. Las "pistas" son preguntas sugeridas, no datos.</p>
@@ -1318,8 +1334,8 @@ function renderGap(){
   renderSenales();
   const box=$("#gaplist");
   const tend=DATA.tendencias||{};
-  const H=(DATA.historias||[]).filter(h=>
-    gapAmb==="local"? !!h.es_local : gapAmb==="internacional"? !!h.internacional : true);
+  const H=(DATA.historias||[]).filter(h=> !h.antigua &&  // Fase 21: cobertura de las ultimas horas
+    (gapAmb==="local"? !!h.es_local : gapAmb==="internacional"? !!h.internacional : true));
   const cov={}; H.forEach(h=>(h.temas||[]).forEach(t=>cov[t]=(cov[t]||0)+1));
   const covMax=Math.max(1,...Object.values(cov),1);
   const demOf=t=>demandaTema(t);
@@ -1874,6 +1890,7 @@ function renderContraste(){
   // oficiales, actos oficiales SIN documento publicado, o notas con contratos/
   // verificaciones. "Corroborado por medios" solo no alcanza para estar aca.
   const H=(DATA.historias||[]).filter(h=>{
+    if(h.antigua) return false;  // Fase 21: solo lo reciente
     const v=h.veredicto||{};
     return v.estado==="hallazgo" || v.estado==="documento_oficial" || v.clase==="acto_oficial"
       || (h.contratos&&h.contratos.length) || (h.factcheck&&h.factcheck.length);
@@ -2264,6 +2281,7 @@ let uhAmb = "";       // "" | "local" | "guayaquil" | "internacional"
 let uhVisto = Date.now();  // cuando se abrio/miro por ultima vez esta pestaña
 function uhFiltradas(){
   return (DATA.historias||[]).filter(h=>{
+    if(h.antigua) return false;  // Fase 21: Ultima hora = solo lo de las ultimas horas (FEED_FRESH_H)
     if(!uhAmb) return true;
     if(uhAmb==="guayaquil") return h.ciudad==="Guayaquil";
     if(uhAmb==="local") return h.ambito==="local";
@@ -3551,7 +3569,41 @@ function comunidadCardHTML(t){
     ${pistas?`<details><summary>Pistas de reporteo (sugerencias, no datos)</summary><ul>${pistas}</ul></details>`:""}
   </div>`;
 }
+// Fase 21: panel "Al momento" (EmergenciasEc y su red).
+let emFiltro="", emExpandido=false;
+const EM_PAGE=15;
+function renderEmergencias(){
+  const box=$("#emList"); if(!box) return;
+  const E=DATA.emergencias||{};
+  $("#emCuenta").textContent="@"+(E.cuenta||"EmergenciasEc");
+  $("#emVentana").textContent=E.ventana_h||10;
+  const etq={cuenta:"la cuenta", respuesta:"le responde / la etiqueta", red:"de su red"};
+  const L=(E.tweets||[]).filter(t=> !emFiltro || (emFiltro==="cuenta" ? t.tipo==="cuenta" : t.tipo!=="cuenta"));
+  if(!L.length){
+    box.innerHTML=`<p class="hint">${E.activo===false?"Sin token de Apify: X esta apagado.":"Nada captado en las ultimas horas todavia. Se consulta cada "+(E.frecuencia_min||10)+" minutos."}</p>`;
+    $("#emVermas").hidden=true;
+  } else {
+    const vis = emExpandido ? L : L.slice(0,EM_PAGE);
+    box.innerHTML = vis.map(t=>`<div class="card" style="margin:6px 0;padding:8px 10px">
+      <div class="meta"><b>${esc(t.autor)}</b> · ${esc(etq[t.tipo]||t.tipo)} · ${esc(fmtHoraEC(t.fecha))}${t.respuestas?` · ${t.respuestas} respuestas`:""}</div>
+      <div style="margin-top:4px;white-space:pre-wrap">${esc(t.texto)}</div>
+      ${t.url?`<a href="${esc(t.url)}" target="_blank" rel="noopener">Ver en X</a>`:""}</div>`).join("");
+    const vm=$("#emVermas");
+    vm.hidden = L.length<=EM_PAGE || emExpandido;
+    vm.textContent = "Ver mas ("+(L.length-vis.length)+" mas)";
+  }
+  const red=E.red||[];
+  $("#emRed").textContent = red.length ? ("Cuentas con las que mas interactua (se leen cada "+(E.frecuencia_red_min||30)+" min): "+red.map(r=>"@"+r.usuario+" ("+r.n+")").join(", ")) : "Todavia no se aprendio su red de cuentas.";
+  $("#emEstado").textContent = E.ultima ? ("Ultima consulta: "+fmtHoraEC(E.ultima)+" · gastado hoy en esta capa: $"+(E.gasto_hoy||0).toFixed(4)) : "";
+}
+document.querySelectorAll("#emSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#emSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); emFiltro=b.dataset.em; emExpandido=false; renderEmergencias();
+}));
+(function(){ const vm=document.getElementById("emVermas"); if(vm) vm.addEventListener("click",()=>{ emExpandido=true; renderEmergencias(); }); })();
+
 function renderComunidad(){
+  renderEmergencias();
   const box=$("#comList"); if(!box) return;
   const C=DATA.comunidad||{};
   const todos=C.temas||[];

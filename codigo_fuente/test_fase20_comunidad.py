@@ -20,7 +20,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 AHORA = dt.datetime(2026, 9, 30, 12, tzinfo=dt.timezone.utc)
 
 
-def _post(texto, autor="@vecina_gye", fuente="x", fecha="2026-09-29T15:00:00+00:00", tipo=None):
+# Fase 21: por defecto, 4 h antes de AHORA (dentro de la ventana de 10 h).
+def _post(texto, autor="@vecina_gye", fuente="x", fecha="2026-09-30T08:00:00+00:00", tipo=None):
     return comunidad.normalizar_post(fuente, autor, texto, "https://x.com/%s/1" % autor.strip("@"), fecha,
                                      tipo=tipo, ahora=AHORA)
 
@@ -91,13 +92,31 @@ class TestTemas(unittest.TestCase):
     def tearDown(self):
         comunidad.COMUNIDAD_PATH = self.orig
 
-    def test_personas_distintas_y_dias_distintos_suben(self):
+    def test_personas_distintas_suben(self):
         posts = [_post("Llevamos dias sin agua en el Guasmo, Guayaquil", autor="@a%d" % i,
-                       fecha="2026-09-%02dT15:00:00+00:00" % d) for i, d in enumerate((25, 27, 29))]
+                       fecha="2026-09-30T%02d:00:00+00:00" % h) for i, h in enumerate((5, 7, 9))]
         posts.append(_post("Un bache en Urdesa, Guayaquil", autor="@b"))
         t = comunidad.armar_temas(posts, [], AHORA)[0]
-        self.assertEqual((t["barrio"], t["categoria"], t["personas"], t["dias"]), ("Guasmo", "agua", 3, 3))
+        self.assertEqual((t["barrio"], t["categoria"], t["personas"]), ("Guasmo", "agua", 3))
         self.assertIn("3 personas distintas", t["por_que"])
+
+    def test_viejo_no_entra_como_nuevo(self):
+        # Fase 21: "no cojas otra cosa que lo publicado en las ultimas 10 horas".
+        self.assertIsNone(_post("Sin agua en el Guasmo, Guayaquil", fecha="2026-09-29T20:00:00+00:00"))
+        self.assertIsNotNone(_post("Sin agua en el Guasmo, Guayaquil", fecha="2026-09-30T03:00:00+00:00"))
+
+    def test_lo_de_antes_solo_es_antecedente(self):
+        # Registro con un post viejo (entro cuando era nuevo) y uno de hoy: el tema
+        # existe por el de hoy; el viejo se cuenta aparte.
+        viejo = _post("Sin agua en el Guasmo, Guayaquil", autor="@v", fecha="2026-09-30T08:00:00+00:00")
+        viejo["fecha"] = "2026-09-27T15:00:00+00:00"
+        hoy = _post("Otra vez sin agua en el Guasmo, Guayaquil", autor="@h")
+        t = comunidad.armar_temas([viejo, hoy], [], AHORA)[0]
+        self.assertEqual((t["n"], t["antes_n"]), (1, 1))
+        self.assertIn("Ya se mencionaba antes", t["por_que"])
+        self.assertEqual([p["autor"] for p in t["publicaciones"]], ["@h"])
+        # Solo lo viejo: no hay tema.
+        self.assertEqual(comunidad.armar_temas([viejo], [], AHORA), [])
 
     def test_misma_persona_varias_veces_no_infla(self):
         posts = [_post("Sin agua en el Guasmo, Guayaquil, dia %d" % i, autor="@misma") for i in range(5)]
@@ -124,9 +143,9 @@ class TestTemas(unittest.TestCase):
         self.assertEqual(comunidad.armar_temas(posts, prensa, AHORA)[0]["categoria"], "luz")
 
     def test_registro_de_x_sin_duplicar_y_solo_personas(self):
-        tweets = [{"id": "1", "text": "Sin agua en Sauces, Guayaquil, desde ayer", "createdAt": "Tue Sep 29 15:00:00 +0000 2026",
+        tweets = [{"id": "1", "text": "Sin agua en Sauces, Guayaquil, desde ayer", "createdAt": "Wed Sep 30 09:00:00 +0000 2026",
                    "url": "https://x.com/v/1", "author": {"userName": "vecino_sauces"}},
-                  {"id": "2", "text": "Sin agua en Sauces, Guayaquil, informa Interagua", "createdAt": "Tue Sep 29 15:00:00 +0000 2026",
+                  {"id": "2", "text": "Sin agua en Sauces, Guayaquil, informa Interagua", "createdAt": "Wed Sep 30 09:00:00 +0000 2026",
                    "url": "https://x.com/i/2", "author": {"userName": "TiempoRealEC"}}]
         self.assertEqual(comunidad.registrar_tweets(tweets, ahora=AHORA), 1)
         self.assertEqual(comunidad.registrar_tweets(tweets, ahora=AHORA), 0)

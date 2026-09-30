@@ -57,6 +57,10 @@ MAX_POSTS = 6000             # tope del registro en disco
 # video de comentarios; cada hora = ~2.500 de las 10.000 diarias gratis.
 BSKY_CADA_MIN = float(os.environ.get("MONITOR_COMUNIDAD_BSKY_MIN", "10"))
 YT_CADA_H = float(os.environ.get("MONITOR_COMUNIDAD_YT_H", "1"))
+# Fase 21 (pedido de Fernando): solo entra como NUEVO lo publicado en las
+# ultimas VENTANA_H horas. Lo anterior que ya estaba en el registro no crea
+# temas: solo se muestra como antecedente ("ya se mencionaba antes").
+VENTANA_H = float(os.environ.get("MONITOR_VENTANA_H", "10"))
 # El hilo rapido, el trabajador y comunidad_loop escriben comunidad.json.
 _LOCK = threading.RLock()
 
@@ -379,7 +383,10 @@ def normalizar_post(fuente, autor, texto, url="", fecha="", tipo=None, oficial=F
     cat = categorizar(texto)
     if not cat:
         return None
-    f = _parse(fecha) or ahora or dt.datetime.now(dt.timezone.utc)
+    ahora = ahora or dt.datetime.now(dt.timezone.utc)
+    f = _parse(fecha) or ahora
+    if (ahora - f).total_seconds() > VENTANA_H * 3600:
+        return None  # Fase 21: viejo, no entra como nuevo
     return {"id": _post_id(fuente, url, autor, texto), "fuente": fuente, "autor": autor.strip(),
             "texto": texto[:500], "url": url or "", "fecha": f.isoformat(), "categoria": cat,
             "barrio": detectar_barrio(texto) or barrio_defecto or SIN_SECTOR, "queja": es_queja(texto)}
@@ -552,7 +559,7 @@ def recolectar(ahora=None, youtube=True, facebook=True):
         for q in ("Guayaquil", "Guayaquil sin agua", "Guayaquil sin luz", "Guayaquil basura",
                   "Guayaquil baches", "Guayaquil robo", "Guayaquil moradores"):
             try:
-                for sp in social.bluesky_buscar(q, limit=40, dias=7) or []:
+                for sp in social.bluesky_buscar(q, limit=40, dias=1) or []:
                     posts.append(normalizar_post("bluesky", sp.autor, sp.texto, sp.url, sp.fecha,
                                                  tipo=sp.tipo, ahora=ahora))
             except Exception as e:
@@ -566,7 +573,7 @@ def recolectar(ahora=None, youtube=True, facebook=True):
         consultas = ("Guayaquil moradores denuncian", "Guayaquil barrio problema", "Guayaquil vecinos reclaman")
         q = consultas[int(ahora.timestamp() // 3600) % len(consultas)]
         try:
-            for sp in social.youtube_buscar(q, max_videos=3, max_comentarios=20, dias=14) or []:
+            for sp in social.youtube_buscar(q, max_videos=3, max_comentarios=20, dias=1) or []:
                 posts.append(normalizar_post("youtube", sp.autor, sp.texto, sp.url, sp.fecha,
                                              tipo=sp.tipo, ahora=ahora))
         except Exception as e:
@@ -641,36 +648,46 @@ FUENTE_ETQ = {"x": "X", "bluesky": "Bluesky", "youtube": "YouTube", "reddit": "R
 
 
 def armar_temas(posts, historias, ahora):
+    """Un tema = (sector, categoria) con al menos una publicacion de las
+    ultimas VENTANA_H horas (Fase 21). Las publicaciones anteriores del mismo
+    par (hasta VIGENCIA_DIAS) no crean tema: se cuentan como antecedente,
+    porque un problema que se repite dias seguidos vale mas para reportaje."""
     por_par, por_cat = _cobertura(historias, ahora)
+    corte = ahora - dt.timedelta(hours=VENTANA_H)
     grupos = {}
     for p in posts:
         grupos.setdefault((p["barrio"], p["categoria"]), []).append(p)
     temas = []
-    for (barrio, cat), ps in grupos.items():
-        ps.sort(key=lambda x: x["fecha"], reverse=True)
-        fechas = [_parse(p["fecha"]) for p in ps]
-        ultima, primera = fechas[0], fechas[-1]
-        edad_d = (ahora - ultima).total_seconds() / 86400
-        if edad_d > VIGENCIA_DIAS:
+    for (barrio, cat), todos in grupos.items():
+        todos.sort(key=lambda x: x["fecha"], reverse=True)
+        ps = [p for p in todos if _parse(p["fecha"]) >= corte]
+        if not ps:
             continue
+        antes = [p for p in todos if _parse(p["fecha"]) < corte
+                 and (ahora - _parse(p["fecha"])).total_seconds() <= VIGENCIA_DIAS * 86400]
+        fechas = [_parse(p["fecha"]) for p in ps]
+        ultima = fechas[0]
+        edad_h = (ahora - ultima).total_seconds() / 3600
         personas = {p["autor"].lower() for p in ps}
-        dias = len({f.astimezone(_EC).date() for f in fechas})
+        personas_antes = {p["autor"].lower() for p in antes}
+        dias = len({_parse(p["fecha"]).astimezone(_EC).date() for p in ps + antes})
         fuentes = sorted({p["fuente"] for p in ps})
         prensa = por_par.get((barrio, cat)) or ([] if barrio != SIN_SECTOR else por_cat.get(cat) or [])
         quejas = sum(1 for p in ps if p.get("queja"))
-        recencia = max(0.0, 1.0 - edad_d / VIGENCIA_DIAS)
-        score = (12 * min(len(personas), 10) + 6 * min(dias, 10) + 2 * min(len(ps), 20) + 15 * recencia
-                 + 3 * min(quejas, 10) + (25 if not prensa else 0) + (5 if barrio != SIN_SECTOR else 0))
+        recencia = max(0.0, 1.0 - edad_h / max(VENTANA_H, 1))
+        score = (12 * min(len(personas), 10) + 2 * min(len(ps), 20) + 15 * recencia + 3 * min(quejas, 10)
+                 + 3 * min(len(personas_antes), 5) + (25 if not prensa else 0) + (5 if barrio != SIN_SECTOR else 0))
         partes = []
         n_per = len(personas)
-        partes.append("%d persona%s distinta%s lo mencion%s (%d publicacion%s, %s)."
+        partes.append("%d persona%s distinta%s lo mencion%s en las ultimas %d h (%d publicacion%s, %s)."
                       % (n_per, "" if n_per == 1 else "s", "" if n_per == 1 else "s",
-                         "o" if n_per == 1 else "aron", len(ps), "" if len(ps) == 1 else "es",
+                         "o" if n_per == 1 else "aron", VENTANA_H, len(ps), "" if len(ps) == 1 else "es",
                          ", ".join(FUENTE_ETQ.get(f, f) for f in fuentes)))
-        if dias > 1:
-            partes.append("En %d dias distintos, entre el %s y el %s." % (dias, _fmt_dia(primera), _fmt_dia(ultima)))
-        else:
-            partes.append("Ultima: %s (%s)." % (_fmt_dia(ultima), _hace(ultima, ahora)))
+        partes.append("Ultima: %s." % _hace(ultima, ahora))
+        if antes:
+            partes.append("Ya se mencionaba antes: %d publicacion%s de %d persona%s desde el %s."
+                          % (len(antes), "" if len(antes) == 1 else "es", len(personas_antes),
+                             "" if len(personas_antes) == 1 else "s", _fmt_dia(_parse(antes[-1]["fecha"]))))
         if prensa:
             medios = sorted({m for x in prensa for m in x["medios"]})
             partes.append("La prensa ya publico %d nota%s relacionada%s (%s)." % (
@@ -684,7 +701,8 @@ def armar_temas(posts, historias, ahora):
             "id": "%s|%s" % (barrio, cat), "categoria": cat, "categoria_label": ETIQUETA.get(cat, cat),
             "barrio": barrio, "titulo": "%s — %s" % (ETIQUETA.get(cat, cat), barrio),
             "personas": n_per, "n": len(ps), "dias": dias, "fuentes": fuentes, "quejas": quejas,
-            "primera": primera.isoformat(), "ultima": ultima.isoformat(),
+            "antes_n": len(antes), "antes_personas": len(personas_antes),
+            "primera": fechas[-1].isoformat(), "ultima": ultima.isoformat(),
             "cubierto": bool(prensa), "prensa": prensa[:3], "score": round(score, 1),
             "por_que": " ".join(partes), "pistas": PISTAS.get(cat, []),
             "publicaciones": [{"autor": p["autor"], "texto": p["texto"], "url": p["url"], "fecha": p["fecha"],
@@ -729,18 +747,21 @@ def actualizar(historias, alertas=None, social=None, social_historias=None, ahor
         b = barrios.setdefault(t["barrio"], {"barrio": t["barrio"], "n_temas": 0, "personas": 0})
         b["n_temas"] += 1
         b["personas"] += t["personas"]
+    corte = ahora - dt.timedelta(hours=VENTANA_H)
+    recientes = [p for p in posts if (_parse(p["fecha"]) or ahora) >= corte]
     por_fuente = {}
-    for p in posts:
+    for p in recientes:
         por_fuente[p["fuente"]] = por_fuente.get(p["fuente"], 0) + 1
     sin_cubrir = sum(1 for t in temas if not t["cubierto"])
-    estado = ("%d temas (%d sin cobertura de prensa) a partir de %d publicaciones de personas de Guayaquil (%s)"
-              % (len(temas), sin_cubrir, len(posts),
+    estado = ("%d temas (%d sin cobertura de prensa) a partir de %d publicaciones de personas de Guayaquil "
+              "en las ultimas %d h (%s)"
+              % (len(temas), sin_cubrir, len(recientes), VENTANA_H,
                  ", ".join("%s %d" % (FUENTE_ETQ.get(f, f), n) for f, n in sorted(por_fuente.items())) or "ninguna fuente todavia"))
     return {"temas": temas,
             "categorias": sorted(cats.values(), key=lambda c: -c["n_temas"]),
             "todas_categorias": [{"categoria": k, "label": etq} for k, etq, _ in CATEGORIAS],
             "barrios": sorted(barrios.values(), key=lambda b: (b["barrio"] == SIN_SECTOR, -b["personas"])),
-            "total_publicaciones": len(posts), "nuevas": nuevos, "por_fuente": por_fuente, "estado": estado,
+            "total_publicaciones": len(recientes), "ventana_h": VENTANA_H, "nuevas": nuevos, "por_fuente": por_fuente, "estado": estado,
             "ultimas": {k: v for k, v in ultimas.items() if k in ("bluesky", "youtube", "facebook", "facebook_estado")},
             "whatsapp_grupos": sorted({p["autor"].split("(", 1)[-1].rstrip(")") for p in posts
                                        if p["fuente"] == "whatsapp" and "(" in p["autor"]}),

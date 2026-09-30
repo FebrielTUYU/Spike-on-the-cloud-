@@ -144,7 +144,9 @@ def guardar_tweets_historia(link, tweets):
 
 
 def tweets_de_historia(link):
-    return _cargar_cache().get("historias", {}).get(link, {}).get("tweets", [])
+    # Fase 21: los guardados de antes pueden ser viejos; al leer, solo VENTANA_H.
+    ts = _cargar_cache().get("historias", {}).get(link, {}).get("tweets", [])
+    return [t for t in ts if _dentro_de(t, VENTANA_H)]
 
 
 # ------------------------- llamada real a Apify (unico punto que golpea la red) -------------------------
@@ -249,11 +251,21 @@ def _buscar(search_terms, max_items=20, query_type="Latest", lang="es", actor=AC
 
 # ------------------------- capa 1: historias -------------------------
 
+# Fase 21: nada de mas de VENTANA_H horas entra como nuevo (pedido de Fernando).
+VENTANA_H = float(os.environ.get("MONITOR_VENTANA_H", "10"))
+
+
 def buscar_historia(query, max_items=25, simular=False, tope_seguridad_usd=0.30):
     """Tweets de una historia puntual, lang:es, ordenado por 'Latest'.
     'query' ya viene armado por el llamador con las entidades de la
-    historia (nombres/siglas/lugar), NUNCA con el nombre de una categoria."""
-    return _buscar([query], max_items=max_items, simular=simular, tope_seguridad_usd=tope_seguridad_usd)
+    historia (nombres/siglas/lugar), NUNCA con el nombre de una categoria.
+    Fase 21: con 'since:' de VENTANA_H y filtro por createdAt al recibir
+    (antes traia tweets de dias atras)."""
+    items, costo = _buscar(["%s %s" % (query, _since(VENTANA_H))], max_items=max_items, simular=simular,
+                           tope_seguridad_usd=tope_seguridad_usd)
+    if isinstance(items, list):
+        items = [t for t in items if _dentro_de(t, VENTANA_H)]
+    return items, costo
 
 
 # ------------------------- capa 2: debate (respuestas a un tweet) -------------------------

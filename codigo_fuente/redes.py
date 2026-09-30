@@ -18,6 +18,7 @@ import datetime as dt
 import json
 import threading
 import os
+import re
 
 import xapi
 import tiktok
@@ -368,6 +369,186 @@ def _pasada_eventos(eventos, terminos_alerta, simular_red, r):
     return hubo
 
 
+# ------------------------- Fase 21: EmergenciasEc y su red -------------------------
+# Pedido de Fernando (2026-09-30): "haz especial enfasis en la cuenta
+# emergencias.ec y sus usuarios con los que interactua, porque es una cuenta con
+# medio millon de seguidores que publica las cosas que pasan al momento... y de
+# esa forma es leyendo a la gente". Tres cosas, en este orden de prioridad:
+#   1) lo que publica @EmergenciasEc, la gente que le RESPONDE y la que la
+#      ETIQUETA (una sola consulta: from:/to:/@), cada FREQ_EMERG_MIN (10 min);
+#   2) se aprende SU RED: quien le responde, a quien menciona, a quien
+#      responde ella (conteo en redes_cache.json, ultimos 14 dias);
+#   3) las cuentas mas activas de esa red se leen aparte, cada FREQ_EMERG_RED_MIN.
+# Todo entra a Alertas (mismo registrar_senal de siempre) y a Comunidad (que
+# filtra solo personas), y queda en un panel propio "Al momento".
+# NO verificado en vivo: que el actor de Apify respete from:/to: (operadores
+# estandar de la busqueda avanzada de X). Si no, los tweets igual pasan por el
+# filtro de fecha e ids vistos.
+EMERG_CUENTA = os.environ.get("MONITOR_EMERG_CUENTA", "EmergenciasEc").lstrip("@")
+FREQ_EMERG_MIN = float(os.environ.get("MONITOR_EMERG_MIN", "10"))
+FREQ_EMERG_RED_MIN = float(os.environ.get("MONITOR_EMERG_RED_MIN", "30"))
+EMERG_MAX_ITEMS = int(os.environ.get("MONITOR_EMERG_ITEMS", "40"))
+EMERG_RED_TOP = int(os.environ.get("MONITOR_EMERG_RED_TOP", "8"))
+# Parte del presupuesto diario de X que esta capa puede usar (va primero: es la
+# fuente mas rapida de lo que pasa en la calle). El resto queda para las demas.
+EMERG_PARTE_X = float(os.environ.get("MONITOR_EMERG_PARTE", "0.7"))
+EMERG_RED_DIAS = 14
+_MENCION = re.compile(r"@(\w{2,15})")
+
+
+def _autor(t):
+    return ((t.get("author") or {}).get("userName") or "").lstrip("@")
+
+
+def _tipo_emerg(t, capa):
+    u = _autor(t).lower()
+    if u == EMERG_CUENTA.lower():
+        return "cuenta"
+    if capa == "red":
+        return "red"
+    return "respuesta"
+
+
+def _aprender_red(tweets):
+    """Cuenta quien interactua con la cuenta: autores que le responden o la
+    etiquetan, y cuentas que ella menciona o a las que responde."""
+    if not tweets:
+        return
+    yo = EMERG_CUENTA.lower()
+    ahora = _ahora().isoformat()
+    with _LOCK:
+        cache = _cargar_cache()
+        red = cache.setdefault("red_emergencias", {})
+        for t in tweets:
+            u = _autor(t)
+            if u.lower() == yo:
+                otros = set(_MENCION.findall(t.get("text") or ""))
+                if t.get("inReplyToUsername"):
+                    otros.add(t["inReplyToUsername"])
+            else:
+                otros = {u} if u else set()
+            for o in otros:
+                if not o or o.lower() == yo:
+                    continue
+                e = red.setdefault(o, {"n": 0})
+                e["n"] += 1
+                e["ult"] = ahora
+        corte = (_ahora() - dt.timedelta(days=EMERG_RED_DIAS)).isoformat()
+        for k in [k for k, v in red.items() if (v.get("ult") or "") < corte]:
+            del red[k]
+        _guardar_cache(cache)
+
+
+def red_emergencias(top=EMERG_RED_TOP):
+    """[(usuario, n)] de las cuentas que mas interactuan con EmergenciasEc."""
+    red = _cargar_cache().get("red_emergencias") or {}
+    return sorted(((u, v.get("n", 0)) for u, v in red.items()), key=lambda x: -x[1])[:top]
+
+
+def _guardar_feed_emerg(tweets, capa):
+    """Lo ultimo de la cuenta y su red, para el panel 'Al momento'. Solo lo de
+    las ultimas VENTANA_H horas; dedup por id."""
+    if not tweets:
+        return
+    with _LOCK:
+        cache = _cargar_cache()
+        feed = {x["id"]: x for x in (cache.get("emergencias_feed") or []) if x.get("id")}
+        for t in tweets:
+            tid = str(t.get("id") or "")
+            fecha = xapi.fecha_iso(t.get("createdAt", ""))
+            if not tid or not fecha:
+                continue
+            feed[tid] = {"id": tid, "autor": "@" + _autor(t), "texto": (t.get("text") or "")[:500],
+                         "url": t.get("url") or "", "fecha": fecha, "tipo": _tipo_emerg(t, capa),
+                         "respuestas": t.get("replyCount") or 0}
+        corte = (_ahora() - dt.timedelta(hours=xapi.VENTANA_H)).isoformat()
+        vivos = [x for x in feed.values() if _iso_utc(x["fecha"]) >= corte]
+        vivos.sort(key=lambda x: _iso_utc(x["fecha"]), reverse=True)
+        cache["emergencias_feed"] = vivos[:200]
+        _guardar_cache(cache)
+
+
+def _iso_utc(s):
+    try:
+        d = dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        return d.astimezone(dt.timezone.utc).isoformat()
+    except Exception:
+        return ""
+
+
+def gasto_emerg_hoy():
+    return float((_cargar_cache().get("emerg_gasto") or {}).get(_hoy(), 0.0))
+
+
+def _sumar_gasto_emerg(monto):
+    with _LOCK:
+        cache = _cargar_cache()
+        g = cache.setdefault("emerg_gasto", {})
+        g[_hoy()] = round(g.get(_hoy(), 0.0) + monto, 6)
+        for d in sorted(g)[:-7]:
+            del g[d]
+        _guardar_cache(cache)
+
+
+def _correr_emerg(clave, consulta, horas, capa):
+    """Una consulta de la capa EmergenciasEc con sus topes. Devuelve texto."""
+    costo_max = xapi.costo_estimado(EMERG_MAX_ITEMS)
+    tope = presupuesto_hoy("x") * EMERG_PARTE_X
+    if gasto_emerg_hoy() + costo_max > tope:
+        _marcar_corrida(clave)
+        return "saltada: parte de EmergenciasEc del presupuesto de X de hoy agotada ($%.4f de $%.4f)" % (
+            gasto_emerg_hoy(), tope)
+    ok, razon = cabe("x", costo_max)
+    if not ok:
+        _marcar_corrida(clave)
+        return "saltada: %s" % razon
+    tweets, costo = xapi.buscar_consulta(consulta, "emergencias", horas=horas, max_items=EMERG_MAX_ITEMS)
+    _marcar_corrida(clave)
+    if tweets is None:
+        return "error: %s" % (xapi.last_error or "sin respuesta")
+    if costo > 0:
+        registrar_gasto("x", costo, "emergencias_%s" % capa)
+        _sumar_gasto_emerg(costo)
+    _guardar_feed_emerg(tweets, capa)
+    if capa == "cuenta":
+        _aprender_red(tweets)
+    alertas_n = _registrar_alertas_x(tweets)
+    personas = _a_comunidad(tweets) or 0
+    return "%d tweets nuevos (%d a alertas, %d de personas a Comunidad, $%.4f)" % (
+        len(tweets), alertas_n, personas, costo or 0)
+
+
+def pasada_emergencias():
+    """Hilo de Comunidad (monitor.comunidad_ciclo), cada minuto decide si toca."""
+    if not activo():
+        return "desactivado (falta token de Apify)"
+    hechos = []
+    if _paso_frecuencia("_emerg", FREQ_EMERG_MIN / 60.0):
+        horas = max(0.5, 2 * FREQ_EMERG_MIN / 60.0)
+        c = EMERG_CUENTA
+        q = "(from:%s OR to:%s OR @%s) %s" % (c, c, c, xapi._since(horas))
+        hechos.append("@%s: %s" % (c, _correr_emerg("_emerg", q, horas, "cuenta")))
+    red = red_emergencias()
+    if red and _paso_frecuencia("_emerg_red", FREQ_EMERG_RED_MIN / 60.0):
+        horas = max(1.0, 2 * FREQ_EMERG_RED_MIN / 60.0)
+        q = xapi.consulta_cuentas([{"usuario": u} for u, _ in red], horas=horas)
+        hechos.append("su red (%d cuentas): %s" % (len(red), _correr_emerg("_emerg_red", q, horas, "red")))
+    return "; ".join(hechos) or "todavia no toca"
+
+
+def emergencias_dashboard():
+    """Lectura sin red para data.json['emergencias']."""
+    cache = _cargar_cache()
+    corte = (_ahora() - dt.timedelta(hours=xapi.VENTANA_H)).isoformat()
+    feed = [x for x in (cache.get("emergencias_feed") or []) if _iso_utc(x.get("fecha")) >= corte]
+    return {"cuenta": EMERG_CUENTA, "activo": activo(), "tweets": feed[:120],
+            "red": [{"usuario": u, "n": n} for u, n in red_emergencias(15)],
+            "frecuencia_min": FREQ_EMERG_MIN, "frecuencia_red_min": FREQ_EMERG_RED_MIN,
+            "ventana_h": xapi.VENTANA_H,
+            "ultima": (cache.get("frecuencia") or {}).get("_emerg"),
+            "gasto_hoy": round(gasto_emerg_hoy(), 5)}
+
+
 def gasto_comunidad_hoy():
     return float((_cargar_cache().get("comunidad_gasto") or {}).get(_hoy(), 0.0))
 
@@ -469,6 +650,9 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
     # 1b) Fase 18 (P1-5.2): cuentas hiperlocales (x_cuentas_locales.json) --
     # mas barato y con mas senal que buscar palabras sueltas.
     cuentas = cuentas if cuentas is not None else xapi.cuentas_locales()
+    # Fase 21: EmergenciasEc ya tiene su capa propia cada 10 min (pasada_emergencias);
+    # leerla tambien aca pagaria dos veces los mismos tweets.
+    cuentas = [c for c in cuentas if (c.get("usuario") or "").lstrip("@").lower() != EMERG_CUENTA.lower()]
     if cuentas and _paso_frecuencia("_cuentas_x", FREQ_CUENTAS_X_H):
         costo_max = xapi.costo_estimado(20)
         ok, razon = (True, "") if simular_red else cabe("x", costo_max)

@@ -2957,7 +2957,10 @@ def build_stories(clusters):
         # aparte, para no perderla en silencio (ver FEED_FRESH_H arriba).
         if hours is not None and hours > MAX_AGE_DAYS * 24:
             continue
-        antigua = hours is not None and hours > FEED_FRESH_H
+        # Fase 21 (pedido de Fernando: "no cojas otra cosa que lo publicado en
+        # las ultimas 10 horas como nuevo"): sin fecha no se puede confirmar
+        # que sea nueva -> va a Anteriores (antes contaba como reciente).
+        antigua = hours is None or hours > FEED_FRESH_H
 
         # PROMINENCIA: senales separadas (no colapsadas en la logica).
         n_outlets = len(outlets)
@@ -5192,7 +5195,7 @@ def _post_es_foraneo(p):
 # de la historia). Antes alcanzaba con "no nombra otro pais"
 # (_post_es_foraneo) -- y medido el 2026-09-30, los 20 temas mostraban posts
 # de Espana, Chile, Venezuela y Eslovaquia etiquetados como "guayaquil".
-SOCIAL_LOCAL_H = float(os.environ.get("MONITOR_SOCIAL_LOCAL_H", "48"))
+SOCIAL_LOCAL_H = float(os.environ.get("MONITOR_SOCIAL_LOCAL_H", os.environ.get("MONITOR_VENTANA_H", "10")))  # Fase 21: 48 -> 10 h
 
 
 def _post_senal_local(p, entidades=()):
@@ -6133,6 +6136,8 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         # Fase 9 (Problema D): X via Apify -- gasto real (nunca el token),
         # honesto sobre si esta activo o no (mismo criterio que estado_gdelt).
         "estado_redes": (redes.estado_dashboard() if redes else {"activo": False, "estado": "redes.py no disponible"}),
+        # Fase 21: EmergenciasEc y su red (panel "Al momento" en Comunidad).
+        "emergencias": (redes.emergencias_dashboard() if redes else {"activo": False, "tweets": [], "red": []}),
         "feed_fresh_h": FEED_FRESH_H,
         "max_age_dias": MAX_AGE_DAYS,
         "estado_movil": estado_movil,
@@ -6746,6 +6751,12 @@ def comunidad_ciclo():
         return "apagado"
     partes = []
     if redes is not None:
+        try:  # Fase 21: EmergenciasEc primero (lo mas rapido de la calle)
+            r = redes.pasada_emergencias()
+            if r != "todavia no toca":
+                partes.append("EmergenciasEc: %s" % r)
+        except Exception as e:
+            partes.append("EmergenciasEc: error %s" % e)
         try:
             r = redes.pasada_comunidad()
             if r != "todavia no toca":

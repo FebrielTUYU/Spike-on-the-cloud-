@@ -35,7 +35,14 @@ IA_CTX = int(os.environ.get("MONITOR_IA_CTX", "4096"))
 # aplica nativo en cada fuente (mas barato: no se trae ni se paga lo viejo) Y
 # como respaldo centralizado en recolectar() (ver _es_reciente), por si una
 # fuente no filtra perfecto.
-SOCIAL_DIAS = int(os.environ.get("MONITOR_SOCIAL_DIAS", "7"))
+SOCIAL_DIAS = int(os.environ.get("MONITOR_SOCIAL_DIAS", "1"))
+# Fase 21 (pedido de Fernando, 2026-09-30: "estas recogiendo muchas noticias
+# viejas y tweets o videos viejos de hace 2 o 3 dias... quiero que no cojas otra
+# cosa que las cosas que se publican en las ultimas 10 horas"): ventana UNICA en
+# HORAS para todo lo que entra como nuevo desde redes. SOCIAL_DIAS (bajado de 7 a
+# 1) solo acota lo que se PIDE a cada API (su filtro nativo es por dia); el corte
+# real es VENTANA_H, re-aplicado sobre el resultado en recolectar().
+VENTANA_H = float(os.environ.get("MONITOR_VENTANA_H", "10"))
 
 # ------------------------- alcance geografico (Problema 1) -------------------------
 # Antes TODO el pulso social usaba un solo subreddit fijo (r/ecuador) y
@@ -296,7 +303,9 @@ YT_COMMENTS = "https://www.googleapis.com/youtube/v3/commentThreads"
 # video (comentarios es la parte casi gratis de la cuota).
 YT_MAX_VIDEOS = 5
 YT_MAX_COMENTARIOS = 30
-YT_DIAS = 30  # solo videos de los ultimos N dias: conversacion actual, no historica
+# Fase 21: 30 -> 2 dias. Videos viejos traian comentarios viejos (y el video
+# en si aparecia en el panel). Los comentarios igual se cortan a VENTANA_H.
+YT_DIAS = int(os.environ.get("MONITOR_YT_DIAS", "2"))
 YT_CHANNELS = "https://www.googleapis.com/youtube/v3/channels"
 
 def _yt_comment_url(video_id, comment_id):
@@ -752,7 +761,8 @@ def recolectar(query, subreddit="ecuador", limite=15, youtube=True, dias=None, a
     last_error = None
     t = telegram_buscar(query, dias=dias)
     if not t and last_error: errs.append(last_error)
-    recientes = [p for p in (b + r + y + m + t) if _es_reciente(p.fecha, dias)]
+    recientes = [p for p in (b + r + y + m + t)
+                 if _es_reciente(p.fecha, dias) and _es_reciente(p.fecha, horas=VENTANA_H)]
     posts = filtrar_ruido(recientes)
     return posts, errs
 

@@ -87,7 +87,7 @@ ALERTA_VENTANA_H = float(os.environ.get("MONITOR_ALERTA_VENTANA_H", "6"))
 # Atarazana (18-sep) quedo enlazada a "Incendio en vivienda del sur de
 # Guayaquil" (29-sep); y alertas SIN lugar se enlazaban con notas de Estonia,
 # Espana o Medellin porque sin lugar no se comparaba nada.
-ALERTA_MAX_EDAD_H = float(os.environ.get("MONITOR_ALERTA_MAX_EDAD_H", "24"))
+ALERTA_MAX_EDAD_H = float(os.environ.get("MONITOR_ALERTA_MAX_EDAD_H", os.environ.get("MONITOR_VENTANA_H", "10")))  # Fase 21: 24 -> 10 h
 ENLACE_MAX_H = float(os.environ.get("MONITOR_ALERTA_ENLACE_H", "12"))
 
 last_error = None
@@ -614,12 +614,27 @@ def marcar_avisada(alerta_id):
     _guardar(registro)
 
 
+def _iso_utc(s):
+    """ISO normalizado a UTC para comparar como texto ('' si no se puede)."""
+    try:
+        d = dt.datetime.fromisoformat(str(s).replace("Z", "+00:00"))
+        d = d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+        return d.astimezone(dt.timezone.utc).isoformat()
+    except Exception:
+        return ""
+
+
 def listar_activas(min_estado="sin_confirmar"):
     """Alertas ordenadas por mas reciente primero, para el panel 'Alertas
     tempranas' del dashboard -- solo lectura, nunca dispara red."""
     registro = _cargar()
     umbral = ESTADO_ORDEN.get(min_estado, 0)
-    out = [a for a in registro.values() if ESTADO_ORDEN.get(a.get("estado"), 0) >= umbral]
+    # Fase 21: en el panel solo lo que tuvo una senal en las ultimas
+    # ALERTA_MAX_EDAD_H horas (def. 10). El registro guarda mas dias para las
+    # metricas de adelanto, pero eso ya no es "lo que pasa ahora".
+    corte = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=ALERTA_MAX_EDAD_H)).isoformat()
+    out = [a for a in registro.values() if ESTADO_ORDEN.get(a.get("estado"), 0) >= umbral
+           and _iso_utc(a.get("ultima_senal")) >= corte]
     out.sort(key=lambda a: a.get("ultima_senal", ""), reverse=True)
     return out
 

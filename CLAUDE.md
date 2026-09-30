@@ -4991,3 +4991,55 @@ integrar whatsapp y facebook."
    PC la línea "Cada cuanto escucha", el gasto de X en Estadísticas y que Facebook traiga algo.
 2. Fernando tiene que llenar `facebook_fuentes.json` con páginas/grupos reales de Guayaquil.
 3. Recompilar `Spike.exe`.
+
+## Fase 21 (2026-09-30) — solo lo de las últimas 10 horas + EmergenciasEc y su red
+
+Pedido de Fernando: "estas recogiendo muchas noticias viejas y tweets o videos viejos de hace 2 o 3
+dias... quiero que no cojas otra cosa que las cosas que se publican en las ultimas 10 horas como
+nuevas. Ademas haz especial enfasis en la cuenta emergencias.ec y sus usuarios con los que
+interactua... de esa forma es leyendo a la gente."
+
+**Ventana única `MONITOR_VENTANA_H` (def. 10 h)**, leída en cada módulo (standalone):
+- `social.py`: `VENTANA_H` re-aplicada en `recolectar()` sobre el resultado de TODAS las fuentes
+  (Bluesky/Reddit/YouTube/Mastodon/Telegram); `SOCIAL_DIAS` 7→1 (solo acota lo que se pide a cada
+  API, su filtro nativo es por día); `YT_DIAS` 30→2 (`MONITOR_YT_DIAS`: videos viejos traían
+  comentarios viejos). Pulso social y Debate real heredan esto.
+- `monitor.py`: `SOCIAL_LOCAL_H` 48→10; una historia **sin fecha** ahora es `antigua` (antes contaba
+  como reciente). Dashboard: Última hora, Contraste y Oportunidades ya no muestran `antigua`
+  (Noticias ya separaba Recientes/Anteriores con `FEED_FRESH_H`=10).
+- `alertas.py`: `ALERTA_MAX_EDAD_H` 24→10; `listar_activas()` (panel) solo alertas con señal en las
+  últimas 10 h (el registro guarda más días para las métricas de adelanto).
+- `xapi.py`: `buscar_historia` con `since:` de 10 h + filtro por `createdAt`; `tweets_de_historia()`
+  filtra al leer (lo guardado antes puede ser viejo).
+- `comunidad.py`: `normalizar_post` rechaza lo de más de 10 h (TODAS las fuentes, incluido WhatsApp:
+  exportar el chat seguido); Bluesky/YouTube piden 1 día. `armar_temas`: un tema existe solo si tiene
+  publicaciones de las últimas 10 h; lo anterior del mismo (sector, categoría) se cuenta como
+  antecedente ("Ya se mencionaba antes: N publicaciones de M personas desde el ..."), suma algo al
+  puntaje (un problema que se repite vale más) pero no se muestra como nuevo. El estado cuenta solo
+  lo reciente.
+
+**EmergenciasEc** (`redes.pasada_emergencias`, llamada primero en `monitor.comunidad_ciclo`):
+- Cada `MONITOR_EMERG_MIN` (10): UNA consulta `(from:EmergenciasEc OR to:EmergenciasEc OR
+  @EmergenciasEc) since:` (lo que publica, la gente que le responde, la que la etiqueta), hasta
+  `MONITOR_EMERG_ITEMS` (40) tweets. Cuenta en `MONITOR_EMERG_CUENTA`.
+- **Su red** (`_aprender_red`, `redes_cache.json["red_emergencias"]`, 14 días): quién le responde o
+  la etiqueta, a quién menciona y a quién responde ella. Las `MONITOR_EMERG_RED_TOP` (8) cuentas más
+  activas se leen con `from:` cada `MONITOR_EMERG_RED_MIN` (30).
+- Todo entra a Alertas (`_registrar_alertas_x`) y a Comunidad (`_a_comunidad`, que filtra solo
+  personas: la cuenta en sí es una página y no cuenta como voz de la gente).
+- Tope propio: `MONITOR_EMERG_PARTE` (0.7) del presupuesto diario de X. La capa horaria de
+  "cuentas locales" ya no la lee (se pagaría dos veces).
+- Panel nuevo **"Al momento — @EmergenciasEc y su gente"** arriba de Comunidad Guayaquil
+  (`data.json["emergencias"]`, `redes.emergencias_dashboard()`): lo último primero, filtro
+  Todo / Solo la gente / Solo la cuenta, cuentas de su red, última consulta y gasto del día.
+- **Límite real de presupuesto**: con el tope actual ($4,70/mes para X y TikTok, ~$0,10/día para X)
+  esta capa puede usar ~$0,07/día ≈ 280 tweets. La cuenta y sus respuestas probablemente superan eso;
+  cuando se acaba, se corta hasta el día siguiente. Para leer más: `MONITOR_REDES_TOPE_MES_USD` en `.env`.
+- **No verificado en vivo** (la nube no llega a Apify): que el actor respete `from:`/`to:`/`since:`
+  y que traiga `inReplyToUsername` (si no viene, la red se aprende igual por los autores que la
+  etiquetan y las menciones del texto).
+
+Pruebas: `test_fase21_ventana_emergencias.py` (10); fixtures de fecha actualizados en
+`test_fase20_comunidad.py`, `test_fase20b_comunidad_fuentes.py`, `test_fase9_social_historias.py`.
+Suite completa: solo los 15 fallos viejos de `test_fase9_xapi.py`. Dashboard completo en jsdom: 0
+errores. Hay que recompilar `Spike.exe`.
