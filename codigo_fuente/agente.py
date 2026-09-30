@@ -37,11 +37,18 @@ monitor de noticias local. En este paso SOLO decidis que dato consultar para pod
 despues -- NO redactes la respuesta todavia.
 
 Herramientas disponibles (nombre: para que sirve y que argumentos acepta):
-- buscar_historias: args opcionales tema, ambito ("local" o "internacional"), seccion \
+- buscar_historias: args opcionales ciudad (ej. "Guayaquil" -- incluye Samborondon/Duran), barrio \
+(ej. "Alborada", "Sauces"), tema, ambito ("local" o "internacional"), seccion \
 ("politica"/"economia"/"seguridad"/"sociedad"/"general"), medio (nombre de un diario), q (texto \
-libre), dias (antiguedad maxima), veredicto ("coincide"/"contradice"/"sin_datos"/"pendiente" -- \
-usalo para preguntas sobre contradicciones entre medios o con fuentes oficiales), limite (cuantas \
-traer). Busca notas del feed actual.
+libre: palabras que DEBERIAN aparecer en el titular, no la pregunta entera), dias (antiguedad \
+maxima), veredicto ("hallazgo"/"documento_oficial"/"corroborado_medios"/"sin_hallazgo" -- usalo \
+para preguntas sobre contradicciones o respaldo oficial), limite (cuantas traer). Busca notas del \
+feed actual. Para preguntas sobre una CIUDAD (ej. "noticia comunitaria en Guayaquil"), usa \
+ciudad="Guayaquil" (sin seccion ni q, limite 12) y NO pongas en q palabras como \
+"comunitaria"/"noticia"/"idea": asi aparecen tambien los EVENTOS EN CURSO (lluvias, cortes) por sector.
+- senales_oportunidad: args opcionales ambito ("guayaquil" o "ecuador") y limite. Historias \
+concretas detectadas HOY como oportunidad (un solo medio, acelera, se apago sin resolverse...) con \
+el por que y un primer paso -- usala para "que idea/angulo podriamos trabajar".
 - detalle_historia: arg "clave" (la clave exacta que devolvio buscar_historias o buscar_guardadas). \
 Trae el detalle completo de UNA nota: contexto verificado, veredicto de contraste, contratos \
 SERCOP, verificaciones FactCheck.
@@ -119,11 +126,21 @@ Respuesta:"""
 def _fmt_transcripcion(pasos):
     if not pasos:
         return "(nada consultado todavia)"
+    # Fase 18 (P2-13): antes se cortaba cada resultado a 900 caracteres -- con
+    # 10 senales o 12 historias el modelo veia titulares cortados a la mitad
+    # ("Asesinan a dos policias y un civil en...") y decia "el texto se
+    # corta". Se sacan los campos vacios y se deja mucho mas margen.
+    def _compacto(x):
+        if isinstance(x, dict):
+            return {k: _compacto(v) for k, v in x.items() if v not in (None, "", [], {})}
+        if isinstance(x, list):
+            return [_compacto(v) for v in x]
+        return x
     out = []
     for p in pasos:
         out.append("- %s(%s) -> %s" % (
             p["herramienta"], json.dumps(p["args"], ensure_ascii=False),
-            json.dumps(p["resultado"], ensure_ascii=False)[:900]))
+            json.dumps(_compacto(p["resultado"]), ensure_ascii=False)[:6000]))
     return "\n".join(out)
 
 
@@ -160,7 +177,21 @@ def _ejecutar_herramienta(nombre, args):
     validos = set(inspect.signature(fn).parameters)
     args_ok = {k: v for k, v in (args or {}).items() if k in validos and v not in (None, "")}
     try:
-        return fn(**args_ok)
+        r = fn(**args_ok)
+        # Fase 18 (P2-13): si una busqueda con texto libre no trae nada, se
+        # reintenta sin 'q' (con los demas filtros: ciudad, barrio, tema...).
+        # Caso real: q="noticia comunitaria Guayaquil" daba 0 con 121
+        # historias de Guayaquil en el feed.
+        if nombre == "buscar_historias" and not r and args_ok.get("q"):
+            sin_q = {k: v for k, v in args_ok.items() if k != "q"}
+            if not any(k in sin_q for k in ("ciudad", "barrio", "tema", "ambito", "medio", "seccion")):
+                for c in ("Guayaquil", "Quito", "Cuenca", "Manta", "Machala", "Durán", "Samborondón"):
+                    if c.lower() in str(args_ok["q"]).lower():
+                        sin_q["ciudad"] = c
+                        break
+            if len(sin_q) > (1 if "limite" in sin_q else 0):
+                r = fn(**sin_q)
+        return r
     except Exception as e:
         return {"error": type(e).__name__}
 
@@ -194,7 +225,11 @@ def ciclo_herramientas(pregunta, on_progreso=None, max_rondas=MAX_RONDAS, forzad
 
 
 def _responder_final_stream(pregunta, material, historial, on_delta, forzado_final="", timeout=220,
-                             modelo_fn=None, num_predict=1600, num_ctx=None):
+                             modelo_fn=None, num_predict=4000, num_ctx=None):
+    # Fase 18 (P2-13): 1600 cortaba la respuesta a la mitad (el perfil
+    # profundo razona antes de escribir y ese razonamiento cuenta en el tope;
+    # medido en vivo: la respuesta a la pregunta de la captura terminaba en
+    # "Dato: 1"). 4000 = maximo ~0.05 USD por respuesta.
     """Compartido entre responder_stream (Asistente, Bloque 2),
     leer_busqueda_stream (Fase 4, buscador en vivo) y el chat de casos
     (Fase 7, Paso E): dado un MATERIAL ya armado, redacta y streamea la
