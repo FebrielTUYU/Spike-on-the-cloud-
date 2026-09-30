@@ -1694,11 +1694,24 @@ function contrasteAmbito(h){
 // CONTRADICCIONES van primero (lo mas urgente de revisar), despues lo que
 // coincide, despues lo que no tiene datos suficientes, y al final lo
 // pendiente de procesar (el trabajador todavia no llego).
-const VEREDICTO_LABEL = {coincide: "Coincide", contradice: "Contradice",
-                          sin_datos: "Sin datos suficientes", pendiente: "Pendiente"};
-const VEREDICTO_COLOR = {coincide: "#10b981", contradice: "#f43f5e",
+// Fase 18 (P2-11): estados nuevos. "Corroborado por medios" (el viejo
+// "coincide", medio contra medio) es SECUNDARIO: nunca se muestra como
+// descubrimiento. Se conservan las claves viejas por si queda algun dato.
+const VEREDICTO_LABEL = {hallazgo: "Hallazgo — verificar", documento_oficial: "Documento oficial",
+                          corroborado_medios: "Corroborado por medios", sin_hallazgo: "Sin hallazgo",
+                          coincide: "Corroborado por medios", contradice: "Contradice",
+                          sin_datos: "Sin hallazgo", pendiente: "Pendiente"};
+const VEREDICTO_COLOR = {hallazgo: "#f43f5e", documento_oficial: "#2563eb", corroborado_medios: "#94a3b8",
+                          sin_hallazgo: "#64748b", coincide: "#94a3b8", contradice: "#f43f5e",
                           sin_datos: "#64748b", pendiente: "#f59e0b"};
-const VEREDICTO_ORDEN = {contradice: 0, coincide: 1, sin_datos: 2, pendiente: 3};
+const VEREDICTO_ORDEN = {hallazgo: 0, contradice: 0, documento_oficial: 1, sin_hallazgo: 2,
+                         corroborado_medios: 3, coincide: 3, sin_datos: 4, pendiente: 5};
+const CLASE_LABEL = {acto_oficial: "Acto oficial", declaracion: "Declaración", hecho: "Hecho"};
+function citaHTML(c){
+  if(typeof c === "string") return esc(c);
+  return `<div class="src"><a href="${esc(c.link||'#')}" target="_blank" rel="noopener">${esc(c.texto||'')}</a>
+    <div class="o">${esc(c.outlet||'')}${c.fecha?' · '+esc(fmtFechaPost(c.fecha)):''}</div></div>`;
+}
 
 function veredictoDe(h){
   return h.veredicto || {estado: "pendiente", texto: "Todavia no procesado.", citas: []};
@@ -1764,9 +1777,10 @@ function contrasteCardHTML(h){
       ${contr}
       ${fc}
       <div class="veredicto" style="border-left:3px solid ${color};padding:6px 10px;margin-top:8px;border-radius:4px;background:rgba(148,163,184,.08)">
-        <b style="color:${color}">Estado: ${esc(label)}</b>
+        <b style="color:${color}">${esc(label)}</b>${v.clase?` <span class="chip" style="padding:1px 6px">${esc(CLASE_LABEL[v.clase]||v.clase)}</span>`:""}
         ${v.texto ? `<div class="o" style="margin-top:2px">${esc(v.texto)}</div>` : ""}
-        ${(v.citas&&v.citas.length) ? `<div class="o" style="margin-top:2px;font-style:italic">Citas: ${v.citas.map(esc).join(", ")}</div>` : ""}
+        ${v.documento ? `<div class="src" style="margin-top:4px"><a href="${esc(v.documento.link||'#')}" target="_blank" rel="noopener">${esc(v.documento.titulo||'documento')}</a><div class="o">${esc(v.documento.fuente||'')}${v.documento.fecha?' · '+esc(v.documento.fecha):''}</div></div>` : ""}
+        ${(v.citas&&v.citas.length) ? `<div style="margin-top:4px">${v.citas.map(citaHTML).join("")}</div>` : ""}
       </div>
       <details style="margin-top:6px"><summary>Ver ${h.fuentes.length} fuente(s)</summary>${fuentes}</details>
     </div>
@@ -1800,8 +1814,14 @@ function renderContraste(){
     + `"Declaración" cuando la nota atribuye algo a alguien, y "POSIBLE CONTRADICCIÓN — verificar" `
     + `si choca con algo que ese mismo actor dijo antes.`;
   const box=$("#contrastelist");
-  const H=(DATA.historias||[]).filter(h=>(h.contratos&&h.contratos.length) || (h.factcheck&&h.factcheck.length)
-                                        || (h.veredicto && h.veredicto.estado!=="pendiente"));
+  // Fase 18 (P2-11): solo lo que es un dato -- hallazgos, documentos
+  // oficiales, actos oficiales SIN documento publicado, o notas con contratos/
+  // verificaciones. "Corroborado por medios" solo no alcanza para estar aca.
+  const H=(DATA.historias||[]).filter(h=>{
+    const v=h.veredicto||{};
+    return v.estado==="hallazgo" || v.estado==="documento_oficial" || v.clase==="acto_oficial"
+      || (h.contratos&&h.contratos.length) || (h.factcheck&&h.factcheck.length);
+  });
   if(!H.length){
     const st=DATA.estado_sercop||"", fc=DATA.estado_factcheck||"";
     box.innerHTML=`<div class="panel gapnone">No hay noticias con contratos oficiales ni verificaciones `
@@ -1820,7 +1840,8 @@ function renderContraste(){
   const totalVisible = H.filter(h=>!contrasteAmb || contrasteAmbito(h)===contrasteAmb).length;
   box.innerHTML = `<p class="hint">${totalVisible} nota(s) con documentos, verificaciones o contexto suficiente `
     + `para contrastar${contrasteAmb?` en ${esc(CONTRASTE_GRUPOS.find(g=>g.key===contrasteAmb).label)}`:""}. `
-    + `Las <b style="color:${VEREDICTO_COLOR.contradice}">contradicciones</b> van primero. `
+    + `Los <b style="color:${VEREDICTO_COLOR.hallazgo}">hallazgos</b> van primero, después los documentos oficiales. `
+    + `"Corroborado por medios" es secundario (otro medio dice lo mismo, no es un descubrimiento). `
     + `Clic en una tarjeta para el detalle.</p>`
     + grupos.map(g=>{
     const items = H.filter(h=>contrasteAmbito(h)===g.key)

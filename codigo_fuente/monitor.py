@@ -98,6 +98,10 @@ try:
 except Exception:
     alertas = None
 try:
+    import contraste  # Fase 18 (P2-11): contraste rediseñado (documento oficial primero, hallazgo o nada); opcional
+except Exception:
+    contraste = None
+try:
     import senales  # Fase 15/18 (P0-4): motor de senales -- escrito en la Fase 15, conectado recien ahora; opcional
 except Exception:
     senales = None
@@ -248,6 +252,8 @@ asesinada asesinan matan sicariato herido heridos
 corte cortes agua servicio lista completa zonas sectores sector interrupcion
 personas requeridas justicia detenidos detenido capturado capturados
 lluvias lluvia pronostico clima temperatura semana hoy este esta
+invierte invertira inversion millones dolares
+aprehendidos aprehendido decomiso decomisan operativo operativos droga
 """.split())
 
 # Fase 9, Problema A2 -- siglas que _nombres_propios (pensada para palabras en
@@ -3314,6 +3320,93 @@ def aplicar_triaje_intl(stories, modo_lectura=True):
     return [s for s in stories if s.get("ambito") != "internacional" or id(s) in quedan]
 
 
+# ------------------------- contraste rediseñado (Fase 18, P2-11) -------------------------
+CONTRASTE_CLASE_PATH = os.path.join(HERE, "contraste_clase_cache.json")
+CONTRASTE_CLASE_MAX = int(os.environ.get("MONITOR_CONTRASTE_CLASE_MAX", "40"))
+
+
+def _boletines_oficiales():
+    """Items de oficial_cache.json (Asamblea, Registro Oficial, INEC, BCE)
+    -- solo lectura, lo que el trabajador ya bajo."""
+    ruta = getattr(oficial, "OFICIAL_CACHE_PATH", os.path.join(HERE, "oficial_cache.json")) if oficial else \
+        os.path.join(HERE, "oficial_cache.json")
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            c = json.load(f)
+    except Exception:
+        return []
+    return [dict(it, fuente=url) for url, v in c.items() if isinstance(v, dict) for it in (v.get("items") or [])]
+
+
+def _cargar_clases_contraste():
+    try:
+        with open(CONTRASTE_CLASE_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def aplicar_contraste(stories):
+    """Hilo rapido: contraste de cada historia con lo ya calculado. El
+    veredicto viejo (IA, medio contra medio) queda en 'veredicto_ia'; el
+    nuevo pasa a 'veredicto' (estados hallazgo/documento_oficial/
+    corroborado_medios/sin_hallazgo)."""
+    if contraste is None:
+        return
+    bol = _boletines_oficiales()
+    clases = _cargar_clases_contraste()
+    for s in stories:
+        if s.get("veredicto") and "veredicto_ia" not in s and s["veredicto"].get("estado") in (
+                "coincide", "contradice", "sin_datos", "pendiente"):
+            s["veredicto_ia"] = s["veredicto"]
+        try:
+            s["veredicto"] = contraste.evaluar(s, bol, clase_ia=(clases.get(story_key(s)) or {}).get("clase"))
+        except Exception as e:
+            s["veredicto"] = {"estado": "sin_hallazgo", "clase": "", "texto": "error: %s" % e, "citas": []}
+
+
+_PROMPT_CLASE = (
+    "Clasifica cada titular de Ecuador segun QUE AFIRMA:\n"
+    "- \"acto_oficial\": una ley, decreto, contrato, cifra oficial, corte programado u obra publica.\n"
+    "- \"declaracion\": algo que DIJO una persona o institucion.\n"
+    "- \"hecho\": un suceso (crimen, accidente, clima, protesta).\n"
+    "Responde SOLO JSON: {\"items\": [{\"i\": 0, \"clase\": \"...\"}]}\n\n%s")
+
+
+def get_clase_contraste(stories):
+    """Trabajador (Fase 18, P2-11): clasificacion de la afirmacion con Gemini
+    (perfil rapido, lotes de 20) para las historias LOCALES; cachea por
+    story_key. contraste.evaluar usa esto si existe, si no sus reglas."""
+    if contraste is None or ia is None or os.environ.get("MONITOR_NO_IA") == "1" or not ia.backend_listo():
+        return "desactivado"
+    cache = _cargar_clases_contraste()
+    pend = [s for s in sorted(stories, key=_prioridad_cupo_ia)
+            if s.get("es_local") and story_key(s) not in cache][:CONTRASTE_CLASE_MAX]
+    nuevas = 0
+    for i in range(0, len(pend), 20):
+        lote = pend[i:i + 20]
+        r = ia._generar_json(_PROMPT_CLASE % "\n".join("%d. %s" % (j, (s.get("titular") or "")[:160])
+                                                        for j, s in enumerate(lote)), max_tokens=600)
+        if not r:
+            break
+        for it in r.get("items") or []:
+            try:
+                j = int(it.get("i"))
+            except (TypeError, ValueError):
+                continue
+            if 0 <= j < len(lote) and it.get("clase") in contraste.CLASES:
+                cache[story_key(lote[j])] = {"clase": it["clase"], "ts": now_utc().isoformat()}
+                nuevas += 1
+    if nuevas:
+        if len(cache) > 4000:
+            cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("ts", ""))[-3000:])
+        tmp = CONTRASTE_CLASE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
+        os.replace(tmp, CONTRASTE_CLASE_PATH)
+    return "+%d nuevas (clase de contraste, pendientes: %d)" % (nuevas, max(0, len(pend) - nuevas))
+
+
 # ------------------------- demanda (Google Trends) -------------------------
 
 TREND_TTL = 3 * 3600  # no consultar Trends mas seguido que cada 3 horas
@@ -4481,7 +4574,11 @@ def get_factcheck(stories, modo_lectura=False):
 
 VEREDICTO_CACHE = os.path.join(HERE, "veredicto_cache.json")
 GEO_EVIDENCIA_CACHE = os.path.join(HERE, "geo_evidencia_cache.json")
-VEREDICTO_MAX_NEW = int(os.environ.get("MONITOR_VEREDICTO_MAX", "8"))  # historias nuevas por pasada del trabajador
+# Fase 18 (P2-11): el veredicto viejo con IA ("coincide" = medio contra
+# medio) queda APAGADO por defecto -- lo reemplaza contraste.py (documento
+# oficial / cifras entre medios / declaraciones previas, sin gastar IA).
+# MONITOR_VEREDICTO_MAX=8 lo vuelve a encender.
+VEREDICTO_MAX_NEW = int(os.environ.get("MONITOR_VEREDICTO_MAX", "0"))  # historias nuevas por pasada del trabajador
 
 GEO_EVIDENCIA_MAX_NEW = int(os.environ.get("MONITOR_GEO_EVIDENCIA_MAX", "8"))  # historias nuevas por pasada
 
@@ -6276,6 +6373,7 @@ def run_once(verbose=True):
             print("Error en senales: %s" % e)
         t0 = _fase("senales", t0)
 
+    aplicar_contraste(stories)  # Fase 18 (P2-11): sin red ni IA, lee lo ya calculado
     write_outputs(stories, report, demand, tend, fuente, dstatus, gdelt_data, gstatus,
                   sstatus, iastatus, social_data, social_status, cstatus, fcstatus, vstatus,
                   dstatus=declstatus, social_hist_data=social_hist_data, social_hist_status=social_hist_status)
@@ -6409,6 +6507,7 @@ def run_fast(verbose=False):
         print("Error revisando avisos de casos: %s" % e)
     t0 = _fase("revisar_casos_avisos", t0)
 
+    aplicar_contraste(stories)  # Fase 18 (P2-11): sin red ni IA, lee lo ya calculado
     write_outputs(stories, report, demand, tend, fuente, dstatus, gdelt_data, gstatus,
                   sstatus, iastatus, social_data, social_status, cstatus, fcstatus, vstatus,
                   dstatus=declstatus, social_hist_data=social_hist_data, social_hist_status=social_hist_status)
@@ -6663,6 +6762,11 @@ def enrich_pass():
     # tres ya calculados como material para el veredicto (Problema 4).
     with _medir_etapa("get_veredicto"):
         vstatus = get_veredicto(stories)       # bounded por VEREDICTO_MAX_NEW, cachea por link
+    with _medir_etapa("get_clase_contraste"):
+        try:
+            clasestatus = get_clase_contraste(stories)  # Fase 18 (P2-11)
+        except Exception as e:
+            clasestatus = "error: %s" % e
     # get_declaraciones despues de veredicto: no depende de el, pero sigue el
     # mismo orden de "lo barato primero" (extraccion con el modelo rapido) y
     # deja la llamada cara (comparar_declaraciones, modelo pesado) al final de
@@ -6678,7 +6782,7 @@ def enrich_pass():
             get_social_historias(stories)
         except Exception as e:
             print("Error en get_social_historias: %s" % e)
-    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus, triajestatus):
+    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus, triajestatus, clasestatus):
         m = _RE_NUEVAS.search(st or "")
         if m and int(m.group(1)) > 0:
             return True
