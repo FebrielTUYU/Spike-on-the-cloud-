@@ -5115,3 +5115,13 @@ que `data.json`. `test_fase22b_interfaz_nueva.py` (4). OJO: `dashboard_template.
   `test_fase9_xapi.py`. Dashboard completo en jsdom sin errores; captura real con Chromium del mapa.
 - **No verificado en vivo**: la llamada real a Gemini para la lectura y Leaflet/mosaicos por CDN (el
   entorno en la nube no llega a cdnjs). Hay que recompilar `Spike.exe`.
+
+### Fase 22d (mismo dia) — mapa en blanco con "API KEY REQUIRED" y "Sin datos del mapa todavia"
+- Los mosaicos de CARTO empezaron a pedir clave. Ahora se usa OpenStreetMap
+  (`tile.openstreetmap.org`, sin clave); si 4 mosaicos fallan sin que cargue ninguno, cambia solo a
+  Esri World Street Map (tampoco pide clave).
+- "Sin datos del mapa todavia": el `data.json` de la corrida anterior era de antes del mapa.
+  `regenerar_dashboard_desde_data()` ahora arma `mapa` con lo que ya trae ese data.json (sin red ni
+  IA) si falta. Si falta el archivo `mapa.py`, el estado lo dice en vez de quedar en blanco.
+- Pruebas: 2 nuevas en `test_fase22c_comunidad_mapa.py`. No verificado en vivo que OSM cargue en la
+  ventana de Spike (la nube no llega a los mosaicos).

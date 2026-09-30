@@ -6121,6 +6121,10 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
             mapa_data = mapa.puntos(stories, alertas_activas, comunidad_data)
         except Exception as e:
             mapa_data = {"puntos": [], "estado": "error: %s" % e}
+    else:
+        # Sin esto el dashboard decia "Sin datos del mapa todavia" para siempre,
+        # sin pista de que el problema es que falta el archivo.
+        mapa_data = {"puntos": [], "estado": "falta el archivo mapa.py junto al programa"}
     salud_fuentes = construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
                                              social_status, cstatus, fcstatus)
     payload = {
@@ -6258,6 +6262,16 @@ def regenerar_dashboard_desde_data():
             payload = json.load(f)
         tpl = open(ruta_tpl, encoding="utf-8").read()
         payload["ui_version"] = _ui_version(tpl)
+        if mapa is not None and not (payload.get("mapa") or {}).get("estado"):
+            # Fase 22c (bug real: "Sin datos del mapa todavia" al abrir): el
+            # data.json de la corrida anterior es de antes del mapa. Se arma con
+            # lo que ya trae (sin red ni IA) para no esperar a la primera pasada.
+            try:
+                payload["mapa"] = mapa.puntos(payload.get("historias") or [],
+                                              payload.get("alertas") or [],
+                                              payload.get("comunidad") or {})
+            except Exception:
+                pass
         blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
         destino = os.path.join(HERE, "dashboard.html")
         tmp = destino + ".tmp"

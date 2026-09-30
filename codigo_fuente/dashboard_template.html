@@ -4134,9 +4134,23 @@ function renderMapa(){
     try{
       if(!mapaObj){
         mapaObj=L.map(cont,{scrollWheelZoom:false}).setView(M.centro||[-2.17,-79.92],12);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-          {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-           subdomains:"abcd", maxZoom:19}).addTo(mapaObj);
+        // Bug real: CARTO empezo a devolver "API KEY REQUIRED" en cada mosaico.
+        // Se usa el mapa de OpenStreetMap (gratis, sin clave). Si sus mosaicos
+        // fallan varias veces sin cargar ninguno, se cambia solo a Esri (tampoco
+        // pide clave), en vez de dejar el mapa en blanco.
+        const capaOSM=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19});
+        let cargoAlguno=false, fallos=0;
+        capaOSM.on("tileload",()=>{ cargoAlguno=true; });
+        capaOSM.on("tileerror",()=>{
+          fallos++;
+          if(!cargoAlguno && fallos===4){
+            mapaObj.removeLayer(capaOSM);
+            L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+              {attribution:'Mapa &copy; Esri, OpenStreetMap', maxZoom:19}).addTo(mapaObj);
+          }
+        });
+        capaOSM.addTo(mapaObj);
         mapaCapa=L.layerGroup().addTo(mapaObj);
       }
       mapaCapa.clearLayers();

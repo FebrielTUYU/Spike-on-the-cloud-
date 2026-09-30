@@ -149,5 +149,36 @@ class TestDuranApellido(unittest.TestCase):
         self.assertEqual(monitor.detect_city("Balacera en Duran deja dos heridos"), "Duran")
 
 
+
+class TestMapaAlArrancar(unittest.TestCase):
+    """Bug real: al abrir, el mapa decia "Sin datos del mapa todavia" porque el
+    data.json de la corrida anterior era de antes del mapa; y los mosaicos de
+    CARTO pedian clave ("API KEY REQUIRED")."""
+
+    def test_regenerar_arma_el_mapa_desde_data_viejo(self):
+        with tempfile.TemporaryDirectory() as d:
+            viejo_here = monitor.HERE
+            try:
+                monitor.HERE = d
+                h = {"titular": "Inundacion en Urdesa deja calles anegadas", "resumen": "",
+                     "ciudad": "Guayaquil", "newest": "2026-09-30T12:00:00+00:00",
+                     "fuentes": [{"link": "http://x/1"}]}
+                with open(os.path.join(d, "data.json"), "w", encoding="utf-8") as f:
+                    json.dump({"historias": [h]}, f)
+                tpl = open(os.path.join(viejo_here, "dashboard_template.html"), encoding="utf-8").read()
+                with open(os.path.join(d, "dashboard_template.html"), "w", encoding="utf-8") as f:
+                    f.write(tpl)
+                self.assertTrue(monitor.regenerar_dashboard_desde_data())
+                html = open(os.path.join(d, "dashboard.html"), encoding="utf-8").read()
+                self.assertIn('"sector": "Urdesa"', html)
+            finally:
+                monitor.HERE = viejo_here
+
+    def test_mosaicos_sin_clave(self):
+        tpl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_template.html"),
+                   encoding="utf-8").read()
+        self.assertNotIn("basemaps.cartocdn.com", tpl)
+        self.assertIn("tile.openstreetmap.org", tpl)
+
 if __name__ == "__main__":
     unittest.main()
