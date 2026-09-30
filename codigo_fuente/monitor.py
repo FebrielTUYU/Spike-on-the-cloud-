@@ -6733,6 +6733,34 @@ def _cargar_ultimas_historias():
 
 _RE_NUEVAS = re.compile(r"\+(\d+) nuevas")
 
+COMUNIDAD_LOOP_SEG = 60  # cada cuanto el hilo revisa si a alguna fuente le toca
+
+
+def comunidad_ciclo():
+    """Fase 20b: una vuelta del hilo de Comunidad Guayaquil. Cada fuente decide
+    sola si le toca (X cada MONITOR_COMUNIDAD_X_MIN, Bluesky cada
+    MONITOR_COMUNIDAD_BSKY_MIN, YouTube cada MONITOR_COMUNIDAD_YT_H, Facebook
+    cada MONITOR_FB_MIN, WhatsApp cuando aparece un chat nuevo en
+    whatsapp_import/). Devuelve un texto con lo que hizo."""
+    if comunidad is None or os.environ.get("MONITOR_NO_SOCIAL") == "1":
+        return "apagado"
+    partes = []
+    if redes is not None:
+        try:
+            r = redes.pasada_comunidad()
+            if r != "todavia no toca":
+                partes.append("X: %s" % r)
+        except Exception as e:
+            partes.append("X: error %s" % e)
+    try:
+        r = comunidad.recolectar()
+        if not r.startswith("sin consulta"):
+            partes.append(r)
+    except Exception as e:
+        partes.append("recolectar: error %s" % e)
+    return "; ".join(partes)
+
+
 def enrich_pass():
     """UNA pasada del hilo TRABAJADOR (Parte C): toma las historias que el
     hilo rapido ya publico y enriquece las que todavia no tienen cache --
@@ -6792,14 +6820,10 @@ def enrich_pass():
     # aca (trabajador) y nunca en run_fast. vincular_con_prensa (barato, sin
     # red) sigue viviendo en write_outputs/procesar_alertas, con 'stories'
     # ya en memoria.
-    # Fase 20: voz de la gente para Comunidad Guayaquil (Bluesky gratis cada
-    # 30 min, YouTube cada 8 h con clave). X va por redes.py (presupuesto).
-    with _medir_etapa("comunidad_recolectar"):
-        if comunidad is not None and os.environ.get("MONITOR_NO_SOCIAL") != "1":
-            try:
-                comunidad.recolectar()
-            except Exception as e:
-                print("comunidad.recolectar: %s" % e)
+    # Fase 20b: la voz de la gente para Comunidad Guayaquil ya NO va aca: el
+    # trabajador puede tardar mas de 10 min en dar una vuelta y Fernando pidio
+    # X cada 10 min y comentarios cada hora. Vive en comunidad_ciclo(), con
+    # hilo propio (comunidad_loop, en serve).
     with _medir_etapa("alertas_recolectar_senales"):
         if alertas is not None:
             try:
@@ -7357,6 +7381,19 @@ def serve(port=8000, minutes=None):
             except Exception as e:
                 print("Error en senales: %s" % e)
 
+    def comunidad_loop():
+        # Fase 20b: hilo propio de Comunidad Guayaquil (ver comunidad_ciclo).
+        espera = 30
+        while not stop.wait(espera):
+            espera = COMUNIDAD_LOOP_SEG
+            try:
+                with _medir_etapa("comunidad_ciclo"):
+                    hecho = comunidad_ciclo()
+                if hecho:
+                    print("[%s] Comunidad: %s" % (now_utc().strftime("%H:%M:%S"), hecho))
+            except Exception as e:
+                print("Error en comunidad: %s" % e)
+
     def worker_loop():
         if oficial:
             try:
@@ -7739,6 +7776,33 @@ def serve(port=8000, minutes=None):
             except Exception:
                 pass
 
+        def _do_post_whatsapp(self):
+            """Fase 20b: importar un chat de WhatsApp exportado (.txt/.zip) a
+            Comunidad Guayaquil. Base64 dentro de JSON, mismo criterio que la
+            subida de documentos de casos. Los nombres de los participantes
+            se anonimizan en whatsapp.py; el archivo original NO se guarda."""
+            try:
+                body = self._leer_json()
+            except Exception:
+                self.send_response(400); self.end_headers(); return
+            nombre = os.path.basename(str(body.get("nombre") or "").strip())[:200]
+            b64 = body.get("contenido_b64") or ""
+            if comunidad is None:
+                self._responder_json({"ok": False, "error": "comunidad.py no disponible"}); return
+            if not nombre or not b64 or not nombre.lower().endswith((".txt", ".zip")):
+                self._responder_json({"ok": False, "error": "subi el .txt o .zip que genera 'Exportar chat'"}); return
+            try:
+                crudo = base64.b64decode(b64, validate=False)
+            except Exception:
+                self._responder_json({"ok": False, "error": "el archivo no se pudo decodificar"}); return
+            if len(crudo) > 20 * 1024 * 1024:
+                self._responder_json({"ok": False, "error": "el archivo supera el limite de 20MB"}); return
+            try:
+                r = comunidad.importar_whatsapp(nombre, crudo)
+            except Exception as e:
+                self._responder_json({"ok": False, "error": "no se pudo leer el chat: %s" % e}); return
+            self._responder_json(dict(r, ok=True))
+
         def _do_post_caso_doc(self, caso_id):
             """Fase 7, Paso C: subida de un documento. Sin multipart (el
             modulo 'cgi' que lo parseaba se saco de la libreria estandar en
@@ -7929,6 +7993,9 @@ def serve(port=8000, minutes=None):
                 el servidor corre con hilos (ThreadingMixIn, ver mas abajo):
                 sin eso, una consulta de chat en curso congelaria el resto del
                 dashboard (poll de data.json, cambiar de seccion, etc.)."""
+            if self.path == "/api/comunidad/whatsapp":
+                self._do_post_whatsapp()
+                return
             if self.path == "/api/guardar":
                 try:
                     body = self._leer_json()
@@ -8126,6 +8193,7 @@ def serve(port=8000, minutes=None):
             threading.Thread(target=fast_loop, daemon=True).start()
             threading.Thread(target=worker_loop, daemon=True).start()
             threading.Thread(target=senales_loop, daemon=True).start()
+            threading.Thread(target=comunidad_loop, daemon=True).start()
 
             print("\n" + "=" * 56)
             if port != puerto_pedido:

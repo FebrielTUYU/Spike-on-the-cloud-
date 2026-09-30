@@ -33,6 +33,7 @@ credito mensual, no confirmado del todo).
 """
 import datetime as dt
 import json
+import threading
 import os
 import unicodedata
 import urllib.error
@@ -116,6 +117,9 @@ def _guardar_cache(cache):
     os.replace(tmp, CACHE_PATH)
 
 
+_LOCK = threading.RLock()  # Fase 20b: comunidad_loop + trabajador comparten x_cache
+
+
 def _ids_vistos(clave):
     return set(_cargar_cache().get("vistos", {}).get(clave, []))
 
@@ -123,18 +127,20 @@ def _ids_vistos(clave):
 def _marcar_vistos(clave, ids):
     if not ids:
         return
-    cache = _cargar_cache()
-    vistos = cache.setdefault("vistos", {})
-    actuales = set(vistos.get(clave, [])) | set(ids)
-    vistos[clave] = list(actuales)[-500:]  # tope: no crecer sin limite
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        vistos = cache.setdefault("vistos", {})
+        actuales = set(vistos.get(clave, [])) | set(ids)
+        vistos[clave] = list(actuales)[-500:]  # tope: no crecer sin limite
+        _guardar_cache(cache)
 
 
 def guardar_tweets_historia(link, tweets):
-    cache = _cargar_cache()
-    hs = cache.setdefault("historias", {})
-    hs[link] = {"tweets": tweets, "ts": dt.datetime.now(dt.timezone.utc).isoformat()}
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        hs = cache.setdefault("historias", {})
+        hs[link] = {"tweets": tweets, "ts": dt.datetime.now(dt.timezone.utc).isoformat()}
+        _guardar_cache(cache)
 
 
 def tweets_de_historia(link):

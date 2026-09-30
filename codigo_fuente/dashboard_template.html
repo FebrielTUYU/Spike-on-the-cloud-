@@ -687,7 +687,7 @@
   <section id="secComunidad" hidden>
     <div class="panel" style="border-left:4px solid #0ea5e9">
       <h2 style="margin:0 0 4px">Comunidad Guayaquil — de que se queja la gente</h2>
-      <p class="hint">Problemas que PERSONAS de Guayaquil mencionan en redes (X, Bluesky, YouTube y las alertas de la gente). No son notas de prensa: la prensa solo se usa para marcar si el problema ya esta cubierto. Un problema sube cuando lo mencionan mas personas distintas, en mas dias, y cuando ningun medio lo publico. Los conteos son de lo que Spike logro captar, no de toda la ciudad. Facebook y WhatsApp no son accesibles. Las "pistas" son preguntas sugeridas, no datos.</p>
+      <p class="hint">Problemas que PERSONAS de Guayaquil mencionan en redes (X, Bluesky, YouTube, Facebook, grupos de WhatsApp que importes y las alertas de la gente). No son notas de prensa: la prensa solo se usa para marcar si el problema ya esta cubierto. Un problema sube cuando lo mencionan mas personas distintas, en mas dias, y cuando ningun medio lo publico. Los conteos son de lo que Spike logro captar, no de toda la ciudad. Las "pistas" son preguntas sugeridas, no datos.</p>
       <div class="seg" id="comCobSeg" style="margin:6px 0 8px">
         <button class="active" data-cob="">Todos</button>
         <button data-cob="sin">Solo lo que la prensa no cubrio</button>
@@ -699,6 +699,22 @@
       <div id="comList"></div>
       <button class="vermas" id="comVermas" hidden>Ver mas</button>
       <p class="hint" id="comEstado"></p>
+      <p class="hint" id="comFrec"></p>
+    </div>
+    <div class="panel" style="border-left:4px solid #25D366">
+      <h2 style="margin:0 0 4px">Importar chat de WhatsApp</h2>
+      <p class="hint">WhatsApp no deja que ningun programa lea grupos. La unica via es exportarlos a mano: en el telefono, abri el grupo del barrio &gt; menu (tres puntos) &gt; Mas &gt; Exportar chat &gt; "Sin archivos". Mandate ese archivo a la PC y subilo aca. Spike guarda solo los mensajes que nombran un problema, sin nombres ni telefonos (cada persona queda como "Vecino N"). Si el mensaje no dice el sector, se usa el nombre del grupo (ponele el nombre del barrio). Volver a subir el mismo grupo otro dia no duplica nada.</p>
+      <form id="comWaForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="file" id="comWaInput" accept=".txt,.zip">
+        <button type="submit">Importar</button>
+      </form>
+      <p class="hint" id="comWaMsg"></p>
+      <p class="hint" id="comWaGrupos"></p>
+    </div>
+    <div class="panel" style="border-left:4px solid #1877F2">
+      <h2 style="margin:0 0 4px">Facebook</h2>
+      <p class="hint" id="comFb">Spike lee paginas y grupos PUBLICOS de Facebook con la misma cuenta de Apify que usa para X. Para activarlo, pega las direcciones en el archivo facebook_fuentes.json (junto al programa): en "paginas" las del Municipio, medios locales o paginas de barrio (se leen los comentarios de la gente en sus publicaciones), y en "grupos" grupos publicos de ciudadelas. Tiene un tope de gasto propio por mes. Los grupos privados no se pueden leer.</p>
+      <p class="hint" id="comFbEstado"></p>
     </div>
   </section>
 
@@ -1495,6 +1511,8 @@ const FUENTE_INFO={
   mastodon:{label:"Mastodon", color:"#6364FF"},
   telegram:{label:"Telegram (canal, no opinión)", color:"#229ED9"},
   x:{label:"X (Twitter)", color:"#0f172a"},
+  facebook:{label:"Facebook", color:"#1877F2"},
+  whatsapp:{label:"WhatsApp (grupo importado)", color:"#25D366"},
 };
 // Fase 18: renombrada de "fuenteChip" a "fuenteBadge" -- BUG REAL encontrado
 // reorganizando Pulso social por red: habia OTRA funcion "fuenteChip"
@@ -3553,7 +3571,7 @@ function renderComunidad(){
   }));
   const L=base.filter(t=>(!comCat||t.categoria===comCat)&&(!comBarrio||t.barrio===comBarrio));
   if(!L.length){
-    box.innerHTML=`<p class="hint">${todos.length?"Nada en este filtro.":"Todavia no hay publicaciones de la gente captadas. Se llena sola a medida que Spike escucha X, Bluesky y YouTube."}</p>`;
+    box.innerHTML=`<p class="hint">${todos.length?"Nada en este filtro.":"Todavia no hay publicaciones de la gente captadas. Se llena sola a medida que Spike escucha X, Bluesky, YouTube y Facebook, o cuando importas un chat de WhatsApp."}</p>`;
     $("#comVermas").hidden=true;
   } else {
     const vis = comExpandido ? L : L.slice(0,COM_PAGE);
@@ -3563,7 +3581,31 @@ function renderComunidad(){
     vm.textContent = "Ver mas (" + (L.length-vis.length) + " tema(s) mas)";
   }
   $("#comEstado").textContent = C.estado||"";
+  const F=C.frecuencias||{}, U=C.ultimas||{};
+  const hace=iso=>{ if(!iso) return "todavia no"; const m=Math.round((Date.now()-new Date(iso))/60000); return m<60?("hace "+m+" min"):("hace "+Math.round(m/60)+" h"); };
+  $("#comFrec").textContent = F.x_min ? ("Cada cuanto escucha: X cada "+F.x_min+" min, Bluesky cada "+F.bluesky_min+" min (ultima "+hace(U.bluesky)
+    +"), YouTube cada "+F.youtube_h+" h (ultima "+hace(U.youtube)+"), Facebook cada "+F.facebook_min+" min (ultima "+hace(U.facebook)+").") : "";
+  $("#comFbEstado").textContent = U.facebook_estado ? ("Ultima lectura: "+U.facebook_estado) : "Sin fuentes de Facebook configuradas todavia.";
+  const g=C.whatsapp_grupos||[];
+  $("#comWaGrupos").textContent = g.length ? ("Grupos ya importados: "+g.join(", ")) : "Todavia no importaste ningun grupo.";
 }
+(function(){
+  const f=document.getElementById("comWaForm"); if(!f) return;
+  f.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const file=$("#comWaInput").files[0], msg=$("#comWaMsg");
+    if(!file){ msg.textContent="Elegi el archivo exportado primero."; return; }
+    msg.textContent="Leyendo el chat...";
+    try{
+      const b64 = await new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=()=>resolve((r.result.split(",")[1])||""); r.onerror=reject; r.readAsDataURL(file); });
+      const r = await fetch("api/comunidad/whatsapp",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:file.name,contenido_b64:b64})});
+      const d = await r.json();
+      msg.textContent = d.ok ? ("Grupo \""+d.grupo+"\" (sector: "+d.sector+"): "+d.mensajes+" mensajes leidos, "+d.utiles+" nombran un problema, "+d.nuevos+" nuevos. Aparecen en la lista en menos de un minuto.")
+                             : (d.error||"No se pudo importar.");
+      if(d.ok) $("#comWaInput").value="";
+    }catch(err){ msg.textContent="No se pudo importar: "+err; }
+  });
+})();
 document.querySelectorAll("#comCobSeg button").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll("#comCobSeg button").forEach(x=>x.classList.remove("active"));
   b.classList.add("active"); comSinCubrir=b.dataset.cob==="sin"; comExpandido=false; renderComunidad();

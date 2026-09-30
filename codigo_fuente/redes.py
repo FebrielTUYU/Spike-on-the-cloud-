@@ -16,6 +16,7 @@ un dia se gasta de mas, los siguientes se ajustan solos.
 import calendar
 import datetime as dt
 import json
+import threading
 import os
 
 import xapi
@@ -31,6 +32,9 @@ GASTO_PATH = os.path.join(HERE, "redes_gasto.json")
 CACHE_PATH = os.path.join(HERE, "redes_cache.json")
 
 last_error = None
+# Fase 20b: comunidad_loop (hilo propio) y el trabajador escriben los mismos
+# archivos (gasto y frecuencias); sin candado podian pisarse.
+_LOCK = threading.RLock()
 
 TOPE_MES_USD = float(os.environ.get("MONITOR_REDES_TOPE_MES_USD", "4.70"))
 REPARTO_INICIAL = {"x": 0.65, "tiktok": 0.35}
@@ -40,7 +44,14 @@ FREQ_ALERTAS_X_H = 1
 FREQ_CUENTAS_X_H = 1       # Fase 18 (P1-5.2): cuentas hiperlocales
 FREQ_EVENTO_X_MIN = 45     # Fase 18 (P1-5.3): busqueda reactiva por evento en curso
 FREQ_HISTORIAS_X_H = 12
-FREQ_COMUNIDAD_X_H = float(os.environ.get("MONITOR_COMUNIDAD_X_H", "3"))  # Fase 20: quejas de la gente de Guayaquil
+# Fase 20b: quejas de la gente de Guayaquil -- hilo propio (comunidad_loop en
+# monitor.py), NO dentro de pasada(): el trabajador puede tardar mas de 10 min
+# en dar una vuelta. Pedido explicito de Fernando: "minimo cada 10 minutos".
+FREQ_COMUNIDAD_X_MIN = float(os.environ.get("MONITOR_COMUNIDAD_X_MIN", "10"))
+COMUNIDAD_X_MAX_ITEMS = int(os.environ.get("MONITOR_COMUNIDAD_X_ITEMS", "20"))
+# Parte del presupuesto DIARIO de X que Comunidad puede usar como maximo, para
+# que las alertas/cuentas/eventos (mas urgentes) nunca se queden sin nada.
+COMUNIDAD_PARTE_X = float(os.environ.get("MONITOR_COMUNIDAD_X_PARTE", "0.6"))
 FREQ_DEBATE_X_H = 24
 FREQ_TIKTOK_H = 24
 
@@ -112,6 +123,11 @@ def registrar_gasto(red, monto, motivo=""):
     explicito era 'renombralo redes_gasto.json si lo unificas')."""
     if monto <= 0:
         return
+    with _LOCK:
+        _registrar_gasto_sin_lock(red, monto, motivo)
+
+
+def _registrar_gasto_sin_lock(red, monto, motivo):
     g = _cargar_gasto()
     hoy, mes = _hoy(), _mes()
     g.setdefault("dias", {}).setdefault(hoy, {})
@@ -125,7 +141,8 @@ def registrar_gasto(red, monto, motivo=""):
 
 
 def presupuesto_restante_mes():
-    return max(0.0, TOPE_MES_USD - gasto_mes())
+    # Fase 20b: Facebook tiene tope propio (facebook.py); no descuenta del de X/TikTok.
+    return max(0.0, TOPE_MES_USD - gasto_mes("x") - gasto_mes("tiktok"))
 
 
 def presupuesto_hoy_total():
@@ -159,13 +176,14 @@ def marcar_resultado_red(red, util):
     intentar por presupuesto -- eso no cuenta como mal desempeño), False si
     hubo un ERROR real o 0 resultados utiles. Dos dias seguidos malos ceden
     la parte de esa red a la otra (ver reparto_hoy)."""
-    cache = _cargar_cache()
-    malos = cache.setdefault("malos_dias", {})
-    if util:
-        malos[red] = 0
-    else:
-        malos[red] = malos.get(red, 0) + 1
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        malos = cache.setdefault("malos_dias", {})
+        if util:
+            malos[red] = 0
+        else:
+            malos[red] = malos.get(red, 0) + 1
+        _guardar_cache(cache)
 
 
 def reparto_hoy():
@@ -203,9 +221,10 @@ def _ultima_vez(clave):
 
 
 def _marcar_corrida(clave):
-    cache = _cargar_cache()
-    cache.setdefault("frecuencia", {})[clave] = _ahora().isoformat()
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        cache.setdefault("frecuencia", {})[clave] = _ahora().isoformat()
+        _guardar_cache(cache)
 
 
 def _paso_frecuencia(clave, horas):
@@ -349,6 +368,64 @@ def _pasada_eventos(eventos, terminos_alerta, simular_red, r):
     return hubo
 
 
+def gasto_comunidad_hoy():
+    return float((_cargar_cache().get("comunidad_gasto") or {}).get(_hoy(), 0.0))
+
+
+def _sumar_gasto_comunidad(monto):
+    with _LOCK:
+        cache = _cargar_cache()
+        g = cache.setdefault("comunidad_gasto", {})
+        g[_hoy()] = round(g.get(_hoy(), 0.0) + monto, 6)
+        for d in sorted(g)[:-7]:  # solo la ultima semana
+            del g[d]
+        _guardar_cache(cache)
+
+
+def pasada_comunidad(simular_red=False):
+    """Fase 20b: quejas de la gente de Guayaquil en X, cada FREQ_COMUNIDAD_X_MIN
+    (def. 10 min). Ventana 'since:' corta (el doble de la frecuencia, para no
+    perder nada entre vueltas): Apify cobra POR TWEET DEVUELTO, asi que consultar
+    seguido con ventana corta cuesta casi lo mismo que consultar poco con
+    ventana larga -- se paga lo nuevo, no la frecuencia. Tope propio: nunca mas
+    de COMUNIDAD_PARTE_X del presupuesto diario de X. Devuelve un texto."""
+    if not activo() and not simular_red:
+        return "desactivado (falta token de Apify)"
+    if not _paso_frecuencia("_comunidad_x", FREQ_COMUNIDAD_X_MIN / 60.0):
+        return "todavia no toca"
+    try:
+        import comunidad
+    except Exception:
+        return "comunidad.py no disponible"
+    horas = max(0.5, 2 * FREQ_COMUNIDAD_X_MIN / 60.0)
+    consulta = comunidad.consulta_x(horas=horas)
+    if not consulta:
+        return "sin consulta"
+    costo_max = xapi.costo_estimado(COMUNIDAD_X_MAX_ITEMS)
+    if not simular_red:
+        tope = presupuesto_hoy("x") * COMUNIDAD_PARTE_X
+        if gasto_comunidad_hoy() + costo_max > tope:
+            _marcar_corrida("_comunidad_x")
+            return "saltada: parte de Comunidad del presupuesto de X de hoy agotada ($%.4f de $%.4f)" % (
+                gasto_comunidad_hoy(), tope)
+        ok, razon = cabe("x", costo_max)
+        if not ok:
+            _marcar_corrida("_comunidad_x")
+            return "saltada: %s" % razon
+    tweets, costo = xapi.buscar_consulta(consulta, "comunidad", horas=horas, max_items=COMUNIDAD_X_MAX_ITEMS,
+                                         simular=simular_red)
+    if simular_red:
+        return "simulacion: %s" % consulta
+    _marcar_corrida("_comunidad_x")
+    if tweets is None:
+        return "error: %s" % (xapi.last_error or "sin respuesta")
+    if costo > 0:
+        registrar_gasto("x", costo, "comunidad_x")
+        _sumar_gasto_comunidad(costo)
+    n = _a_comunidad(tweets)
+    return "%d tweets nuevos, %d de personas de Guayaquil ($%.4f)" % (len(tweets), n or 0, costo or 0)
+
+
 def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=None, cuentas=None):
     """Punto de entrada del hilo TRABAJADOR (nunca run_fast). Orden de
     prioridad (D3-2.3): 1) alertas Guayaquil por X (barato, sensible al
@@ -360,7 +437,7 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
         return "desactivado (falta token de Apify)"
     simular_red = simular_red or os.environ.get("MONITOR_X_SIMULAR") == "1"
 
-    r = {"evento_x": 0, "alertas_x": 0, "cuentas_x": 0, "comunidad_x": 0, "historias_x": 0, "debate_x": 0,
+    r = {"evento_x": 0, "alertas_x": 0, "cuentas_x": 0, "historias_x": 0, "debate_x": 0,
          "tiktok_videos": 0, "tiktok_comentarios": 0, "errores": [], "saltadas_por_presupuesto": []}
     hubo_x, hubo_tiktok = False, False
 
@@ -412,32 +489,6 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
             r["saltadas_por_presupuesto"].append("cuentas_x: %s" % razon)
         if not simular_red:
             _marcar_corrida("_cuentas_x")
-
-    # 1c) Fase 20: quejas de la gente de Guayaquil (Comunidad Guayaquil) --
-    # una consulta con OR de palabras de reclamo + "Guayaquil", ultimas 6 h.
-    if _paso_frecuencia("_comunidad_x", FREQ_COMUNIDAD_X_H):
-        try:
-            import comunidad
-            consulta = comunidad.consulta_x(horas=6)
-        except Exception:
-            consulta = ""
-        if consulta:
-            costo_max = xapi.costo_estimado(30)
-            ok, razon = (True, "") if simular_red else cabe("x", costo_max)
-            if ok:
-                tweets, costo = xapi.buscar_consulta(consulta, "comunidad", horas=6, max_items=30,
-                                                     simular=simular_red)
-                if tweets is None and xapi.last_error:
-                    r["errores"].append("comunidad_x: %s" % xapi.last_error)
-                elif isinstance(tweets, list):
-                    r["comunidad_x"] = _a_comunidad(tweets) if not simular_red else len(tweets)
-                    if not simular_red and costo > 0:
-                        registrar_gasto("x", costo, "comunidad_x")
-                    hubo_x = hubo_x or bool(tweets)
-            else:
-                r["saltadas_por_presupuesto"].append("comunidad_x: %s" % razon)
-        if not simular_red:
-            _marcar_corrida("_comunidad_x")
 
     # 2) Tweets por historia (X) -- 6 historias top, cada 12h. El llamador
     # (monitor.py) ya excluye boletines de plantilla de 'historias_top' y
@@ -585,6 +636,7 @@ def estado_dashboard():
         "gasto_hoy_x": round(gasto_hoy("x"), 5),
         "gasto_hoy_tiktok": round(gasto_hoy("tiktok"), 5),
         "gasto_mes": round(gasto_mes(), 5),
+        "gasto_mes_facebook": round(gasto_mes("facebook"), 5),
         "gasto_mes_x": round(gasto_mes("x"), 5),
         "gasto_mes_tiktok": round(gasto_mes("tiktok"), 5),
         "restante_mes": round(presupuesto_restante_mes(), 5),

@@ -4942,3 +4942,52 @@ Guayaquil — eso lo hacen fuentes nuevas de barrio y ordenar lo que ya llega po
    (ej. "Cupsfire_gye" quedó fuera por el filtro de páginas; puede ser un vecino que reporta).
 5. Facebook/WhatsApp siguen cerrados. El buzón de denuncias (Fase 18-B) sería la vía para lo que
    nunca llega a redes abiertas; sigue esperando el OK de Fernando.
+
+## Fase 20b (2026-09-30) — Comunidad: X cada 10 min, comentarios cada hora, Facebook y WhatsApp
+
+Pedido de Fernando: "Si X es cada 3 horas no funciona, debe ser de minimo cada 10 minutos.
+Comentarios cada 8 horas no funciona, deben cada hora al menos. Encuentra una forma de poder
+integrar whatsapp y facebook."
+
+- **Hilo propio** (`comunidad_loop` en `serve`, `monitor.comunidad_ciclo()`, revisa cada 60 s qué
+  fuente toca): la recolección de Comunidad salió de `enrich_pass` (el trabajador puede tardar más de
+  10 min en dar una vuelta). Frecuencias por defecto: **X 10 min** (`MONITOR_COMUNIDAD_X_MIN`),
+  **Bluesky 10 min**, **YouTube 1 h** (rota 3 consultas; ~2.500 de las 10.000 unidades diarias),
+  **Facebook 60 min** (`MONITOR_FB_MIN`), WhatsApp cuando aparece un chat nuevo.
+- **X** (`redes.pasada_comunidad`): ventana `since:` corta (el doble de la frecuencia, mínimo 30
+  min) y 20 tweets máx. — Apify cobra por tweet devuelto, así que consultar seguido con ventana corta
+  cuesta casi lo mismo que consultar poco con ventana larga (se paga lo nuevo). **No verificado en
+  vivo** que el actor respete `since:` (si no, el filtro por `createdAt` + ids vistos evita duplicar,
+  pero se pagaría de más). Tope propio: Comunidad usa como máximo `MONITOR_COMUNIDAD_X_PARTE` (0.6)
+  del presupuesto diario de X, para que alertas/cuentas/eventos nunca se queden sin nada. Con el
+  tope mensual actual ($4.70, ~$0.10/día para X) Comunidad puede gastar ~$0.06/día = ~240 tweets/día;
+  si hay más quejas que eso, la capa se corta por el día. Para más, subir `MONITOR_REDES_TOPE_MES_USD`.
+- **Facebook** (`facebook.py`): Apify (mismo token), actores `apify~facebook-posts-scraper` (+
+  `facebook-comments-scraper` para los comentarios de la gente en publicaciones de páginas) y
+  `apify~facebook-groups-scraper` (grupos PÚBLICOS). Fuentes en `facebook_fuentes.json` (se crea
+  vacío; sin URLs no se llama nada). **Tope propio** `MONITOR_FB_TOPE_MES_USD` (def. 3.00), gasto en
+  `redes_gasto.json` como red "facebook" — ya NO descuenta del tope de X/TikTok
+  (`presupuesto_restante_mes` suma solo x+tiktok). Nombres de actores, campos y precio
+  (`MONITOR_FB_PRECIO_ITEM` def. 0.005, estimado conservador) **no verificados en vivo**; parseo
+  tolerante a varios nombres de campo; se anota el costo real si Apify lo da. Riesgo: no autorizado por
+  Meta, puede dejar de funcionar; grupos privados imposibles.
+- **WhatsApp** (`whatsapp.py`): no existe API para leer grupos (Business API solo recibe mensajes a un
+  número de empresa; automatizar una cuenta personal arriesga el bloqueo del número). Vía legítima:
+  "Exportar chat" (Sin archivos) en el teléfono → subir el .txt/.zip en la pestaña Comunidad
+  (`POST /api/comunidad/whatsapp`, base64) o dejarlo en `whatsapp_import/`. Parsea Android/iOS,
+  12h/24h, mensajes de varias líneas, descarta multimedia/eliminados/avisos del sistema. **Nombres y
+  teléfonos nunca se guardan**: "Vecino N (grupo)". Se asume Guayaquil; sector del texto o del
+  NOMBRE del grupo. El archivo original no se guarda (subida) y `whatsapp_import/` está en .gitignore.
+- **Concurrencia**: candados nuevos (`comunidad._LOCK`, `redes._LOCK`, `xapi._LOCK`) — ahora tres
+  hilos escriben `comunidad.json`, `redes_cache.json`, `redes_gasto.json` y `x_cache.json`; la red
+  va siempre FUERA del candado.
+- Dashboard: panel "Importar chat de WhatsApp", panel "Facebook" (instrucciones + última lectura),
+  línea "Cada cuanto escucha" con última consulta por fuente, insignias Facebook/WhatsApp.
+- Pruebas: `test_fase20b_comunidad_fuentes.py` (11). Suite: 411, solo los 15 fallos viejos de
+  `test_fase9_xapi.py`. Dashboard completo en jsdom: 0 errores.
+
+### Pendientes reales de la Fase 20b
+1. Nada de esto se probó contra X/Facebook/YouTube reales (la sesión en la nube no llega): ver en la
+   PC la línea "Cada cuanto escucha", el gasto de X en Estadísticas y que Facebook traiga algo.
+2. Fernando tiene que llenar `facebook_fuentes.json` con páginas/grupos reales de Guayaquil.
+3. Recompilar `Spike.exe`.

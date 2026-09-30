@@ -26,10 +26,13 @@ dias distintos, recencia y falta de cobertura. Nada de IA: palabras clave,
 determinista y gratis. Registro propio: comunidad.json (60 dias, NO es un
 cache: no borrar a mano).
 
-Limite honesto: Facebook y WhatsApp (donde vive buena parte de la
-conversacion barrial de Guayaquil) no son accesibles para este programa, y la
-voz en X/Bluesky/YouTube es una muestra, no "toda la ciudad". Los conteos son
-de lo CAPTADO, nunca de "cuanta gente" piensa algo.
+Fase 20b (frecuencias y fuentes nuevas): X cada 10 min en un hilo propio
+(redes.pasada_comunidad), Bluesky cada 10 min, YouTube cada hora, Facebook
+(paginas y grupos PUBLICOS via Apify, facebook.py) y WhatsApp (chats de grupo
+EXPORTADOS a mano por Fernando, whatsapp.py -- no existe otra via legitima).
+
+Limite honesto: lo captado es una muestra, no "toda la ciudad". Los conteos
+son de lo CAPTADO, nunca de "cuanta gente" piensa algo.
 
 Standalone: no importa monitor.py.
 """
@@ -37,6 +40,7 @@ import datetime as dt
 import json
 import os
 import re
+import threading
 import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -48,8 +52,13 @@ VIGENCIA_DIAS = int(os.environ.get("MONITOR_COMUNIDAD_VIGENCIA", "30"))
 COBERTURA_DIAS = 14          # una nota de prensa de hace mas de esto ya no "cubre" el tema
 MAX_TEMAS = 150
 MAX_POSTS = 6000             # tope del registro en disco
-BSKY_CADA_MIN = int(os.environ.get("MONITOR_COMUNIDAD_BSKY_MIN", "30"))
-YT_CADA_H = float(os.environ.get("MONITOR_COMUNIDAD_YT_H", "8"))
+# Fase 20b, pedido de Fernando: "Comentarios cada 8 horas no funciona, deben
+# cada hora al menos". YouTube: ~100 unidades de cuota por busqueda + ~1 por
+# video de comentarios; cada hora = ~2.500 de las 10.000 diarias gratis.
+BSKY_CADA_MIN = float(os.environ.get("MONITOR_COMUNIDAD_BSKY_MIN", "10"))
+YT_CADA_H = float(os.environ.get("MONITOR_COMUNIDAD_YT_H", "1"))
+# El hilo rapido, el trabajador y comunidad_loop escriben comunidad.json.
+_LOCK = threading.RLock()
 
 last_error = None
 
@@ -350,16 +359,22 @@ def _post_id(fuente, url, autor, texto):
     return "%s:%s|%s" % (fuente, _norm(autor).strip(), _norm(texto)[:120].strip())
 
 
-def normalizar_post(fuente, autor, texto, url="", fecha="", tipo=None, oficial=False, ahora=None):
+def normalizar_post(fuente, autor, texto, url="", fecha="", tipo=None, oficial=False, ahora=None,
+                    asumir_gye=False, barrio_defecto=None, persona_segura=False):
     """Convierte cualquier publicacion en un registro de 'voz de la gente', o
     None si no aplica (medio/institucion, no es de Guayaquil, o no nombra
-    ningun problema reconocible)."""
+    ningun problema reconocible). asumir_gye/barrio_defecto: fuentes que ya
+    son de Guayaquil por eleccion de Fernando (grupo de WhatsApp de un barrio).
+    persona_segura: el autor es un participante de un grupo, no una cuenta
+    publica (no pasa por el filtro de medios por nombre)."""
     texto = (texto or "").strip()
-    if len(texto) < 15 or not es_persona(autor, tipo, oficial):
+    if len(texto) < 12:
+        return None
+    if not persona_segura and not es_persona(autor, tipo, oficial):
         return None
     if _FORMATO_NOTICIA.search(texto):
         return None
-    if not es_de_guayaquil(texto):
+    if not asumir_gye and not es_de_guayaquil(texto):
         return None
     cat = categorizar(texto)
     if not cat:
@@ -367,7 +382,7 @@ def normalizar_post(fuente, autor, texto, url="", fecha="", tipo=None, oficial=F
     f = _parse(fecha) or ahora or dt.datetime.now(dt.timezone.utc)
     return {"id": _post_id(fuente, url, autor, texto), "fuente": fuente, "autor": autor.strip(),
             "texto": texto[:500], "url": url or "", "fecha": f.isoformat(), "categoria": cat,
-            "barrio": detectar_barrio(texto) or SIN_SECTOR, "queja": es_queja(texto)}
+            "barrio": detectar_barrio(texto) or barrio_defecto or SIN_SECTOR, "queja": es_queja(texto)}
 
 
 def _agregar(reg, posts):
@@ -431,12 +446,23 @@ def registrar_tweets(tweets, ahora=None):
         fecha = xapi.fecha_iso(t.get("createdAt", "")) if xapi else ""
         posts.append(normalizar_post("x", "@" + usuario if usuario else "", t.get("text"), t.get("url"),
                                      fecha, tipo=tipo, ahora=ahora))
-    reg = _cargar()
-    n = _agregar(reg, [p for p in posts if p])
-    try:
-        _guardar(reg)
-    except Exception:
-        pass
+    return _sumar_y_guardar([p for p in posts if p])
+
+
+def _sumar_y_guardar(posts, marcar=None, ahora=None):
+    """load-modify-save bajo el candado. marcar: {clave: iso} para 'ultimas'."""
+    global last_error
+    with _LOCK:
+        reg = _cargar()
+        n = _agregar(reg, posts)
+        if marcar:
+            reg.setdefault("ultimas", {}).update(marcar)
+        if ahora:
+            _purgar(reg, ahora)
+        try:
+            _guardar(reg)
+        except Exception as e:
+            last_error = "guardar: %s" % e
     return n
 
 
@@ -455,20 +481,73 @@ def _toca(reg, clave, minutos, ahora):
     return ult is None or (ahora - ult).total_seconds() >= minutos * 60
 
 
-def recolectar(ahora=None, youtube=True):
-    """Red real, SOLO desde el hilo trabajador. Bluesky (gratis) cada
-    BSKY_CADA_MIN; YouTube (cuota) cada YT_CADA_H y solo con clave. Devuelve
-    un texto de estado."""
+def _ultimas():
+    with _LOCK:
+        return dict(_cargar().get("ultimas") or {})
+
+
+def _toca_ult(ultimas, clave, minutos, ahora):
+    return _toca({"ultimas": ultimas}, clave, minutos, ahora)
+
+
+def registrar_facebook(pubs, ahora=None):
+    """Publicaciones/comentarios ya parseados por facebook.item_a_publicacion."""
+    posts = [normalizar_post("facebook", p.get("autor"), p.get("texto"), p.get("url"), p.get("fecha"), ahora=ahora)
+             for p in pubs or []]
+    return _sumar_y_guardar([p for p in posts if p])
+
+
+def importar_whatsapp(nombre, contenido, ahora=None):
+    """Un chat exportado (.txt o .zip, bytes). Devuelve {grupo, mensajes,
+    utiles, nuevos}. Se asume Guayaquil (el grupo lo eligio Fernando) y, si el
+    mensaje no nombra sector, el sector sale del NOMBRE del grupo."""
+    import whatsapp
+    grupo, msgs = whatsapp.leer_archivo(nombre, contenido)
+    barrio_grupo = detectar_barrio(grupo)
+    posts = [normalizar_post("whatsapp", m["autor"], m["texto"], "", m["fecha"], ahora=ahora, asumir_gye=True,
+                             barrio_defecto=barrio_grupo, persona_segura=True) for m in msgs]
+    posts = [p for p in posts if p]
+    return {"grupo": grupo, "sector": barrio_grupo or SIN_SECTOR, "mensajes": len(msgs), "utiles": len(posts),
+            "nuevos": _sumar_y_guardar(posts)}
+
+
+def procesar_carpeta_whatsapp(ahora=None):
+    """Chats dejados en whatsapp_import/ (sin red). Cada archivo se procesa una
+    vez por version (tamano+fecha de modificacion)."""
+    import whatsapp
+    ult = _ultimas()
+    hechos = ult.get("whatsapp_archivos") or {}
+    if not isinstance(hechos, dict):
+        hechos = {}
+    res = []
+    for ruta, nombre in whatsapp.archivos_pendientes(hechos):
+        try:
+            with open(ruta, "rb") as f:
+                r = importar_whatsapp(nombre, f.read(), ahora=ahora)
+            res.append("%s +%d" % (r["grupo"], r["nuevos"]))
+        except Exception as e:
+            res.append("%s: error (%s)" % (nombre, e))
+        hechos[nombre] = whatsapp.firma(ruta)
+    if res:
+        _sumar_y_guardar([], marcar={"whatsapp_archivos": hechos})
+    return res
+
+
+def recolectar(ahora=None, youtube=True, facebook=True):
+    """Red real, SOLO desde hilos de fondo (comunidad_loop / trabajador), nunca
+    el hilo rapido. Cada fuente con su propia frecuencia: Bluesky (gratis) cada
+    BSKY_CADA_MIN, YouTube (cuota) cada YT_CADA_H con clave, Facebook (Apify,
+    tope propio) cada facebook.CADA_MIN con fuentes configuradas, y los chats de
+    WhatsApp de whatsapp_import/ (sin red). La red va FUERA del candado."""
     global last_error
     ahora = ahora or dt.datetime.now(dt.timezone.utc)
     try:
         import social
     except Exception:
-        return "social.py no disponible"
-    reg = _cargar()
-    reg.setdefault("ultimas", {})
+        social = None
+    ult = _ultimas()
     hechos = []
-    if _toca(reg, "bluesky", BSKY_CADA_MIN, ahora):
+    if social is not None and _toca_ult(ult, "bluesky", BSKY_CADA_MIN, ahora):
         posts = []
         for q in ("Guayaquil", "Guayaquil sin agua", "Guayaquil sin luz", "Guayaquil basura",
                   "Guayaquil baches", "Guayaquil robo", "Guayaquil moradores"):
@@ -478,24 +557,38 @@ def recolectar(ahora=None, youtube=True):
                                                  tipo=sp.tipo, ahora=ahora))
             except Exception as e:
                 last_error = "bluesky: %s" % e
-        hechos.append("bluesky +%d" % _agregar(reg, [p for p in posts if p]))
-        reg["ultimas"]["bluesky"] = ahora.isoformat()
-    if youtube and os.environ.get("MONITOR_YT_KEY") and _toca(reg, "youtube", YT_CADA_H * 60, ahora):
+        hechos.append("bluesky +%d" % _sumar_y_guardar([p for p in posts if p],
+                                                        marcar={"bluesky": ahora.isoformat()}))
+    if (social is not None and youtube and os.environ.get("MONITOR_YT_KEY")
+            and _toca_ult(ult, "youtube", YT_CADA_H * 60, ahora)):
         posts = []
+        # Rota la consulta para no leer siempre los mismos videos.
+        consultas = ("Guayaquil moradores denuncian", "Guayaquil barrio problema", "Guayaquil vecinos reclaman")
+        q = consultas[int(ahora.timestamp() // 3600) % len(consultas)]
         try:
-            for sp in social.youtube_buscar("Guayaquil moradores denuncian", max_videos=3, max_comentarios=20,
-                                            dias=14) or []:
+            for sp in social.youtube_buscar(q, max_videos=3, max_comentarios=20, dias=14) or []:
                 posts.append(normalizar_post("youtube", sp.autor, sp.texto, sp.url, sp.fecha,
                                              tipo=sp.tipo, ahora=ahora))
         except Exception as e:
             last_error = "youtube: %s" % e
-        hechos.append("youtube +%d" % _agregar(reg, [p for p in posts if p]))
-        reg["ultimas"]["youtube"] = ahora.isoformat()
-    _purgar(reg, ahora)
+        hechos.append("youtube +%d" % _sumar_y_guardar([p for p in posts if p],
+                                                        marcar={"youtube": ahora.isoformat()}))
+    if facebook:
+        try:
+            import facebook as fb
+        except Exception:
+            fb = None
+        if fb is not None and fb.activo() and _toca_ult(ult, "facebook", fb.CADA_MIN, ahora):
+            pubs, est = fb.recolectar()
+            n = registrar_facebook(pubs, ahora=ahora)
+            _sumar_y_guardar([], marcar={"facebook": ahora.isoformat(), "facebook_estado": est})
+            hechos.append("facebook +%d (%s)" % (n, est))
     try:
-        _guardar(reg)
+        for r in procesar_carpeta_whatsapp(ahora=ahora):
+            hechos.append("whatsapp %s" % r)
     except Exception as e:
-        last_error = "guardar: %s" % e
+        last_error = "whatsapp: %s" % e
+    _sumar_y_guardar([], ahora=ahora)  # purga
     return ", ".join(hechos) if hechos else "sin consulta esta pasada (todavia no toca)"
 
 
@@ -543,7 +636,8 @@ def _hace(d, ahora):
 
 
 FUENTE_ETQ = {"x": "X", "bluesky": "Bluesky", "youtube": "YouTube", "reddit": "Reddit", "telegram": "Telegram",
-              "mastodon": "Mastodon", "tiktok": "TikTok", "alerta": "alertas"}
+              "mastodon": "Mastodon", "tiktok": "TikTok", "alerta": "alertas", "facebook": "Facebook",
+              "whatsapp": "WhatsApp"}
 
 
 def armar_temas(posts, historias, ahora):
@@ -611,15 +705,18 @@ def actualizar(historias, alertas=None, social=None, social_historias=None, ahor
     """Hilo rapido: suma lo que el pipeline ya junto (sin red), arma los temas
     y devuelve data.json['comunidad']."""
     ahora = ahora or dt.datetime.now(dt.timezone.utc)
-    reg = _cargar() if persistir else {"version": VERSION, "posts": {}, "ultimas": {}}
-    nuevos = _agregar(reg, posts_de_pipeline(alertas, social, social_historias, ahora))
-    _purgar(reg, ahora)
-    if persistir:
-        try:
-            _guardar(reg)
-        except Exception:
-            pass
-    posts = list(reg["posts"].values())
+    nuevos_posts = posts_de_pipeline(alertas, social, social_historias, ahora)
+    with _LOCK:
+        reg = _cargar() if persistir else {"version": VERSION, "posts": {}, "ultimas": {}}
+        nuevos = _agregar(reg, nuevos_posts)
+        _purgar(reg, ahora)
+        if persistir:
+            try:
+                _guardar(reg)
+            except Exception:
+                pass
+        posts = list(reg["posts"].values())
+        ultimas = dict(reg.get("ultimas") or {})
     temas = armar_temas(posts, historias, ahora)
     cats = {}
     for t in temas:
@@ -643,4 +740,10 @@ def actualizar(historias, alertas=None, social=None, social_historias=None, ahor
             "categorias": sorted(cats.values(), key=lambda c: -c["n_temas"]),
             "todas_categorias": [{"categoria": k, "label": etq} for k, etq, _ in CATEGORIAS],
             "barrios": sorted(barrios.values(), key=lambda b: (b["barrio"] == SIN_SECTOR, -b["personas"])),
-            "total_publicaciones": len(posts), "nuevas": nuevos, "por_fuente": por_fuente, "estado": estado}
+            "total_publicaciones": len(posts), "nuevas": nuevos, "por_fuente": por_fuente, "estado": estado,
+            "ultimas": {k: v for k, v in ultimas.items() if k in ("bluesky", "youtube", "facebook", "facebook_estado")},
+            "whatsapp_grupos": sorted({p["autor"].split("(", 1)[-1].rstrip(")") for p in posts
+                                       if p["fuente"] == "whatsapp" and "(" in p["autor"]}),
+            "frecuencias": {"x_min": float(os.environ.get("MONITOR_COMUNIDAD_X_MIN", "10")),
+                            "bluesky_min": BSKY_CADA_MIN, "youtube_h": YT_CADA_H,
+                            "facebook_min": float(os.environ.get("MONITOR_FB_MIN", "60"))}}
