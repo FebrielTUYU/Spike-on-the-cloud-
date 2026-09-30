@@ -260,34 +260,33 @@ def senales_oportunidad(ambito=None, limite=10):
     return out[:int(limite or 10)]
 
 
-def temas_comunitarios(categoria=None, barrio=None, limite=10):
-    """Fase 20: temas comunitarios de Guayaquil ya detectados por comunidad.py
-    (problemas de barrio que se repiten, eventos de la ciudad, historias
-    humanas), con el 'por que' medido, las pistas de reporteo y las notas de
-    respaldo. Solo lectura de data.json["comunidad"].
-    categoria: "problema", "evento" o "humana". barrio: nombre del sector
-    (ej. "Guasmo", "Sauces"), sin tildes ni mayusculas estrictas."""
+def temas_comunitarios(categoria=None, barrio=None, sin_cubrir=False, limite=10):
+    """Fase 20 (v2): problemas que la GENTE de Guayaquil menciona en redes
+    (X, Bluesky, YouTube, alertas), agrupados por sector y categoria, con
+    cuantas personas distintas lo dicen, si la prensa ya lo cubrio, las
+    publicaciones de respaldo y pistas de reporteo. Solo lectura de
+    data.json["comunidad"]. categoria: texto libre ("agua", "basura",
+    "inseguridad"...), se compara con la etiqueta. sin_cubrir=True: solo lo
+    que la prensa todavia no publico."""
     d = _cargar("data.json", {}) or {}
     temas = (d.get("comunidad") or {}).get("temas") or []
-    cat = str(categoria or "").lower().strip()
-    if cat.startswith("problem"):
-        cat = "problema"
-    elif cat.startswith("event"):
-        cat = "evento"
-    elif cat.startswith("human") or cat.startswith("histori"):
-        cat = "humana"
+    c = _norm_q(categoria or "").strip()
     b = _norm_q(barrio or "").strip()
     out = []
     for t in temas:
-        if cat in ("problema", "evento", "humana") and t.get("categoria") != cat:
+        if c and c not in _norm_q((t.get("categoria") or "") + " " + (t.get("categoria_label") or "")):
             continue
         if b and b not in _norm_q(t.get("barrio") or ""):
             continue
-        out.append({"titulo": t.get("titulo"), "categoria": t.get("categoria_label"),
-                    "tipo": t.get("subtipo_label"), "barrio": t.get("barrio"),
-                    "por_que": t.get("por_que"), "pistas_reporteo_sugeridas": t.get("pistas"),
-                    "notas": [{"titular": a.get("titular"), "medios": a.get("outlets"), "fecha": a.get("fecha"),
-                               "link": a.get("link")} for a in (t.get("apariciones") or [])[:4]]})
+        if sin_cubrir and t.get("cubierto"):
+            continue
+        out.append({"tema": t.get("titulo"), "categoria": t.get("categoria_label"), "barrio": t.get("barrio"),
+                    "personas_distintas": t.get("personas"), "publicaciones": t.get("n"),
+                    "ya_cubierto_por_prensa": t.get("cubierto"), "por_que": t.get("por_que"),
+                    "pistas_reporteo_sugeridas": t.get("pistas"),
+                    "voces": [{"autor": p.get("autor"), "texto": p.get("texto"), "red": p.get("fuente"),
+                               "fecha": p.get("fecha"), "link": p.get("url")}
+                              for p in (t.get("publicaciones") or [])[:4]]})
     return out[:int(limite or 10)]
 
 

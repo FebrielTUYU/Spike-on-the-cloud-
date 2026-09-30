@@ -4894,32 +4894,51 @@ Guayaquil — eso lo hacen fuentes nuevas de barrio y ordenar lo que ya llega po
   Pascuales, Bastión Popular, Flor de Bastión, Mucho Lote, Martha de Roldós) y "moradores Guayaquil"
   / "vecinos Guayaquil". **No verificadas en vivo** (la sesión en la nube no llega a Google): si
   alguna falla, se ve en el reporte de feeds y no rompe nada.
-- **`comunidad.py` (nuevo, sin red ni IA, corre en el hilo rápido)**: `detectar(h)` decide si una
-  historia es de Guayaquil (o Samborondón/Durán/Daule), su clase (`problema` con subtipo agua/luz/
-  inundación/basura/incendios/inseguridad/vías/transporte/salud/educación/vivienda/espacio público/
-  ambiente; `evento`; `humana`) y su barrio (lista de `alertas.BARRIOS_GYE` + extras, cooperativas
-  por regex "cooperativa X", sectores norte/sur/noroeste/centro). Excluye boletines (clima, toque de
-  queda, feriado/IVA, leyes nacionales). `actualizar()` guarda cada detección en
-  **`comunidad.json`** (registro propio, 90 días, NO caché: no borrar a mano) y arma **temas**: un
-  problema se acumula por (barrio, subtipo) a lo largo de los días — sube por días distintos, notas,
-  recencia, poca cobertura y alertas de la gente del mismo tipo/sector; eventos e historias humanas
-  son temas de una nota. Variedad forzada (cada tema repetido del mismo subtipo vale ×0,6) para que
-  el top no sea todo inseguridad. Cada tema trae `por_que` (hechos medidos) y `pistas` (preguntas
-  genéricas, etiquetadas en el dashboard como "sugerencias, no datos"). En `MONITOR_SAMPLE=1` no se
-  guarda. `data.json["comunidad"]` = temas + barrios + estado.
-- **Dashboard**: pestaña **"Comunidad Guayaquil"** (segunda del nav) con filtro por clase, chips por
-  sector y "Ver mas" (con su `#comVermas[hidden]`, ver lección de CSS en Decisiones ya tomadas).
-- **Asistente**: herramienta `temas_comunitarios(categoria, barrio, limite)` (solo lectura de
-  data.json), primera opción del prompt para "¿qué tema comunitario/de barrio puedo reportear?".
-- **Verificado**: `test_fase20_comunidad.py` (15 pruebas, titulares reales del 30-sep); con el
-  data.json real salen 55 temas (34 problemas de barrio) de 96 notas; dashboard completo en jsdom sin
-  errores (filtros, chips, Ver mas); corrida `once` real en copia aislada escribe `comunidad.json`.
-  Suite: 399 pruebas, solo los 15 fallos conocidos de `test_fase9_xapi.py`.
+- **`comunidad.py` — segunda vuelta (v2), la que vale**: Fernando rechazó la v1 ("no quiero notas de
+  prensa porque precisamente eso es lo ya cubierto, quiero identificar problemas que tenga la gente...
+  no solo esos 3 temas, sino más"). Ahora los temas salen **solo de publicaciones de personas** de
+  Guayaquil; la prensa sirve únicamente para marcar si un problema **ya está cubierto** (notas de
+  Guayaquil de los últimos 14 días en la misma categoría y sector).
+  - **Fuentes de la voz de la gente**: (1) lo que el pipeline ya juntaba y se desperdiciaba — señales
+    de alertas, posts de Pulso social y citas de Debate real (`posts_de_pipeline`, hilo rápido, sin
+    red); (2) X: capa nueva `comunidad_x` en `redes.pasada` cada `MONITOR_COMUNIDAD_X_H` (def. 3 h),
+    30 tweets, consulta de palabras de queja + "Guayaquil" (`comunidad.consulta_x`), dentro del mismo
+    presupuesto de siempre; además TODO tweet que ya se pagaba en otras capas (alertas, cuentas,
+    historias) pasa por `comunidad.registrar_tweets` sin costo extra; (3) Bluesky (gratis, cada 30
+    min, 7 consultas) y YouTube (cada 8 h, con `MONITOR_YT_KEY`) en `comunidad.recolectar()`, llamada
+    desde `enrich_pass` (se apaga con `MONITOR_NO_SOCIAL=1`).
+  - **Filtros (determinista, sin IA)**: solo personas — fuera medios, instituciones, cuentas oficiales
+    y páginas de noticias/alertas que en X parecen personas (`_HANDLE_MEDIO`, casos reales:
+    UniversalGye, TiempoRealEC, el_telegrafo, EcEnDirecto...) y textos con formato de nota
+    ("#Guayaquil | ..."); solo Guayaquil (otra ciudad/país sin mencionar Guayaquil = fuera; "Pedro
+    Carbo" no cuenta como cantón, también es calle del centro); solo si nombra un problema.
+  - **22 categorías** (`CATEGORIAS`): extorsión, inseguridad, abuso de autoridad, emergencias,
+    inundaciones/alcantarillado, agua, luz, alumbrado, basura, calles/baches, obras paradas, tránsito,
+    transporte, salud, educación, vivienda/invasiones, espacio público, ruido/contaminación,
+    animales/plagas, trámites, internet/telefonía, costo de vida. Barrio por lista de sectores (+
+    cooperativas por regex).
+  - **Tema = (sector, categoría)**; sube por personas DISTINTAS, días distintos, recencia, frases de
+    queja y +25 si la prensa no lo cubrió. Variedad forzada por categoría. Registro `comunidad.json`
+    v2 (60 días, tope 6000 posts, dedup por autor+texto; el formato v1 se descarta solo).
+  - **Dashboard**: pestaña "Comunidad Guayaquil" con las 22 categorías como filtro (con conteo, 0
+    incluido), sectores, interruptor "Solo lo que la prensa no cubrió", y en cada tema las
+    publicaciones reales (autor, red, fecha, enlace) + notas de prensa relacionadas si las hay.
+  - **Asistente**: `temas_comunitarios(categoria, barrio, sin_cubrir, limite)`.
+  - **Medido con el data.json real del 30-sep**: 11 publicaciones de personas (X 8, YouTube 3), 9
+    temas, 5 sin cobertura. Es POCO: hasta ahora Spike casi no escuchaba a la gente de Guayaquil; las
+    capas nuevas (X quejas, Bluesky, YouTube) son las que tienen que llenarlo. **No verificadas en
+    vivo** (la nube no llega a X/Bluesky/YouTube): falta ver el volumen real en la PC.
+- **Verificado**: `test_fase20_comunidad.py` (16 pruebas); dashboard completo en jsdom sin errores
+  (23 chips de categoría, filtros, "solo no cubierto"); corrida `once` real en copia aislada escribe
+  `comunidad.json` v2. Suite: 400 pruebas, solo los 15 fallos conocidos de `test_fase9_xapi.py`.
 
 ### Pendientes reales de la Fase 20
 1. Recompilar `Spike.exe` y verificar en la PC (búsquedas de barrio en vivo, pestaña nueva).
-2. Muchos temas quedan "Guayaquil (sin sector)": la prensa rara vez nombra el barrio. Mejoras
-   posibles: más sectores/ciudadelas en la lista, o pedir a Gemini el sector solo para los temas top.
-3. La detección es por palabras clave: revisar con uso real qué se escapa o se clasifica mal.
-4. Fuentes de la gente todavía débiles (X depende de cuentas sin verificar; Facebook cerrado). El
-   buzón de denuncias (Fase 18-B) sigue esperando el OK de Fernando.
+2. Ver en la PC cuánto aporta cada red (estado de la pestaña: "X n, Bluesky n, YouTube n"). Si X
+   trae poco, revisar la consulta; si Bluesky trae ~0 en Guayaquil, quitar sus consultas.
+3. Muchos temas quedan "Guayaquil (sin sector)": la gente rara vez nombra el barrio. Sumar
+   ciudadelas a la lista con ejemplos reales; o pedir a Gemini el sector solo de los temas top.
+4. La detección es por palabras clave: revisar con uso real qué se escapa o se clasifica mal
+   (ej. "Cupsfire_gye" quedó fuera por el filtro de páginas; puede ser un vecino que reporta).
+5. Facebook/WhatsApp siguen cerrados. El buzón de denuncias (Fase 18-B) sería la vía para lo que
+   nunca llega a redes abiertas; sigue esperando el OK de Fernando.

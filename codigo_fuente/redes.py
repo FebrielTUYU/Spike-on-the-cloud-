@@ -40,6 +40,7 @@ FREQ_ALERTAS_X_H = 1
 FREQ_CUENTAS_X_H = 1       # Fase 18 (P1-5.2): cuentas hiperlocales
 FREQ_EVENTO_X_MIN = 45     # Fase 18 (P1-5.3): busqueda reactiva por evento en curso
 FREQ_HISTORIAS_X_H = 12
+FREQ_COMUNIDAD_X_H = float(os.environ.get("MONITOR_COMUNIDAD_X_H", "3"))  # Fase 20: quejas de la gente de Guayaquil
 FREQ_DEBATE_X_H = 24
 FREQ_TIKTOK_H = 24
 
@@ -294,6 +295,19 @@ def _registrar_alertas_x(tweets, oficiales=()):
     return nuevas
 
 
+def _a_comunidad(tweets):
+    """Fase 20: todo tweet que ya se pago para otra capa se aprovecha tambien
+    como voz de la gente en Comunidad Guayaquil (comunidad.py filtra: solo
+    personas, solo Guayaquil, solo si nombra un problema). Sin costo extra."""
+    if not tweets:
+        return 0
+    try:
+        import comunidad
+        return comunidad.registrar_tweets(tweets)
+    except Exception:
+        return 0
+
+
 def tiktok_en_pausa():
     """Fase 18 (P1-5.6): TikTok con MALOS_DIAS_PARA_CEDER dias malos seguidos
     queda en pausa automatica (no se gasta presupuesto en el)."""
@@ -346,7 +360,7 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
         return "desactivado (falta token de Apify)"
     simular_red = simular_red or os.environ.get("MONITOR_X_SIMULAR") == "1"
 
-    r = {"evento_x": 0, "alertas_x": 0, "cuentas_x": 0, "historias_x": 0, "debate_x": 0,
+    r = {"evento_x": 0, "alertas_x": 0, "cuentas_x": 0, "comunidad_x": 0, "historias_x": 0, "debate_x": 0,
          "tiktok_videos": 0, "tiktok_comentarios": 0, "errores": [], "saltadas_por_presupuesto": []}
     hubo_x, hubo_tiktok = False, False
 
@@ -364,6 +378,8 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
                 r["errores"].append("alertas_x: %s" % xapi.last_error)
             elif isinstance(tweets, list):
                 nuevas = _registrar_alertas_x(tweets) if not simular_red else 0
+                if not simular_red:
+                    _a_comunidad(tweets)
                 r["alertas_x"] = len(tweets)
                 if not simular_red and costo > 0:
                     registrar_gasto("x", costo, "alertas_x")
@@ -387,6 +403,7 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
             elif isinstance(tweets, list):
                 if not simular_red:
                     _registrar_alertas_x(tweets, oficiales=[c["usuario"].lstrip("@") for c in cuentas if c.get("oficial")])
+                    _a_comunidad(tweets)
                     if costo > 0:
                         registrar_gasto("x", costo, "cuentas_x")
                 r["cuentas_x"] = len(tweets)
@@ -395,6 +412,32 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
             r["saltadas_por_presupuesto"].append("cuentas_x: %s" % razon)
         if not simular_red:
             _marcar_corrida("_cuentas_x")
+
+    # 1c) Fase 20: quejas de la gente de Guayaquil (Comunidad Guayaquil) --
+    # una consulta con OR de palabras de reclamo + "Guayaquil", ultimas 6 h.
+    if _paso_frecuencia("_comunidad_x", FREQ_COMUNIDAD_X_H):
+        try:
+            import comunidad
+            consulta = comunidad.consulta_x(horas=6)
+        except Exception:
+            consulta = ""
+        if consulta:
+            costo_max = xapi.costo_estimado(30)
+            ok, razon = (True, "") if simular_red else cabe("x", costo_max)
+            if ok:
+                tweets, costo = xapi.buscar_consulta(consulta, "comunidad", horas=6, max_items=30,
+                                                     simular=simular_red)
+                if tweets is None and xapi.last_error:
+                    r["errores"].append("comunidad_x: %s" % xapi.last_error)
+                elif isinstance(tweets, list):
+                    r["comunidad_x"] = _a_comunidad(tweets) if not simular_red else len(tweets)
+                    if not simular_red and costo > 0:
+                        registrar_gasto("x", costo, "comunidad_x")
+                    hubo_x = hubo_x or bool(tweets)
+            else:
+                r["saltadas_por_presupuesto"].append("comunidad_x: %s" % razon)
+        if not simular_red:
+            _marcar_corrida("_comunidad_x")
 
     # 2) Tweets por historia (X) -- 6 historias top, cada 12h. El llamador
     # (monitor.py) ya excluye boletines de plantilla de 'historias_top' y
@@ -416,6 +459,7 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=N
             if not simular_red and isinstance(items, list):
                 link = h.get("link") or q
                 xapi.guardar_tweets_historia(link, items)
+                _a_comunidad(items)
                 if costo > 0:
                     registrar_gasto("x", costo, "historias_x: %s" % q)
                 hubo_x = hubo_x or bool(items)

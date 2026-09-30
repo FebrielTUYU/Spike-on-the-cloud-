@@ -686,14 +686,15 @@
        Guayaquil: problemas de barrio que se repiten, eventos, historias humanas. -->
   <section id="secComunidad" hidden>
     <div class="panel" style="border-left:4px solid #0ea5e9">
-      <h2 style="margin:0 0 4px">Comunidad Guayaquil — temas para reportear</h2>
-      <p class="hint">Problemas de barrio, eventos de la ciudad e historias humanas, detectados en lo que ya publicaron los medios y las fuentes que Spike lee. Un problema que vuelve a aparecer varios días en el mismo sector sube en la lista; una nota suelta queda más abajo. Las "pistas" son preguntas sugeridas para reportear, no datos. Límite: lo que solo circula en grupos de Facebook o WhatsApp no llega aquí.</p>
-      <div class="seg" id="comSeg" style="margin:6px 0 8px">
-        <button class="active" data-cc="">Todo</button>
-        <button data-cc="problema">Problemas de barrio</button>
-        <button data-cc="evento">Eventos</button>
-        <button data-cc="humana">Historias humanas</button>
+      <h2 style="margin:0 0 4px">Comunidad Guayaquil — de que se queja la gente</h2>
+      <p class="hint">Problemas que PERSONAS de Guayaquil mencionan en redes (X, Bluesky, YouTube y las alertas de la gente). No son notas de prensa: la prensa solo se usa para marcar si el problema ya esta cubierto. Un problema sube cuando lo mencionan mas personas distintas, en mas dias, y cuando ningun medio lo publico. Los conteos son de lo que Spike logro captar, no de toda la ciudad. Facebook y WhatsApp no son accesibles. Las "pistas" son preguntas sugeridas, no datos.</p>
+      <div class="seg" id="comCobSeg" style="margin:6px 0 8px">
+        <button class="active" data-cob="">Todos</button>
+        <button data-cob="sin">Solo lo que la prensa no cubrio</button>
       </div>
+      <div class="hint" style="margin:4px 0">Categoria:</div>
+      <div id="comCats" style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div class="hint" style="margin:4px 0">Sector:</div>
       <div id="comBarrios" style="margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px"></div>
       <div id="comList"></div>
       <button class="vermas" id="comVermas" hidden>Ver mas</button>
@@ -3508,46 +3509,51 @@ function hydrate(){
 
 let sec="noticias";
 
-// ------- Fase 20: Comunidad Guayaquil (comunidad.py) -------
-let comCat="", comBarrio="", comExpandido=false;
+// ------- Fase 20 (v2): Comunidad Guayaquil = voz de la gente (comunidad.py) -------
+let comCat="", comBarrio="", comSinCubrir=false, comExpandido=false;
 const COM_PAGE=12;
-const COM_COLOR={problema:"#e11d48", evento:"#7c3aed", humana:"#0891b2"};
+function comChip(activo, attr, texto){
+  return `<button ${attr} style="font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#ccc);background:${activo?"#0ea5e9":"transparent"};color:${activo?"#fff":"inherit"};cursor:pointer">${esc(texto)}</button>`;
+}
 function comunidadCardHTML(t){
-  const ap=(t.apariciones||[]).map(a=>`<li>${esc(fmtHoraEC(a.fecha))} · ${esc((a.outlets||[]).join(", "))} —
-      ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.titular)}</a>`:esc(a.titular)}</li>`).join("");
+  const voces=(t.publicaciones||[]).map(p=>`<li>${fuenteBadge(p.fuente)} <b>${esc(p.autor)}</b> · ${esc(fmtHoraEC(p.fecha))}<br>
+      ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.texto)}</a>`:esc(p.texto)}</li>`).join("");
   const pistas=(t.pistas||[]).map(p=>`<li>${esc(p)}</li>`).join("");
-  const titulo = t.categoria==="problema" ? esc(t.titulo)
-    : (t.apariciones&&t.apariciones[0]&&t.apariciones[0].link
-        ? `<a href="${esc(t.apariciones[0].link)}" target="_blank" rel="noopener">${esc(t.titulo)}</a>` : esc(t.titulo));
+  const prensa=(t.prensa||[]).map(x=>`<li>${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.titular)}</a>`:esc(x.titular)} (${esc((x.medios||[]).join(", "))})</li>`).join("");
   return `<div class="gapcard" style="margin-bottom:8px">
     <div class="row" style="gap:6px;flex-wrap:wrap">
-      <span class="tag" style="background:${COM_COLOR[t.categoria]||"#64748b"}">${esc(t.categoria_label)}</span>
+      <span class="tag" style="background:#0ea5e9">${esc(t.categoria_label)}</span>
       <span class="tag loc">${esc(t.barrio)}</span>
-      ${t.categoria!=="problema"?`<span class="hint">${esc(t.subtipo_label)}</span>`:""}
-      <span class="hint" style="margin-left:auto">${t.n} nota(s) · ${t.dias} día(s)${t.alertas?` · ${t.alertas} alerta(s)`:""}</span>
+      <span class="tag" style="background:${t.cubierto?"#64748b":"#e11d48"}">${t.cubierto?"Ya cubierto por la prensa":"Sin cobertura de prensa"}</span>
+      <span class="hint" style="margin-left:auto">${t.personas} persona(s) · ${t.n} publicacion(es) · ${t.dias} dia(s)</span>
     </div>
-    <div class="titular" style="margin:6px 0">${titulo}</div>
-    <div><b>Por qué:</b> ${esc(t.por_que)}</div>
-    ${pistas?`<details style="margin-top:4px"><summary>Pistas de reporteo (sugerencias, no datos)</summary><ul>${pistas}</ul></details>`:""}
-    ${t.categoria==="problema"?`<details style="margin-top:4px"><summary>Notas (${(t.apariciones||[]).length})</summary><ul>${ap}</ul></details>`
-      :`<div class="hint" style="margin-top:4px">${esc(fmtHoraEC(t.ultima))} · ${esc((t.medios||[]).join(", "))}</div>`}
+    <div style="margin:6px 0"><b>Por que:</b> ${esc(t.por_que)}</div>
+    <details open><summary>Lo que dice la gente (${(t.publicaciones||[]).length})</summary><ul>${voces}</ul></details>
+    ${prensa?`<details><summary>Notas de prensa relacionadas</summary><ul>${prensa}</ul></details>`:""}
+    ${pistas?`<details><summary>Pistas de reporteo (sugerencias, no datos)</summary><ul>${pistas}</ul></details>`:""}
   </div>`;
 }
 function renderComunidad(){
   const box=$("#comList"); if(!box) return;
   const C=DATA.comunidad||{};
   const todos=C.temas||[];
-  const barrios=(C.barrios||[]).filter(b=>b.barrio!=="Guayaquil (sin sector)").slice(0,20);
-  $("#comBarrios").innerHTML = barrios.length
-    ? `<button class="${comBarrio?"":"active"}" data-ci="-1" style="font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#ccc);background:${comBarrio?"transparent":"#0ea5e9"};color:${comBarrio?"inherit":"#fff"};cursor:pointer">Todos los sectores</button>`
-      + barrios.map((b,i)=>`<button data-ci="${i}" style="font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#ccc);background:${comBarrio===b.barrio?"#0ea5e9":"transparent"};color:${comBarrio===b.barrio?"#fff":"inherit"};cursor:pointer">${esc(b.barrio)} (${b.n_notas})</button>`).join("")
-    : "";
+  const base=todos.filter(t=>!comSinCubrir||!t.cubierto);
+  // Categorias: TODAS las del catalogo, con cuantos temas tienen ahora (0 incluido).
+  const cnt={}; base.filter(t=>!comBarrio||t.barrio===comBarrio).forEach(t=>cnt[t.categoria]=(cnt[t.categoria]||0)+1);
+  const cats=(C.todas_categorias||[]).slice().sort((a,b)=>(cnt[b.categoria]||0)-(cnt[a.categoria]||0));
+  $("#comCats").innerHTML = comChip(!comCat,'data-cc=""',"Todas ("+base.filter(t=>!comBarrio||t.barrio===comBarrio).length+")")
+    + cats.map(c=>comChip(comCat===c.categoria,`data-cc="${esc(c.categoria)}"`,c.label+" ("+(cnt[c.categoria]||0)+")")).join("");
+  $("#comCats").querySelectorAll("button").forEach(bt=>bt.addEventListener("click",()=>{ comCat=bt.dataset.cc; comExpandido=false; renderComunidad(); }));
+  const bcnt={}; base.filter(t=>!comCat||t.categoria===comCat).forEach(t=>bcnt[t.barrio]=(bcnt[t.barrio]||0)+1);
+  const barrios=Object.keys(bcnt).sort((a,b)=>(a==="Guayaquil (sin sector)")-(b==="Guayaquil (sin sector)")||bcnt[b]-bcnt[a]).slice(0,30);
+  $("#comBarrios").innerHTML = comChip(!comBarrio,'data-ci="-1"',"Todos los sectores")
+    + barrios.map((b,i)=>comChip(comBarrio===b,`data-ci="${i}"`,b+" ("+bcnt[b]+")")).join("");
   $("#comBarrios").querySelectorAll("button").forEach(bt=>bt.addEventListener("click",()=>{
-    const i=+bt.dataset.ci; comBarrio = i<0 ? "" : barrios[i].barrio; comExpandido=false; renderComunidad();
+    const i=+bt.dataset.ci; comBarrio = i<0 ? "" : barrios[i]; comExpandido=false; renderComunidad();
   }));
-  const L=todos.filter(t=>(!comCat||t.categoria===comCat)&&(!comBarrio||t.barrio===comBarrio));
+  const L=base.filter(t=>(!comCat||t.categoria===comCat)&&(!comBarrio||t.barrio===comBarrio));
   if(!L.length){
-    box.innerHTML=`<p class="hint">${todos.length?"Nada en este filtro.":"Todavía no hay temas comunitarios detectados. Se llenan solos con cada pasada del feed."}</p>`;
+    box.innerHTML=`<p class="hint">${todos.length?"Nada en este filtro.":"Todavia no hay publicaciones de la gente captadas. Se llena sola a medida que Spike escucha X, Bluesky y YouTube."}</p>`;
     $("#comVermas").hidden=true;
   } else {
     const vis = comExpandido ? L : L.slice(0,COM_PAGE);
@@ -3558,9 +3564,9 @@ function renderComunidad(){
   }
   $("#comEstado").textContent = C.estado||"";
 }
-document.querySelectorAll("#comSeg button").forEach(b=>b.addEventListener("click",()=>{
-  document.querySelectorAll("#comSeg button").forEach(x=>x.classList.remove("active"));
-  b.classList.add("active"); comCat=b.dataset.cc; comExpandido=false; renderComunidad();
+document.querySelectorAll("#comCobSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#comCobSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); comSinCubrir=b.dataset.cob==="sin"; comExpandido=false; renderComunidad();
 }));
 (function(){ const vm=document.getElementById("comVermas"); if(vm) vm.addEventListener("click",()=>{ comExpandido=true; renderComunidad(); }); })();
 

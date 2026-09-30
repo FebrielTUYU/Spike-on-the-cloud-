@@ -6067,17 +6067,22 @@ def estado_embeddings_dashboard():
     base = ia.estado_embeddings()
     return "%s -- %s historias con embedding" % (base, _embeddings_cobertura())
 
-def calcular_comunidad(stories, alertas_activas=None):
-    """Fase 20: lente Comunidad. Determinista y barato (sin red ni IA): corre
-    en cada pasada del hilo rapido. En modo muestra NO guarda comunidad.json
-    (no se ensucia el registro real con historias ficticias)."""
+def calcular_comunidad(stories, alertas_activas=None, social_data=None, social_hist_data=None):
+    """Fase 20 (v2): Comunidad Guayaquil = lo que dice la GENTE (no la prensa;
+    la prensa solo marca si un problema ya esta cubierto). Sin red ni IA: suma
+    las publicaciones de personas que el pipeline ya junto (alertas, Pulso,
+    Debate) al registro comunidad.json y arma los temas. La red nueva
+    (Bluesky/YouTube/X) la hace el trabajador y redes.py. En modo muestra NO
+    guarda nada."""
+    vacio = {"temas": [], "categorias": [], "barrios": [], "total_publicaciones": 0}
     if comunidad is None:
-        return {"temas": [], "barrios": [], "total_notas": 0, "estado": "comunidad.py no disponible"}
+        return dict(vacio, estado="comunidad.py no disponible")
     try:
-        return comunidad.actualizar(stories, alertas=alertas_activas,
+        return comunidad.actualizar(stories, alertas=alertas_activas, social=social_data,
+                                    social_historias=social_hist_data,
                                     persistir=os.environ.get("MONITOR_SAMPLE") != "1")
     except Exception as e:
-        return {"temas": [], "barrios": [], "total_notas": 0, "estado": "error: %s" % e}
+        return dict(vacio, estado="error: %s" % e)
 
 
 def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado="",
@@ -6087,7 +6092,7 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
     hist = append_history(stories, demand)
     estado_movil = avisar_movil(stories, demand)
     alertas_activas, alertas_estado = procesar_alertas(stories)
-    comunidad_data = calcular_comunidad(stories, alertas_activas)
+    comunidad_data = calcular_comunidad(stories, alertas_activas, social_data, social_hist_data)
     salud_fuentes = construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
                                              social_status, cstatus, fcstatus)
     payload = {
@@ -6787,6 +6792,14 @@ def enrich_pass():
     # aca (trabajador) y nunca en run_fast. vincular_con_prensa (barato, sin
     # red) sigue viviendo en write_outputs/procesar_alertas, con 'stories'
     # ya en memoria.
+    # Fase 20: voz de la gente para Comunidad Guayaquil (Bluesky gratis cada
+    # 30 min, YouTube cada 8 h con clave). X va por redes.py (presupuesto).
+    with _medir_etapa("comunidad_recolectar"):
+        if comunidad is not None and os.environ.get("MONITOR_NO_SOCIAL") != "1":
+            try:
+                comunidad.recolectar()
+            except Exception as e:
+                print("comunidad.recolectar: %s" % e)
     with _medir_etapa("alertas_recolectar_senales"):
         if alertas is not None:
             try:
