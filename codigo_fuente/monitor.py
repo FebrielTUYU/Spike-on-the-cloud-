@@ -1456,6 +1456,15 @@ def _merge_close(clusters, threshold=0.5):
 EMBED_SIM_UMBRAL = float(os.environ.get("MONITOR_EMBED_SIM", "0.80"))
 EMBED_MAX_NEW = int(os.environ.get("MONITOR_EMBED_MAX", "40"))  # embeddings nuevos por pasada del trabajador
 REGISTRO_PATH = os.path.join(HERE, "historias_registro.json")
+# Fase 18 (P0-1): run_fast (agrupar_con_memoria) y el trabajador
+# (_embed_pendientes_registro / _embed_multilingue_... / _coherencia_...)
+# cargaban y guardaban este MISMO archivo sin coordinarse -- ganaba el ultimo
+# en escribir y borraba lo del otro (medido: 190 llamadas de embeddings en un
+# dia sin que la cobertura subiera). Todo "cargar -> modificar -> guardar" del
+# registro pasa ahora por este lock. El trabajador NUNCA lo retiene mientras
+# espera a la IA: calcula afuera sobre una foto, y adentro del lock recarga el
+# registro FRESCO y aplica solo sus campos.
+_REGISTRO_LOCK = threading.RLock()
 REGISTRO_MAX_HORAS = CLUSTER_MAX_HORAS  # misma ventana de 72h que ya usaba cluster() intra-pasada
 # Fase 11 (v2): las historias LOCALES (Ecuador/Guayaquil) se retienen en el
 # registro mas tiempo que las internacionales -- son la materia prima de los
@@ -1916,9 +1925,10 @@ def agrupar_con_memoria(articles):
     intactas -- las siguen usando sus propias pruebas (test_cluster.py,
     test_cluster_evento_generico.py) -- el pipeline real (run_once/run_fast)
     usa esta funcion en su lugar."""
-    registro = _cargar_registro()
-    registro = _fusionar_en_registro(articles, registro)
-    _guardar_registro(registro)
+    with _REGISTRO_LOCK:
+        registro = _cargar_registro()
+        registro = _fusionar_en_registro(articles, registro)
+        _guardar_registro(registro)
     clusters = _registro_a_clusters(registro)
     return build_stories(clusters)
 
@@ -1936,8 +1946,8 @@ def _embed_pendientes_registro():
     palabras/nombres/cifras nomas, sin romperse)."""
     if ia is None or not ia.embed_disponible():
         return "sin modelo de embeddings (%s)" % (getattr(ia, "EMBED_MODEL", "nomic-embed-text") if ia else "?")
-    registro = _cargar_registro()
-    if not registro:
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
     # Fase 10, parte B: candado de espacio vectorial -- un vector de OTRO
     # modelo (ej. nomic-embed-text, retirado con Ollama) o sin etiqueta
@@ -1947,16 +1957,49 @@ def _embed_pendientes_registro():
     # vectores viejos se recalculan solos, una pasada a la vez, sin tocar el
     # archivo a mano (ver migracion real hecha en esta misma sesion: backup +
     # recalculo, documentado en CLAUDE.md).
-    pendientes = [eid for eid, e in registro.items()
-                  if e.get("rep_titulo") and e.get("embedding_modelo") != ia.EMBED_MODEL]
-    calculados = 0
+    pendientes = [eid for eid, e in foto.items()
+                  if _texto_embedding(e) and e.get("embedding_modelo") != ia.EMBED_MODEL]
+    # Fase 18 (P0-1): las llamadas a la IA van AFUERA del lock (pueden tardar
+    # segundos cada una) -- se guarda el texto exacto que se vectorizo para
+    # aplicar el vector solo si la entrada sigue diciendo lo mismo.
+    nuevos = {}
     for eid in pendientes[:EMBED_MAX_NEW]:
-        emb = ia.embed(registro[eid]["rep_titulo"])
+        texto = _texto_embedding(foto[eid])
+        emb = ia.embed(texto)
         if emb:
-            registro[eid]["embedding"] = emb
-            registro[eid]["embedding_modelo"] = ia.EMBED_MODEL
+            nuevos[eid] = (texto, emb)
+    with _REGISTRO_LOCK:
+        registro = _cargar_registro()
+        calculados = 0
+        for eid, (texto, emb) in nuevos.items():
+            e = registro.get(eid)
+            if e is None or _texto_embedding(e) != texto:
+                continue  # la entrada cambio o se fusiono mientras tanto: se recalcula en otra pasada
+            e["embedding"] = emb
+            e["embedding_modelo"] = ia.EMBED_MODEL
             calculados += 1
+        fusiones = _reconciliar_por_embedding(registro)
+        if calculados or fusiones:
+            _guardar_registro(registro)
+    # formato "+N nuevas" a proposito (mismo patron que iastatus/cstatus/etc,
+    # ver _RE_NUEVAS en enrich_pass): asi el trabajador no espera
+    # MONITOR_WORKER_PAUSA completo si todavia queda backlog de embeddings.
+    return "+%d nuevas (embeddings, pendientes: %d), +%d fusiones por parafraseo" % (
+        calculados, max(0, len(pendientes) - calculados), fusiones)
 
+
+def _texto_embedding(e):
+    """Texto que se vectoriza por entrada. Fase 18 (P0-2): el titular
+    FUNDADOR (inmutable), no el mas nuevo -- asi el vector no queda viejo
+    cada vez que la historia suma un medio."""
+    return (e.get("fundador_titulo") or e.get("rep_titulo") or "").strip()
+
+
+def _reconciliar_por_embedding(registro):
+    """Fusiona entradas duplicadas por coseno + entidad compartida (el
+    cuerpo de lo que antes vivia dentro de _embed_pendientes_registro). Se
+    llama SIEMPRE con _REGISTRO_LOCK tomado y sobre el registro recien
+    recargado. Devuelve cuantas fusiones hizo."""
     fusiones = 0
     ids = [eid for eid, e in registro.items()
            if e.get("embedding") and e.get("embedding_modelo") == ia.EMBED_MODEL]
@@ -2020,13 +2063,7 @@ def _embed_pendientes_registro():
             fusiones += 1
     for eid in absorbidos:
         del registro[eid]
-    if calculados or fusiones:
-        _guardar_registro(registro)
-    # formato "+N nuevas" a proposito (mismo patron que iastatus/cstatus/etc,
-    # ver _RE_NUEVAS en enrich_pass): asi el trabajador no espera
-    # MONITOR_WORKER_PAUSA completo si todavia queda backlog de embeddings.
-    return "+%d nuevas (embeddings, pendientes: %d), +%d fusiones por parafraseo" % (
-        calculados, max(0, len(pendientes) - calculados), fusiones)
+    return fusiones
 
 
 def _canon_set(nombres):
@@ -2062,8 +2099,10 @@ def _embed_multilingue_pendientes_registro():
     pidiendo un vector aparte como antes."""
     if ia is None or not ia.embed_disponible(ia.EMBED_MODEL_MULTILINGUE):
         return "sin modelo multilingue (%s)" % (getattr(ia, "EMBED_MODEL_MULTILINGUE", "bge-m3") if ia else "?")
-    registro = _cargar_registro()
-    if not registro:
+    # Fase 18 (P0-1): foto sin lock para decidir que calcular; las llamadas a
+    # la IA van afuera, y se aplican despues sobre el registro recargado.
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
 
     def _es_internacional(e):
@@ -2071,7 +2110,6 @@ def _embed_multilingue_pendientes_registro():
         return not is_ecuador(texto)
 
     mismo_modelo = (ia.EMBED_MODEL_MULTILINGUE == ia.EMBED_MODEL)
-    calculados = 0
     if mismo_modelo:
         # Se reusa "embedding"/"embedding_modelo" (el mismo campo que llena
         # _embed_pendientes_registro()) en vez de "embedding_multi" -- pero
@@ -2083,25 +2121,36 @@ def _embed_multilingue_pendientes_registro():
         # cuando las dos funciones SI corren en la misma pasada (caso real de
         # enrich_pass), la que llega primero ya lo dejo listo y esta no
         # vuelve a pedirlo (sin duplicar costo).
-        pendientes = [eid for eid, e in registro.items()
-                      if e.get("rep_titulo") and _es_internacional(e)
-                      and e.get("embedding_modelo") != ia.EMBED_MODEL]
-        for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
-            emb = ia.embed(registro[eid]["rep_titulo"])
-            if emb:
-                registro[eid]["embedding"] = emb
-                registro[eid]["embedding_modelo"] = ia.EMBED_MODEL
-                calculados += 1
+        campo, campo_modelo, modelo_ok = "embedding", "embedding_modelo", ia.EMBED_MODEL
     else:
-        pendientes = [eid for eid, e in registro.items()
-                      if e.get("rep_titulo") and _es_internacional(e)
-                      and e.get("embedding_multi_modelo") != ia.EMBED_MODEL_MULTILINGUE]
-        for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
-            emb = ia.embed(registro[eid]["rep_titulo"], modelo=ia.EMBED_MODEL_MULTILINGUE)
-            if emb:
-                registro[eid]["embedding_multi"] = emb
-                registro[eid]["embedding_multi_modelo"] = ia.EMBED_MODEL_MULTILINGUE
-                calculados += 1
+        campo, campo_modelo, modelo_ok = "embedding_multi", "embedding_multi_modelo", ia.EMBED_MODEL_MULTILINGUE
+    pendientes = [eid for eid, e in foto.items()
+                  if _texto_embedding(e) and _es_internacional(e)
+                  and e.get(campo_modelo) != modelo_ok]
+    nuevos = {}
+    for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
+        texto = _texto_embedding(foto[eid])
+        emb = ia.embed(texto) if mismo_modelo else ia.embed(texto, modelo=ia.EMBED_MODEL_MULTILINGUE)
+        if emb:
+            nuevos[eid] = (texto, emb)
+    with _REGISTRO_LOCK:
+        return _embed_multilingue_aplicar(nuevos, pendientes, campo, campo_modelo, modelo_ok,
+                                          mismo_modelo, _es_internacional)
+
+
+def _embed_multilingue_aplicar(nuevos, pendientes, campo, campo_modelo, modelo_ok, mismo_modelo, _es_internacional):
+    """Parte "bajo lock" de _embed_multilingue_pendientes_registro (Fase 18,
+    P0-1): recarga el registro fresco, aplica los vectores ya calculados y
+    reconcilia. Siempre se llama con _REGISTRO_LOCK tomado."""
+    registro = _cargar_registro()
+    calculados = 0
+    for eid, (texto, emb) in nuevos.items():
+        e = registro.get(eid)
+        if e is None or _texto_embedding(e) != texto:
+            continue
+        e[campo] = emb
+        e[campo_modelo] = modelo_ok
+        calculados += 1
 
     def _vec(e):
         if mismo_modelo:
@@ -2243,23 +2292,38 @@ def _coherencia_pendientes_registro():
     verificacion, no se vuelve a llamar a la IA. Nunca corre en run_fast."""
     if ia is None or os.environ.get("MONITOR_NO_IA") == "1":
         return "desactivado"
-    registro = _cargar_registro()
-    if not registro:
+    # Fase 18 (P0-1): la IA se consulta sobre una FOTO del registro, sin
+    # lock; los resultados se aplican despues sobre el registro recargado y
+    # solo si el conjunto de fuentes de esa entrada no cambio mientras tanto
+    # (los indices de grupo se refieren a ESA lista de fuentes).
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
-    candidatos = [eid for eid, e in registro.items()
+    candidatos = [eid for eid, e in foto.items()
                   if len(e.get("fuentes") or []) >= 3
                   and e.get("coherencia_hash") != _hash_fuentes(e)]
-    candidatos.sort(key=lambda eid: len(registro[eid].get("fuentes") or []), reverse=True)
-    verificadas, divisiones = 0, 0
+    candidatos.sort(key=lambda eid: len(foto[eid].get("fuentes") or []), reverse=True)
+    respuestas = []
     for eid in candidatos[:COHERENCIA_MAX_NEW]:
-        e = registro.get(eid)
-        if e is None:
-            continue  # pudo haberse borrado por una division anterior en esta misma pasada
+        e = foto[eid]
         fuentes = e.get("fuentes") or []
         material = [{"id": str(i), "titulo": f_.get("title", ""), "resumen": (f_.get("summary") or "")[:220]}
                     for i, f_ in enumerate(fuentes)]
-        r = ia.verificar_coherencia(material, forzado=IA_MODEL)
+        respuestas.append((eid, _hash_fuentes(e), ia.verificar_coherencia(material, forzado=IA_MODEL)))
+    with _REGISTRO_LOCK:
+        return _coherencia_aplicar(respuestas, len(candidatos))
+
+
+def _coherencia_aplicar(respuestas, n_candidatos):
+    """Parte "bajo lock" de _coherencia_pendientes_registro (Fase 18, P0-1)."""
+    registro = _cargar_registro()
+    verificadas, divisiones = 0, 0
+    for eid, hash_visto, r in respuestas:
         verificadas += 1
+        e = registro.get(eid)
+        if e is None or _hash_fuentes(e) != hash_visto:
+            continue  # se fusiono/cambio mientras la IA pensaba: se revisa en otra pasada
+        fuentes = e.get("fuentes") or []
         if r is None:
             continue  # no se cachea un fallo transitorio: se reintenta la proxima pasada
         if r.get("un_solo_hecho", True):
@@ -2290,7 +2354,7 @@ def _coherencia_pendientes_registro():
     if verificadas:
         _guardar_registro(registro)
     return "+%d nuevas (coherencia, pendientes: %d), +%d divisiones" % (
-        verificadas, max(0, len(candidatos) - verificadas), divisiones)
+        verificadas, max(0, n_candidatos - verificadas), divisiones)
 
 
 # ------------------------- temas + prominencia -------------------------
