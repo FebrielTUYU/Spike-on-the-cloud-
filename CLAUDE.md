@@ -5043,3 +5043,34 @@ Pruebas: `test_fase21_ventana_emergencias.py` (10); fixtures de fecha actualizad
 `test_fase20_comunidad.py`, `test_fase20b_comunidad_fuentes.py`, `test_fase9_social_historias.py`.
 Suite completa: solo los 15 fallos viejos de `test_fase9_xapi.py`. Dashboard completo en jsdom: 0
 errores. Hay que recompilar `Spike.exe`.
+
+## Fase 22 (2026-09-30) — interfaz tipo Power BI con los colores de Spike
+
+Pedido de Fernando (con una captura de un tablero de Power BI de referencia): "una interfaz de todo
+el dashboard similar a esta pero con los colores del logo de Spike". Solo `dashboard_template.html`;
+ningun dato nuevo, ninguna llamada nueva.
+
+- **Colores**: verde del logo (`--spike` #1f8a5f, `--spike-2` #2aa876) + negro verdoso para la barra
+  superior y el menu (`--chrome` #0d1813, `--chrome-2` #14231c), fondo gris claro (#edf1ef), tarjetas
+  blancas cuadradas (radio 4 px) con titulo chico en mayusculas. Modo oscuro redefinido igual. Las
+  reglas nuevas van AL FINAL del `<style>` y pisan las viejas (nada de la logica de secciones cambio).
+- **Barra superior oscura** (`.appbar`): logo, "Spike", subtitulo, y a la derecha EN VIVO / Hay datos
+  nuevos / Actualizar ahora (mismos ids de siempre, solo se movieron de lugar).
+- **Menu lateral oscuro con TODAS las secciones**: la fila de pestañas de arriba (`#mainnav`) ahora vive
+  en el menu lateral (mismo id y mismos `data-sec`, asi todo el JS existente sigue funcionando), mas el
+  Asistente aparte bajo "Herramientas". Elegir una seccion estando en el Asistente vuelve al Dashboard.
+  Plegable a solo iniciales (RE, NO, CO...). En el celular (<=800 px) el menu pasa a ser una tira
+  horizontal que se desliza (el viejo `#mobileBar` queda oculto). Sin emojis.
+- **Pagina "Resumen" (nueva, la de inicio)**: `#secResumen` + `renderResumen()`. Tarjetas: historias
+  recientes, Guayaquil, alertas activas, temas de la comunidad (indicadores grandes); historias por hora
+  (ultimas 10 h, hora de Ecuador); por categoria (anillo); "Lo mas importante ahora" (tabla, clic abre el
+  detalle); por ambito; "Al momento — @EmergenciasEc"; problemas de la comunidad; medios con mas notas;
+  alertas por tipo; gasto de IA del dia. Clic en una tarjeta lleva a su seccion.
+- **Barra "Pregunta"** arriba de cada pagina: manda la pregunta al Asistente (Consulta general).
+- **Titulo de pagina** (`#pageTitle`) cambia segun la seccion.
+- Bug viejo de paso: el clic en un tema de Estadisticas llamaba `showSection("noticias")` sin cambiar la
+  variable `sec`, asi el refresco siguiente dibujaba la seccion equivocada. Arreglado.
+- Verificado: dashboard completo en jsdom (0 errores, todos los botones del menu, tabla, tarjetas,
+  barra de pregunta, vuelta del Asistente al Dashboard); capturas reales con Chromium en escritorio,
+  modo oscuro y ancho de celular. Pruebas de Python que leen la plantilla: OK.
+- Pendiente: recompilar `Spike.exe` y verlo en la PC.

@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monitor de noticias — Ecuador</title>
+<title>Spike — Monitor de noticias Ecuador</title>
 <link rel="icon" href="logo.png">
 <!-- iPhone: "Compartir > Agregar a pantalla de inicio" lo abre como app, con este icono -->
 <link rel="apple-touch-icon" href="logo.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Monitor">
+<meta name="apple-mobile-web-app-title" content="Spike">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
   :root{
@@ -369,29 +369,183 @@
   .badge.sugerida{background:#f59e0b;} .badge.verificada{background:#0e9f6e;}
   .asiscaso-sec{margin-top:18px;}
   .asiscaso-sec h2{font-size:15px;margin:0 0 4px;}
+  /* ===== Fase 22 (2026-09-30): interfaz tipo Power BI con los colores del
+     logo de Spike (verde + negro). Barra superior oscura, menu lateral oscuro
+     con TODAS las secciones, area principal gris claro y tarjetas cuadradas
+     con titulo chico en mayusculas. Las reglas de abajo PISAN las de arriba
+     (van al final a proposito); la logica de cada seccion no cambia. ===== */
+  :root{
+    --spike:#1f8a5f; --spike-2:#2aa876; --spike-dk:#0f5c3e;
+    --chrome:#0d1813; --chrome-2:#14231c; --chrome-ink:#e4eee8; --chrome-muted:#8ea599;
+    --bg:#edf1ef; --card:#ffffff; --line:#dbe2de; --chip:#e9f0ec; --accent:#1f8a5f;
+    --shadow:0 1px 2px rgba(13,24,19,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0e1411; --card:#17201c; --ink:#e7eee9; --muted:#93a59b;
+           --line:#26332d; --chip:#1e2924; --accent:#35b884;
+           --shadow:0 1px 2px rgba(0,0,0,.4); }
+  }
+  .topbar{display:none;}
+  .appbar{height:48px;background:var(--chrome);color:var(--chrome-ink);display:flex;align-items:center;
+          gap:10px;padding:0 14px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--spike);}
+  .appbar img{height:30px;width:30px;border-radius:6px;object-fit:cover;}
+  .appbar-name{font-weight:800;font-size:17px;letter-spacing:.03em;}
+  .appbar-sep{color:var(--chrome-muted);}
+  .appbar-sub{color:var(--chrome-muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .appbar-right{margin-left:auto;display:flex;gap:8px;align-items:center;flex:none;}
+  .appbar .pillbtn{background:transparent;color:var(--chrome-ink);border:1px solid rgba(255,255,255,.22);
+                   border-radius:4px;box-shadow:none;padding:5px 11px;}
+  .appbar .pillbtn:hover{border-color:var(--spike-2);background:rgba(42,168,118,.15);}
+  .appbar #nuevoPill{background:#e11d48;border-color:#e11d48;color:#fff;}
+  .appbar .live{background:var(--spike);margin:0;}
+  #nuevoPill[hidden],#refrescarBtn[hidden]{display:none;}
+  .applayout{min-height:calc(100vh - 48px);}
+  .sidebar{width:224px;background:var(--chrome-2);border-right:0;top:48px;height:calc(100vh - 48px);}
+  .sidebar.collapsed{width:58px;}
+  .sidebar-head{border-bottom:1px solid rgba(255,255,255,.08);padding:10px 10px;}
+  .sidebar-toggle{color:var(--chrome-muted);font-size:13px;}
+  .sidebar-toggle:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .sidebar-brand{color:var(--chrome-muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+  .sidebar-nav{padding:6px 0 16px;gap:1px;}
+  .sidebar-group{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--chrome-muted);
+                 font-weight:700;padding:14px 14px 5px;white-space:nowrap;}
+  .sidebar .mainnav{display:flex;flex-direction:column;gap:1px;margin:0;border:0;}
+  .sidebar .mainnav button,.sidebar .sidebar-item{display:flex;align-items:center;gap:10px;width:100%;
+      font:inherit;font-size:13.5px;font-weight:600;color:var(--chrome-ink);opacity:.82;cursor:pointer;
+      padding:8px 12px 8px 10px;margin:0;border:0;border-left:3px solid transparent;border-radius:0;
+      background:transparent;text-align:left;white-space:nowrap;}
+  .sidebar .mainnav button:hover,.sidebar .sidebar-item:hover{background:rgba(255,255,255,.06);opacity:1;color:#fff;}
+  .sidebar .mainnav button.active,.sidebar .sidebar-item.active{background:rgba(42,168,118,.17);
+      border-left-color:var(--spike-2);color:#fff;opacity:1;}
+  .prod-asistente .sidebar .mainnav button.active{background:transparent;border-left-color:transparent;opacity:.82;}
+  .nav-ini{flex:none;width:26px;height:22px;border-radius:4px;background:rgba(255,255,255,.08);
+           font-size:10px;font-weight:800;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;}
+  .sidebar .mainnav button.active .nav-ini,.sidebar .sidebar-item.active .nav-ini{background:var(--spike);color:#fff;}
+  .prod-asistente .sidebar .mainnav button.active .nav-ini{background:rgba(255,255,255,.08);}
+  .sidebar .badge{margin-left:auto;font-size:10.5px;padding:1px 7px;background:var(--spike);}
+  .sidebar.collapsed .sidebar-group,.sidebar.collapsed .sidebar-lbl,.sidebar.collapsed .badge{display:none;}
+  .sidebar.collapsed .mainnav button,.sidebar.collapsed .sidebar-item{padding:8px 0;justify-content:center;}
+  .product .wrap{max-width:1440px;padding:16px 22px 64px;}
+  .pagehead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 12px;}
+  .pagehead h1{font-size:20px;font-weight:700;margin:0;}
+  .pagehead .sub{margin:0;}
+  .askbar{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);
+          border-radius:4px;padding:5px 6px 5px 12px;margin:0 0 16px;box-shadow:var(--shadow);}
+  .askbar label{font-size:12px;font-weight:700;color:var(--spike);white-space:nowrap;}
+  .askbar input{border:0;background:transparent;flex:1;min-width:120px;padding:6px 4px;outline:none;}
+  .askbar button{font:inherit;font-size:13px;font-weight:700;border:0;border-radius:4px;background:var(--spike);
+                 color:#fff;padding:7px 14px;cursor:pointer;}
+  .askbar button:hover{background:var(--spike-dk);}
+  /* tarjetas cuadradas, titulos chicos en mayusculas (Power BI) */
+  .panel,.card,.gapcard,.spark,.stat,.controls,.chatwidget{border-radius:4px;}
+  .panel h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin:0 0 6px;}
+  .stat{border-left-color:var(--spike);}
+  .tab{border-radius:4px;box-shadow:none;}
+  .tab.active{background:var(--spike);border-color:var(--spike);}
+  .seg{border-radius:4px;box-shadow:none;}
+  .seg button.active{background:var(--spike);color:#fff;}
+  .badge{background:var(--spike);}
+  a{color:var(--spike-dk);}
+  @media (prefers-color-scheme: dark){ a{color:#5fd3a2;} }
+  /* ---- pagina Resumen: grilla de tarjetas ---- */
+  .tiles{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;}
+  .tile{grid-column:span 4;background:var(--card);border:1px solid var(--line);border-radius:4px;
+        padding:12px 14px;box-shadow:var(--shadow);min-width:0;overflow:hidden;}
+  .tile[data-go]{cursor:pointer;}
+  .tile[data-go]:hover{border-color:var(--spike);}
+  .tile.s3{grid-column:span 3;} .tile.s6{grid-column:span 6;} .tile.s8{grid-column:span 8;} .tile.s12{grid-column:span 12;}
+  .tile-t{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;
+          margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;}
+  .tile-t span{font-weight:600;text-transform:none;letter-spacing:0;}
+  .kpi{font-size:40px;font-weight:300;line-height:1.05;color:var(--ink);}
+  .kpi.verde{color:var(--spike);}
+  .kpi-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+  .tb{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:5px 0;}
+  .tb-k{width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tb-t{flex:1;height:12px;background:var(--chip);border-radius:2px;overflow:hidden;}
+  .tb-t span{display:block;height:100%;}
+  .tb-v{width:34px;text-align:right;font-weight:700;}
+  .cols{display:flex;align-items:flex-end;gap:5px;height:130px;padding-top:6px;}
+  .cols .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+  .cols .col b{font-size:11px;font-weight:700;margin-bottom:2px;}
+  .cols .col span.bar{display:block;width:100%;background:var(--spike);border-radius:2px 2px 0 0;min-height:2px;}
+  .cols .col i{font-style:normal;font-size:10.5px;color:var(--muted);margin-top:3px;white-space:nowrap;}
+  .ttable{width:100%;border-collapse:collapse;font-size:13px;}
+  .ttable th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+             border-bottom:1px solid var(--line);padding:4px 6px;font-weight:700;}
+  .ttable td{padding:6px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .ttable tr[data-hk]{cursor:pointer;} .ttable tr[data-hk]:hover td{background:var(--chip);}
+  .ttable td.n{text-align:right;font-weight:700;white-space:nowrap;}
+  .gauge{height:14px;background:var(--chip);border-radius:2px;overflow:hidden;margin:8px 0 4px;}
+  .gauge span{display:block;height:100%;background:var(--spike);}
+  .tlist{margin:0;padding:0;list-style:none;font-size:13px;}
+  .tlist li{padding:6px 0;border-bottom:1px solid var(--line);}
+  .tlist li:last-child{border-bottom:0;}
+  .tlist .m{font-size:11.5px;color:var(--muted);}
+  @media (max-width:1100px){
+    .tile,.tile.s3{grid-column:span 6;} .tile.s6,.tile.s8,.tile.s12{grid-column:span 12;}
+  }
+  @media (max-width:800px){
+    .appbar-sub,.appbar-sep{display:none;}
+    .appbar .pillbtn{padding:4px 8px;font-size:12px;}
+    .mobilebar{display:none !important;}
+    .sidebar{display:block;width:auto;max-width:100%;align-self:stretch;height:auto;position:sticky;top:48px;z-index:80;
+             overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .sidebar::-webkit-scrollbar{display:none;}
+    .sidebar-head,.sidebar-group{display:none;}
+    .sidebar-nav{flex-direction:row;padding:0 4px;gap:0;}
+    .sidebar .mainnav{flex-direction:row;}
+    .sidebar .mainnav button,.sidebar .sidebar-item{width:auto;flex:0 0 auto;border-left:0;
+        border-bottom:3px solid transparent;padding:11px 12px;}
+    .sidebar .mainnav button.active,.sidebar .sidebar-item.active{border-bottom-color:var(--spike-2);}
+    .nav-ini{display:none;}
+    .sidebar.collapsed{width:auto;}
+    .sidebar.collapsed .sidebar-lbl,.sidebar.collapsed .badge{display:inline;}
+    .product .wrap{padding:12px 12px 64px;}
+    .tile,.tile.s3,.tile.s6,.tile.s8,.tile.s12{grid-column:span 12;}
+    .kpi{font-size:32px;}
+  }
 </style>
 </head>
 <body>
 <div class="topbar"></div>
-<!-- Navegacion de DOS PRODUCTOS (Fase 7, reorganizacion pedida por Fernando):
-     Dashboard (todo lo de siempre: Noticias/Estadisticas/Oportunidades/etc.,
-     misma navegacion interna de siempre) y Asistente (espacio aparte, ya no
-     una pestaña mas). Barra lateral plegable en escritorio; en el celular
-     (Tailscale) pasa a un menu desplegable arriba -- ver #mobileBar mas abajo.
-     El producto abierto se recuerda en la URL (#dashboard / #asistente). -->
+<div class="appbar">
+  <img src="logo.png" alt="" onerror="this.style.display='none'">
+  <span class="appbar-name">Spike</span>
+  <span class="appbar-sep">|</span>
+  <span class="appbar-sub">Monitor de noticias — Ecuador y Guayaquil</span>
+  <div class="appbar-right">
+    <span class="live" id="live" hidden>EN VIVO</span>
+    <button class="pillbtn" id="nuevoPill" hidden title="Llegaron datos nuevos mientras leías">Hay datos nuevos — mostrar</button>
+    <button class="pillbtn" id="refrescarBtn" hidden title="Trae los feeds ya mismo, sin reiniciar el programa">Actualizar ahora</button>
+  </div>
+</div>
+<!-- Fase 22: el menu lateral oscuro lleva TODAS las secciones del Dashboard
+     (antes era una fila de pestañas arriba) y, aparte, el Asistente. En el
+     celular se vuelve una tira horizontal que se desliza. El producto abierto
+     se sigue recordando en la URL (#dashboard / #asistente). -->
 <div class="applayout">
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-head">
       <button id="sidebarToggle" class="sidebar-toggle" title="Contraer/expandir menu">Menu</button>
-      <span class="sidebar-brand">Monitor</span>
+      <span class="sidebar-brand">Navegacion</span>
     </div>
     <nav id="sidebarNav" class="sidebar-nav">
-      <button class="sidebar-item" data-prod="dashboard" title="Dashboard">
-        <span class="sidebar-lbl">Dashboard</span>
-      </button>
-      <button class="sidebar-item" data-prod="asistente" title="Asistente">
-        <span class="sidebar-lbl">Asistente</span>
-      </button>
+      <div class="sidebar-group">Dashboard</div>
+      <div class="mainnav" id="mainnav">
+        <button class="active" data-sec="resumen" title="Resumen"><span class="nav-ini">RE</span><span class="sidebar-lbl">Resumen</span></button>
+        <button data-sec="noticias" title="Noticias"><span class="nav-ini">NO</span><span class="sidebar-lbl">Noticias</span></button>
+        <button data-sec="comunidad" title="Comunidad Guayaquil"><span class="nav-ini">CO</span><span class="sidebar-lbl">Comunidad Guayaquil</span></button>
+        <button data-sec="ultimahora" title="Última hora"><span class="nav-ini">UH</span><span class="sidebar-lbl">Última hora</span> <span id="uhBadge" class="badge" hidden></span></button>
+        <button data-sec="social" title="Pulso social"><span class="nav-ini">PS</span><span class="sidebar-lbl">Pulso social</span> <span id="alertasBadge" class="badge" hidden></span></button>
+        <button data-sec="stats" title="Estadisticas"><span class="nav-ini">ES</span><span class="sidebar-lbl">Estadisticas</span></button>
+        <button data-sec="gap" title="Oportunidades"><span class="nav-ini">OP</span><span class="sidebar-lbl">Oportunidades</span></button>
+        <button data-sec="contraste" title="Contraste"><span class="nav-ini">CT</span><span class="sidebar-lbl">Contraste</span></button>
+        <button data-sec="guardadas" title="Guardadas y notas"><span class="nav-ini">GU</span><span class="sidebar-lbl">Guardadas y notas</span></button>
+        <button data-sec="buscar" title="Buscar"><span class="nav-ini">BU</span><span class="sidebar-lbl">Buscar</span></button>
+      </div>
+      <div class="sidebar-group">Herramientas</div>
+      <button class="sidebar-item" data-prod="asistente" title="Asistente"><span class="nav-ini">AS</span><span class="sidebar-lbl">Asistente</span></button>
     </nav>
   </aside>
   <div id="mobileBar" class="mobilebar">
@@ -406,31 +560,21 @@
   <div class="mainarea">
   <div id="productDashboard" class="product">
   <div class="wrap">
-  <header style="display:flex;align-items:center;gap:12px;">
-    <img src="logo.png" class="logo" alt="" onerror="this.style.display='none'">
-    <div>
-      <h1 style="margin:0">Monitor de noticias — Ecuador <span class="live" id="live" hidden>EN VIVO</span></h1>
-      <div class="sub" id="sub"></div>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-      <button class="pillbtn" id="nuevoPill" hidden title="Llegaron datos nuevos mientras leías">● Hay datos nuevos — mostrar</button>
-      <button class="pillbtn" id="refrescarBtn" hidden title="Trae los feeds ya mismo, sin reiniciar el programa">Actualizar ahora</button>
-    </div>
+  <header class="pagehead">
+    <h1 id="pageTitle">Resumen</h1>
+    <div class="sub" id="sub"></div>
   </header>
+  <form class="askbar" id="askBar" autocomplete="off">
+    <label for="askQ">Pregunta</label>
+    <input id="askQ" placeholder="Haz una pregunta sobre tus datos (la responde el Asistente, citando fuentes)">
+    <button type="submit">Preguntar</button>
+  </form>
 
-  <div class="mainnav" id="mainnav">
-    <button class="active" data-sec="noticias">Noticias</button>
-    <button data-sec="comunidad">Comunidad Guayaquil</button>
-    <button data-sec="ultimahora">Última hora <span id="uhBadge" class="badge" hidden></span></button>
-    <button data-sec="social">Pulso social <span id="alertasBadge" class="badge" hidden></span></button>
-    <button data-sec="stats">Estadisticas</button>
-    <button data-sec="gap">Oportunidades</button>
-    <button data-sec="contraste">Contraste</button>
-    <button data-sec="guardadas">Guardadas y notas</button>
-    <button data-sec="buscar">Buscar</button>
-  </div>
+  <section id="secResumen">
+    <div class="tiles" id="resumenGrid"></div>
+  </section>
 
-  <section id="secNoticias">
+  <section id="secNoticias" hidden>
     <div class="stats" id="stats"></div>
 
     <div class="tabs" id="tabs">
@@ -1091,7 +1235,7 @@ function renderCharts(){
   // clic en un tema -> ir a Noticias filtrado por ese tema
   box.querySelectorAll(".spark").forEach(el=>el.addEventListener("click",()=>{
     const t=el.dataset.tema; const sel=$("#tema");
-    sel.value=t; shown=PAGE; showSection("noticias"); render();
+    sel.value=t; shown=PAGE; sec="noticias"; showSection(sec); render();
   }));
   const src=DATA.fuente_interes||"?";
   hint.innerHTML = (md?`<div style="margin-bottom:4px"><b>Dato:</b> ${metaTxt("demanda")}</div>`:"") + (hasTrends
@@ -1999,7 +2143,13 @@ function renderPies(){
     <div class="spark"><div class="lbl"><b>Mercado de cobertura</b><span class="dem">articulos propios</span></div>${pieChart(covItems)}${gdeltAviso}</div>
     <div class="spark"><div class="lbl"><b>Mercado de busquedas</b><span class="dem">${DATA.fuente_interes||''}</span></div>${demItems.length?pieChart(demItems):'<div class="gapnone">Sin datos de busqueda.</div>'}</div>`;
 }
+const SEC_TITULO = {resumen:"Resumen", noticias:"Noticias", comunidad:"Comunidad Guayaquil",
+  ultimahora:"Última hora", social:"Pulso social", stats:"Estadisticas", gap:"Oportunidades",
+  contraste:"Contraste", guardadas:"Guardadas y notas", buscar:"Buscar"};
 function showSection(sec){
+  $("#pageTitle").textContent = SEC_TITULO[sec] || "Spike";
+  $("#secResumen").hidden = sec!=="resumen";
+  if(sec==="resumen") renderResumen();
   document.querySelectorAll("#mainnav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===sec));
   $("#secNoticias").hidden = sec!=="noticias";
   $("#secUltimaHora").hidden = sec!=="ultimahora";
@@ -3543,7 +3693,7 @@ function hydrate(){
     rep.map(f=>`${f.outlet}:${f.items}${f.estado==="ok"?"":"("+f.estado+")"}`).join("  ");
 }
 
-let sec="noticias";
+let sec="resumen";
 
 // ------- Fase 20 (v2): Comunidad Guayaquil = voz de la gente (comunidad.py) -------
 let comCat="", comBarrio="", comSinCubrir=false, comExpandido=false;
@@ -3666,6 +3816,7 @@ document.querySelectorAll("#comCobSeg button").forEach(b=>b.addEventListener("cl
 
 function renderAll(){
   render();
+  if(sec==="resumen") renderResumen();
   if(sec==="social"){ renderAlertas(); renderSocialHistorias(); renderSocial(); }
   if(sec==="stats") renderStats();
   if(sec==="gap") renderGap();
@@ -3705,7 +3856,11 @@ document.querySelectorAll("#contrasteseg button").forEach(b=>b.addEventListener(
 }));
 // navegacion principal Noticias / Estadisticas
 document.querySelectorAll("#mainnav button").forEach(b=>b.addEventListener("click",()=>{
-  sec=b.dataset.sec; showSection(sec);
+  sec=b.dataset.sec;
+  // Fase 22: las secciones viven en el menu lateral, junto al Asistente --
+  // elegir una desde el Asistente vuelve al Dashboard.
+  if(productoFromHash()!=="dashboard"){ location.hash="dashboard"; showProducto("dashboard"); }
+  showSection(sec); window.scrollTo(0,0);
 }));
 
 // ------- Fase 7: barra lateral de dos productos (Dashboard / Asistente) -------
@@ -3718,6 +3873,7 @@ function productoFromHash(){
 function showProducto(p){
   $("#productDashboard").hidden = p!=="dashboard";
   $("#productAsistente").hidden = p!=="asistente";
+  document.body.classList.toggle("prod-asistente", p==="asistente");
   document.querySelectorAll("[data-prod]").forEach(b=>b.classList.toggle("active", b.dataset.prod===p));
   const lbl = p==="asistente" ? "Asistente" : "Dashboard";
   $("#mobileMenuLbl").textContent = lbl;
@@ -3869,7 +4025,114 @@ if(conServidor){
 // refresca la etiqueta "hace X min" cada 30s
 setInterval(()=>{ if(DATA.generado) $("#sub").textContent="Actualizado "+fmtAgo(DATA.generado)+" ("+fmtHoraEC(DATA.generado)+")"; },30000);
 
-Promise.all([cargarGuardadas(), cargarNotas()]).then(()=>{ hydrate(); renderAll(); });
+// ------- Fase 22: pagina Resumen (tarjetas tipo Power BI) -------
+// Solo LEE lo que ya trae data.json; ningun dato nuevo, ninguna llamada extra.
+function tileBars(items, color){
+  if(!items.length) return `<div class="kpi-sub">Sin datos todavia.</div>`;
+  const mx=Math.max(1,...items.map(i=>i.value));
+  return items.map(i=>`<div class="tb"><span class="tb-k" title="${esc(i.label)}">${esc(i.label)}</span>`
+    + `<span class="tb-t"><span style="width:${(100*i.value/mx).toFixed(1)}%;background:${i.color||color||"var(--spike)"}"></span></span>`
+    + `<span class="tb-v">${i.value}</span></div>`).join("");
+}
+function tile(cls, go, titulo, extra, cuerpo){
+  return `<div class="tile ${cls}"${go?` data-go="${go}"`:""}><div class="tile-t">${esc(titulo)}${extra?`<span>${extra}</span>`:""}</div>${cuerpo}</div>`;
+}
+let resumenTop = [];
+function renderResumen(){
+  const box=$("#resumenGrid"); if(!box) return;
+  const H=DATA.historias||[];
+  const R=H.filter(h=>!h.antigua);
+  const gye=R.filter(h=>h.ciudad==="Guayaquil");
+  const ecu=R.filter(h=>h.ambito!=="internacional" && h.ciudad!=="Guayaquil");
+  const mun=R.filter(h=>h.ambito==="internacional");
+  const AL=DATA.alertas||[];
+  const corrob=AL.filter(a=>a.estado && a.estado!=="sin_confirmar").length;
+  const C=DATA.comunidad||{}; const temas=C.temas||[];
+  const sinCubrir=temas.filter(t=>!t.cubierto).length;
+  const freshH = DATA.feed_fresh_h!=null ? DATA.feed_fresh_h : 10;
+  let html="";
+  // fila de indicadores
+  html += tile("s3","noticias","Historias recientes","ultimas "+freshH+" h",
+    `<div class="kpi verde">${R.length}</div><div class="kpi-sub">de ${H.length} en el tablero</div>`);
+  html += tile("s3","noticias","Guayaquil","",
+    `<div class="kpi">${gye.length}</div><div class="kpi-sub">Resto de Ecuador: ${ecu.length} · Mundo: ${mun.length}</div>`);
+  html += tile("s3","social","Alertas activas","",
+    `<div class="kpi">${AL.length}</div><div class="kpi-sub">${corrob} corroboradas o confirmadas</div>`);
+  html += tile("s3","comunidad","Temas de la comunidad","",
+    `<div class="kpi">${temas.length}</div><div class="kpi-sub">${temas.length?`${sinCubrir} sin cobertura de prensa`:esc(C.estado||"todavia sin temas")}</div>`);
+  // historias por hora (ultimas 10 h)
+  const ahora=Date.now(), NB=10, b=Array(NB).fill(0);
+  R.forEach(h=>{ const t=Date.parse(h.newest||""); if(isNaN(t)) return;
+    const d=(ahora-t)/3600000; if(d>=0 && d<NB) b[NB-1-Math.floor(d)]++; });
+  const mxb=Math.max(1,...b);
+  const hora=i=>{ try{ return new Date(ahora-(NB-1-i)*3600000).toLocaleTimeString("es-EC",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"America/Guayaquil"}); }catch(e){ return ""; } };
+  const colsHTML = b.some(x=>x) ? `<div class="cols">${b.map((v,i)=>`<div class="col"><b>${v||""}</b><span class="bar" style="height:${(100*v/mxb).toFixed(1)}%"></span><i>${esc(hora(i))}</i></div>`).join("")}</div>`
+    : `<div class="kpi-sub">Sin notas nuevas en las ultimas ${NB} horas.</div>`;
+  html += tile("s8","ultimahora","Historias por hora","hora de Ecuador", colsHTML);
+  // por categoria
+  const cat={}; CAT_ORDER.forEach(c=>cat[c]=0); R.forEach(h=>cat[h.seccion]=(cat[h.seccion]||0)+1);
+  html += tile("s4","stats","Historias por categoria","",
+    pieChart(CAT_ORDER.map(c=>({label:SEC_LABEL[c]||c,value:cat[c]||0,color:catColor(c)}))));
+  // lo mas importante ahora (tabla)
+  resumenTop = R.slice().sort((a,b)=>(b.interes||0)-(a.interes||0)).slice(0,8);
+  const filas = resumenTop.map((h,i)=>{
+    const amb = h.ambito==="internacional" ? "Mundo" : (h.ciudad||"Ecuador");
+    return `<tr data-hk="${i}"><td>${h.alto_impacto?'<b style="color:#be123c">Alto impacto</b> · ':""}${esc(h.titular||"")}</td>`
+      + `<td>${esc(amb)}</td><td class="n">${h.n_outlets||1}</td><td class="n">${esc(h.newest?fmtAgo(h.newest):"")}</td></tr>`;
+  }).join("");
+  html += tile("s8","noticias","Lo mas importante ahora","clic para abrir",
+    filas ? `<table class="ttable"><thead><tr><th>Historia</th><th>Ambito</th><th style="text-align:right">Medios</th><th style="text-align:right">Hace</th></tr></thead><tbody>${filas}</tbody></table>`
+          : `<div class="kpi-sub">Sin historias recientes.</div>`);
+  // por ambito
+  html += tile("s4","noticias","Por ambito","",
+    tileBars([{label:"Guayaquil",value:gye.length,color:"var(--spike)"},
+              {label:"Resto de Ecuador",value:ecu.length,color:"#5fb58c"},
+              {label:"Mundo",value:mun.length,color:"#6b7f75"}]));
+  // EmergenciasEc
+  const E=DATA.emergencias||{};
+  const tw=(E.tweets||[]).slice(0,5);
+  html += tile("s6","comunidad","Al momento — @"+(E.cuenta||"EmergenciasEc"),"X",
+    tw.length ? `<ul class="tlist">${tw.map(t=>`<li><div class="m"><b>${esc(t.autor||"")}</b> · ${esc(fmtHoraEC(t.fecha))}</div>${esc((t.texto||"").slice(0,180))}${(t.texto||"").length>180?"…":""}</li>`).join("")}</ul>`
+              : `<div class="kpi-sub">${E.activo===false?"X esta apagado (sin token de Apify).":"Nada captado en las ultimas horas todavia."}</div>`);
+  // Comunidad: problemas mas mencionados
+  const cats=(C.categorias||[]).slice().sort((a,b)=>(b.n_temas||0)-(a.n_temas||0)).slice(0,8);
+  html += tile("s6","comunidad","Comunidad: problemas mas mencionados","",
+    tileBars(cats.map(c=>({label:c.label||c.categoria,value:c.n_temas||0}))));
+  // medios con mas notas
+  const med={}; R.forEach(h=>(h.outlets||[]).forEach(o=>med[o]=(med[o]||0)+1));
+  html += tile("s4","stats","Medios con mas notas","",
+    tileBars(Object.entries(med).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,v])=>({label:k,value:v}))));
+  // alertas por tipo
+  const at={}; AL.forEach(a=>at[a.tipo]=(at[a.tipo]||0)+1);
+  html += tile("s4","social","Alertas por tipo","",
+    tileBars(Object.entries(at).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:ALERTA_TIPO_LABEL[k]||k,value:v,color:"#be123c"}))));
+  // gasto de IA
+  const G=DATA.estado_ia_nube||{};
+  const gd=+G.gasto_hoy||0, td=+G.tope_dia||0, gm=+G.gasto_mes||0, tm=+G.tope_mes||0;
+  html += tile("s4","stats","Gasto de IA hoy","Gemini",
+    G.activo===undefined && !td ? `<div class="kpi-sub">Sin datos de gasto.</div>`
+    : `<div class="kpi">$${gd.toFixed(2)}</div><div class="gauge"><span style="width:${td?Math.min(100,100*gd/td).toFixed(1):0}%"></span></div>`
+      + `<div class="kpi-sub">Tope diario $${td.toFixed(2)} · mes $${gm.toFixed(2)} de $${tm.toFixed(2)}</div>`);
+  box.innerHTML=html;
+  box.querySelectorAll(".tile[data-go]").forEach(el=>el.addEventListener("click",()=>{
+    sec=el.dataset.go; showSection(sec); window.scrollTo(0,0);
+  }));
+  box.querySelectorAll("tr[data-hk]").forEach(tr=>tr.addEventListener("click",e=>{
+    e.stopPropagation(); const h=resumenTop[+tr.dataset.hk]; if(h) abrirDetalleHistoria(h);
+  }));
+}
+// barra "Pregunta": manda la pregunta al Asistente (Consulta general)
+$("#askBar").addEventListener("submit", e=>{
+  e.preventDefault();
+  const q=$("#askQ").value.trim(); if(!q) return;
+  location.hash="asistente"; showProducto("asistente");
+  const gb=document.querySelector('#asisSeg button[data-av="general"]'); if(gb) gb.click();
+  $("#asistenteMsg").value=q; $("#askQ").value="";
+  const f=$("#asistenteForm");
+  if(f.requestSubmit) f.requestSubmit(); else f.dispatchEvent(new Event("submit",{cancelable:true}));
+});
+
+Promise.all([cargarGuardadas(), cargarNotas()]).then(()=>{ hydrate(); showSection(sec); renderAll(); });
 </script>
 </body>
 </html>
