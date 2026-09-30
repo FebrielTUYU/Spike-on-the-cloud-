@@ -1,0 +1,1355 @@
+{
+ "casos": [
+  {
+   "id": "err_ubic_01",
+   "tipo": "error_ubicacion",
+   "titular_mostrado": "Daniel Noboa nombra como nueva ministra de Trabajo de Ecuador a Diana Ramírez",
+   "resumen_mostrado": "Guayaquil (Ecuador), 28 sep (EFE).- El presidente de Ecuador, Daniel Noboa, nombró este lunes como nueva ministra de Trabajo y Desarrollo Humano a Diana Ramírez, en sustitución de Cynthia Gellibert, a",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "Diana Ramírez asume Ministerio de Trabajo tras salida de Cynthia Gellibert"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Diana Ramírez asume el Ministerio de Trabajo y Desarrollo Humano"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Diana Ramírez Villacís asume el ministerio de Trabajo y Desarrollo Humano"
+    },
+    {
+     "medio": "Infobae",
+     "feed_origen": "https://www.infobae.com/arc/outboundfeeds/rss/",
+     "titulo": "Daniel Noboa nombra como nueva ministra de Trabajo de Ecuador a Diana Ramírez"
+    }
+   ],
+   "motivo_diagnostico": "El resumen empieza con un dateline de agencia ('Guayaquil (Ecuador), 28 sep (EFE).-') -- boilerplate que indica desde donde se REDACTO/TRANSMITIO el despacho, no donde ocurrio el hecho. detect_city() lo lee como si fuera evidencia real del lugar del hecho. El nombramiento de una ministra es un hecho NACIONAL, no de Guayaquil.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": null,
+    "ambito_correcto": "local (Ecuador, sin ciudad especifica)",
+    "es_una_sola_historia": true
+   },
+   "nota": "El dateline de agencia (EFE/AFP/Reuters) nunca debe usarse como señal de ubicacion del hecho."
+  },
+  {
+   "id": "err_ubic_02",
+   "tipo": "error_ubicacion",
+   "titular_mostrado": "Ley de Aviación Civil: ¿qué cambia para los aeropuertos de Quito, Guayaquil y Cuenca?",
+   "resumen_mostrado": "Ley de Aviación Civil: ¿qué cambia para los aeropuertos de Quito, Guayaquil y Cuenca?  expreso.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 2,
+   "fuentes": [
+    {
+     "medio": "TC Television",
+     "feed_origen": "https://www.tctelevision.com/feed/",
+     "titulo": "Asamblea aprueba con 88 votos nueva Ley de Aviación Civil para ampliar la conectividad aérea en Ecuador"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Ley de Aviación Civil: ¿qué cambia para los aeropuertos de Quito, Guayaquil y Cuenca?"
+    }
+   ],
+   "motivo_diagnostico": "El titulo/resumen enumera 3 ciudades (Quito, Guayaquil, Cuenca) como las afectadas por una ley NACIONAL de aviacion civil -- detect_city() agarra 'Guayaquil' (una de las 3) como si fuera LA ciudad del hecho, cuando el hecho (una ley aprobada por la Asamblea) no es de ninguna ciudad en particular. Mismo patron que el bug ya resuelto de 'enumeracion de paises' (_es_enumeracion_paises), pero a nivel de ciudad nunca se implemento el equivalente.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": null,
+    "ambito_correcto": "local (Ecuador, sin ciudad especifica)",
+    "es_una_sola_historia": true
+   },
+   "nota": "Falta un _es_enumeracion_ciudades() analogo al que ya existe para paises."
+  },
+  {
+   "id": "err_ubic_03",
+   "tipo": "error_ubicacion",
+   "titular_mostrado": "“Break the beat” reunió a exponentes del breaking nacional en la Plaza de los Teatros",
+   "resumen_mostrado": "Desde Quito, Cuenca, Machala y Manta llegaron bailarines dispuestos a demostrar su destreza en la pista. Giros, movimientos acrobáticos y […]\nThe post “Break the beat” reunió a exponentes del breaking",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 1,
+   "fuentes": [
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "“Break the beat” reunió a exponentes del breaking nacional en la Plaza de los Teatros"
+    }
+   ],
+   "motivo_diagnostico": "El resumen dice 'Desde Quito, Cuenca, Machala y Manta llegaron bailarines...' -- enumera 4 ciudades de ORIGEN de los participantes, ninguna es la sede del evento (que si es Guayaquil, el Municipio de Guayaquil lo publico). detect_city() sobre el texto encontraria 'Quito' primero y lo marcaria como la ciudad del hecho, aunque HOY el resultado sigue siendo correcto porque ciudad_feed (Municipio de Guayaquil) gana sin mirar el texto. Es un caso FRAGIL: un arreglo ingenuo de 'si el texto menciona otra ciudad, gana el texto' rompería este caso exacto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": "Caso de aceptacion: el arreglo NO debe reclasificar este caso a Quito."
+  },
+  {
+   "id": "err_mezcla_01",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Más de la mitad de los casos de tosferina en Ecuador durante 2026 afecta a menores de un año",
+   "resumen_mostrado": "Hasta la semana epidemiológica 30 de 2026, Ecuador registró 83 casos confirmados de tosferina. De ellos, 45 corresponden a bebés menores de un año",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Guayas campeón de los Juegos Nacionales de Menores 2026: suma seis títulos consecutivos"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "La basura que queda en las calles de Guayaquil ya suma 16.799 casos en 2026"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "La basura que queda en las calles de Guayaquil ya suma 16.799 casos en 2026"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Más de la mitad de los casos de tosferina en Ecuador durante 2026 afecta a menores de un año"
+    }
+   ],
+   "motivo_diagnostico": "MEZCLA GRAVE de 4 fuentes sin relacion real: (1) 'Guayas campeon de los Juegos Nacionales de Menores 2026' (deporte), (2) y (3) 'La basura que queda en las calles de Guayaquil ya suma 16.799 casos en 2026' (quejas de basura, duplicada), (4) 'Mas de la mitad de los casos de tosferina en Ecuador... afecta a menores de un año' (salud nacional). Se fusionaron por compartir las palabras genericas 'menores' (Juegos Nacionales de MENORES / MENORES de un año) y 'casos' (suma 16.799 CASOS / CASOS de tosferina) -- palabras demasiado comunes para ser señal de 'mismo hecho', y ninguna esta en las listas de exclusion (EVENTO_GENERICO/LUGARES_COMUNES).",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Guayas campeon de los Juegos Nacionales de Menores 2026..."
+     ],
+     [
+      "La basura que queda en las calles de Guayaquil ya suma 16.799 casos..."
+     ],
+     [
+      "Mas de la mitad de los casos de tosferina en Ecuador..."
+     ]
+    ]
+   },
+   "nota": "El caso mas grave encontrado: 3 hechos completamente distintos en una sola tarjeta."
+  },
+  {
+   "id": "err_mezcla_02",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Parque Lineal El Limonal-Juan Pablo retoma su construcción con una solución técnica",
+   "resumen_mostrado": "A orillas del río, entre las cooperativas El Limonal y Juan Pablo II, vuelve a tomar forma un espacio pensado […]\nThe post Parque Lineal El Limonal-Juan Pablo retoma su construcción con una solución t",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Parque lineal de la Portete preocupa a vecinos por consumo de drogas e inseguridad"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Asesinan a motociclista en el parque lineal de la cooperativa Esmeraldas Chiquita, sur de Guayaquil"
+    },
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "Parque Lineal El Limonal-Juan Pablo retoma su construcción con una solución técnica"
+    }
+   ],
+   "motivo_diagnostico": "Mezcla 3 'parques lineales' DISTINTOS de Guayaquil: 'parque lineal de la Portete' (inseguridad/drogas), 'parque lineal de la cooperativa Esmeraldas Chiquita' (un asesinato), y 'Parque Lineal El Limonal-Juan Pablo' (obra de construccion, el que da nombre a la tarjeta). 'parque lineal' es un termino generico -- Guayaquil tiene muchos parques lineales distintos, y el matching por palabras los trata como si fueran el mismo lugar.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "parque lineal de la Portete..."
+     ],
+     [
+      "parque lineal de la cooperativa Esmeraldas Chiquita..."
+     ],
+     [
+      "Parque Lineal El Limonal-Juan Pablo..."
+     ]
+    ]
+   },
+   "nota": "'parque lineal' generico funciona como EVENTO_GENERICO/LUGARES_COMUNES pero no esta excluido."
+  },
+  {
+   "id": "err_mezcla_03",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Fuerte lluvia y tormenta eléctrica marcaron la madrugada en Guayaquil",
+   "resumen_mostrado": "Fuerte lluvia y tormenta eléctrica marcaron la madrugada en Guayaquil  expreso.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "La Nacion (AR)",
+     "feed_origen": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml",
+     "titulo": "Una fuerte tormenta azota el noreste de EE.UU.: inundaciones, cortes de luz y vuelos cancelados"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Fuerte lluvia y tormenta eléctrica marcaron la madrugada de este domingo en Guayaquil"
+    },
+    {
+     "medio": "El Universo (Guayaquil)",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/guayaquil/?outputType=xml",
+     "titulo": "Fuerte lluvia y tormenta eléctrica marcaron la madrugada de este domingo en Guayaquil"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Fuerte lluvia y tormenta eléctrica marcaron la madrugada en Guayaquil"
+    }
+   ],
+   "motivo_diagnostico": "Mezcla una historia real de Guayaquil (lluvia/tormenta electrica, 3 fuentes reales del mismo hecho) con 'Una fuerte tormenta azota el noreste de EE.UU.: inundaciones, cortes de luz y vuelos...' (La Nacion, Argentina -- un hecho en ESTADOS UNIDOS). El veto de extranjero (extranjero_sin_ecuador) solo se evalua sobre el titular/resumen REPRESENTANTE (el mas reciente), nunca sobre las demas fuentes ya fusionadas -- una nota extranjera se cuela sin que el veto la vea.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Fuerte lluvia y tormenta electrica marcaron la madrugada en Guayaquil (3 fuentes EC)"
+     ],
+     [
+      "Una fuerte tormenta azota el noreste de EE.UU. (La Nacion, Argentina)"
+     ]
+    ]
+   },
+   "nota": "El veto de extranjero deberia evaluarse tambien contra fuentes ya fusionadas, no solo el representante."
+  },
+  {
+   "id": "err_mezcla_04",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Guayaquil prepara 21 alojamientos temporales ante posibles emergencias por lluvias intensas",
+   "resumen_mostrado": "Guayaquil prepara 21 alojamientos temporales ante posibles emergencias por lluvias intensas  expreso.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "elcomercio.com",
+     "feed_origen": "",
+     "titulo": "Lluvias dejan postes caídos en Guayaquil y una serpiente en un techo en Pedro Carbo"
+    },
+    {
+     "medio": "eltelegrafo.com.ec",
+     "feed_origen": "",
+     "titulo": "Pedro Carbo: enorme serpiente aparece sobre techos tras intensas lluvias"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Guayaquil prepara 21 alojamientos temporales ante posibles emergencias por lluvias intensas"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Guayaquil prepara 21 alojamientos temporales ante posibles emergencias por lluvias intensas"
+    }
+   ],
+   "motivo_diagnostico": "Mezcla la historia de Guayaquil (alojamientos temporales por lluvias) con 'Pedro Carbo: enorme serpiente aparece sobre techos tras intensas lluvias' -- Pedro Carbo es un CANTON DISTINTO de Guayaquil (misma provincia, Guayas, pero otra ciudad) con su propio hecho puntual (una serpiente en un techo), fusionado solo por compartir vocabulario generico de lluvias.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Guayaquil prepara 21 alojamientos temporales..."
+     ],
+     [
+      "Pedro Carbo: enorme serpiente aparece sobre techos..."
+     ]
+    ]
+   },
+   "nota": "Mismo patron que err_mezcla_03 pero cruzando cantones de Guayas, no paises."
+  },
+  {
+   "id": "err_mezcla_05",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Samborondón registra histórica jornada de lluvias con más de 100 mm",
+   "resumen_mostrado": "Samborondón registra histórica jornada de lluvias con más de 100 mm  noticiaspiura30.pe",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Lluvia en Guayaquil causa complicaciones en varios sectores de la ciudad"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Guayaquil registra 13 puntos de acumulación de agua tras las lluvias"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Samborondón superó los 100 milímetros de lluvia en 24 horas: estos fueron los sectores con mayores acumulados"
+    },
+    {
+     "medio": "noticiaspiura30.pe",
+     "feed_origen": "",
+     "titulo": "Samborondón registra histórica jornada de lluvias con más de 100 mm"
+    }
+   ],
+   "motivo_diagnostico": "Mezcla 'Samborondon registra historica jornada de lluvias con mas de 100 mm' con 'Lluvia en Guayaquil causa complicaciones en varios sectores de la ciudad' -- dos reportes de lluvia REALES pero de dos localidades administrativas distintas (Samborondon y Guayaquil, contiguas pero no la misma), fusionados por plantilla de boletin de lluvia (mismo patron ya documentado en fases anteriores para 'boletin con plantilla', nunca resuelto para ubicaciones distintas dentro del area metropolitana).",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Samborondon registra historica jornada de lluvias..."
+     ],
+     [
+      "Lluvia en Guayaquil causa complicaciones..."
+     ]
+    ]
+   },
+   "nota": "'Boletin con plantilla' cruzando Samborondon/Guayaquil -- pendiente ya anotado en Fase 8/9, nunca cerrado."
+  },
+  {
+   "id": "err_mezcla_06",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Renuncia presidenta de la Cámara de Industrias tras polémico discurso",
+   "resumen_mostrado": "A solo cuatro días de que emitió un discurso en el que llamó al empresariado a que no permanezca en silencio frente a la situación de las libertades en Ecuador, María Paz Jervis presentó su renuncia c",
+   "ambito_actual": "local",
+   "ciudad_actual": "",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "La Cámara de Industrias y Producción alza la voz por la democracia ecuatoriana"
+    },
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "María Paz Jervis renuncia a la presidencia ejecutiva de la Cámara de Industrias y Producción"
+    },
+    {
+     "medio": "Confirmado",
+     "feed_origen": "https://confirmado.net/feed/",
+     "titulo": "La Cámara de Industrias y Producción alza la voz por la democracia ecuatoriana"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "María Paz Jervis deja la Cámara de Industrias: este fue su mensaje de despedida"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "María Paz Jervis deja la CIP tras advertir días antes: “Pocas veces he visto tanto miedo”"
+    },
+    {
+     "medio": "El Mercurio",
+     "feed_origen": "https://elmercurio.com.ec/feed/",
+     "titulo": "Renuncia presidenta de la Cámara de Industrias tras polémico discurso"
+    }
+   ],
+   "motivo_diagnostico": "Fusiona 'Renuncia presidenta de la Camara de Industrias tras polemico discurso' (el hecho nuevo) con 'La Camara de Industrias y Produccion alza la voz por la democracia ecuatoriana' (una declaracion institucional previa de la MISMA organizacion, pero un hecho distinto -- no es 'la misma historia', es una entidad que aparece en dos noticias separadas).",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Renuncia presidenta de la Camara de Industrias..."
+     ],
+     [
+      "La Camara de Industrias y Produccion alza la voz..."
+     ]
+    ]
+   },
+   "nota": "Compartir la misma ORGANIZACION no siempre significa el mismo HECHO."
+  },
+  {
+   "id": "err_mezcla_07",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "¿El toque de queda en cuatro provincias se extenderá? Esto dijo ministra de Gobierno",
+   "resumen_mostrado": "El próximo 30 de septiembre de 2026 terminará el toque de queda, según Decreto Ejecutivo. Nataly Morillo habló de una evaluación antes de decisión",
+   "ambito_actual": "local",
+   "ciudad_actual": "",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Más de 1.900 aprehendidos dejan los operativos durante el toque de queda hasta este 26 de septiembre"
+    },
+    {
+     "medio": "Vistazo",
+     "feed_origen": "",
+     "titulo": "Militares se movilizan de forma masiva en Durán horas antes del toque de queda en Ecuador"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Operativo en Sociovivienda 2, en la Zona 8: incautan armas y droga durante el toque de queda"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "¿El toque de queda en cuatro provincias se extenderá? Esto dijo ministra de Gobierno"
+    }
+   ],
+   "motivo_diagnostico": "Historia sobre el toque de queda (ambito Ecuador) que en su registro fusiona una nota sobre 'Ejercito interviene establecimiento en Quito y decomisa sustancia...' -- un operativo puntual en Quito, hecho distinto, fusionado por compartir vocabulario de seguridad/operativo.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "(la historia del toque de queda en 4 provincias)"
+     ],
+     [
+      "Ejercito interviene establecimiento en Quito..."
+     ]
+    ]
+   },
+   "nota": "Mismo patron de mezcla por vocabulario generico de seguridad, no geografico esta vez."
+  },
+  {
+   "id": "err_mezcla_08",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Reino Unido libera a sospechosos de complot contra base militar británica",
+   "resumen_mostrado": "Los cinco implicados en la planificación de un supuesto \"acto terrorista\" están siendo investigados por la policía británica para determinar sus lazos con otros países.",
+   "ambito_actual": "internacional",
+   "ciudad_actual": "",
+   "n_fuentes": 9,
+   "fuentes": [
+    {
+     "medio": "La Nacion (AR)",
+     "feed_origen": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml",
+     "titulo": "Arrestan a cinco hombres que planeaban un ataque terrorista en una base aérea británica utilizada por EE.UU. contra Irán"
+    },
+    {
+     "medio": "ABC.es (Internacional)",
+     "feed_origen": "https://www.abc.es/rss/feeds/abc_Internacional.xml",
+     "titulo": "El Reino Unido ya considera su regreso a la UE diez años después del Brexit"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Renán Borbúa vuelve a la carrera por la Prefectura del Guayas 22 años después"
+    },
+    {
+     "medio": "ABC.es (Internacional)",
+     "feed_origen": "https://www.abc.es/rss/feeds/abc_Internacional.xml",
+     "titulo": "El Reino Unido sospecha de Irán en el intento de atentado contra una base aérea de EE.UU."
+    },
+    {
+     "medio": "Euronews (ES)",
+     "feed_origen": "https://es.euronews.com/rss",
+     "titulo": "La Policía británica detiene a 5 personas cerca de una base militar bajo sospecha de preparar un atentado"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "Reino Unido:  Investigan el papel de Irán en un plan de atentado a base militar"
+    },
+    {
+     "medio": "DW",
+     "feed_origen": "https://rss.dw.com/rdf/rss-sp-all",
+     "titulo": "Policía británica investiga posible vínculo de Irán con plan de ataque a base militar usada por EE. UU."
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Renán Borbúa: el regreso de un cuadro histórico del PSP"
+    },
+    {
+     "medio": "TC Television",
+     "feed_origen": "https://www.tctelevision.com/feed/",
+     "titulo": "Trump dice que los detenidos en Reino Unido planeaban un ataque contra una base aérea usada por EE.UU."
+    },
+    {
+     "medio": "El Mundo",
+     "feed_origen": "https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml",
+     "titulo": "Reino Unido"
+    },
+    {
+     "medio": "DW",
+     "feed_origen": "https://rss.dw.com/rdf/rss-sp-all",
+     "titulo": "Reino Unido libera a sospechosos de complot contra base militar británica"
+    }
+   ],
+   "motivo_diagnostico": "Fusiona la liberacion de sospechosos de un complot terrorista con 'El Reino Unido ya considera su regreso a la UE diez anos despues del Brexit' -- dos hechos distintos sobre el mismo pais, sin relacion causal real entre si.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Reino Unido libera a sospechosos de complot..."
+     ],
+     [
+      "El Reino Unido ya considera su regreso a la UE..."
+     ]
+    ]
+   },
+   "nota": "Ejemplo internacional: compartir PAIS no es compartir HECHO -- la misma clase de bug que las mezclas de Guayaquil."
+  },
+  {
+   "id": "err_mezcla_09",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Tras alentar a Europa a defender la paz, el papa León XIV concluye su histórica visita a Francia",
+   "resumen_mostrado": "El papa León XIV concluyó el lunes 28 de septiembre una intensa visita de cuatro días a Francia con un discurso de gran carga política en Metz. Allí, abogó por la paz y el diálogo interreligioso, al t",
+   "ambito_actual": "internacional",
+   "ciudad_actual": "",
+   "n_fuentes": 8,
+   "fuentes": [
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "León XIV celebra una misa XXL en el corazón de París"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "París bien vale una misa: León XIV congrega a 700.000 personas en la Concordia"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "El papa León XIV moviliza a fieles latinoamericanos en París"
+    },
+    {
+     "medio": "La Nacion (AR)",
+     "feed_origen": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml",
+     "titulo": "En Lourdes, León XIV lanzó un firme rechazo a la eutanasia y recibió a víctimas de abusos"
+    },
+    {
+     "medio": "ABC.es (Internacional)",
+     "feed_origen": "https://www.abc.es/rss/feeds/abc_Internacional.xml",
+     "titulo": "El consenso centrista se rompe en la Unión Europea por la crisis de Ceuta"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "Unión Europea, Concordato… ¿Por qué León XIV termina su viaje a Francia en Metz?"
+    },
+    {
+     "medio": "ABC.es (Internacional)",
+     "feed_origen": "https://www.abc.es/rss/feeds/abc_Internacional.xml",
+     "titulo": "El Papa León XIV llama a Europa «a sacrificar algunas posiciones por el bien superior de la paz»"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "León XIV llama a “sacrificar posiciones” en nombre de la paz en Europa"
+    },
+    {
+     "medio": "DW",
+     "feed_origen": "https://rss.dw.com/rdf/rss-sp-all",
+     "titulo": "Papa León XIV pide paz en Europa y alerta contra \"la ilusión del rearme\""
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "Perú: escultores preparan un monumento gigante dedicado al papa León XIV"
+    },
+    {
+     "medio": "Clarin",
+     "feed_origen": "https://www.clarin.com/rss/mundo/",
+     "titulo": "El papa León XIV celebró la misa de la paz en Metz: un fuerte mensaje contra la guerra y a favor del perdón"
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "El papa León XIV termina su visita a Francia con un llamado a Europa al diálogo global y al cese de los conflictos"
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "Llamado a la paz: el principal mensaje del papa León XIV durante su visita a Francia"
+    },
+    {
+     "medio": "DW",
+     "feed_origen": "https://rss.dw.com/rdf/rss-sp-all",
+     "titulo": "El papa León XIV rinde homenaje a Robert Schuman en la ciudad fronteriza francesa de Metz e insta a Europa a esforzarse más por la paz y el diálogo"
+    },
+    {
+     "medio": "La Nacion (AR)",
+     "feed_origen": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml",
+     "titulo": "León XIV cerró su viaje a Francia con un mensaje político para una Europa en guerra"
+    },
+    {
+     "medio": "Euronews (ES)",
+     "feed_origen": "https://es.euronews.com/rss",
+     "titulo": "El Papa León XIV insta a Europa a blindar el multilateralismo contra el \"afán de dominación global\""
+    },
+    {
+     "medio": "El Mundo",
+     "feed_origen": "https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml",
+     "titulo": "Unión Europea"
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "Papa León XIV cierra su visita a Francia con un llamado a la paz y la unidad en Europa"
+    },
+    {
+     "medio": "Euronews (ES)",
+     "feed_origen": "https://es.euronews.com/rss",
+     "titulo": "El papa Leo concluye su viaje a Francia en Metz, destacando a Schuman y la unidad de la UE"
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "Tras alentar a Europa a defender la paz, el papa León XIV concluye su histórica visita a Francia"
+    }
+   ],
+   "motivo_diagnostico": "Fusiona la gira del papa Leon XIV con 'El consenso centrista se rompe en la Union Europea por la crisis de Ceuta' -- dos hechos europeos sin relacion real entre si.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Tras alentar a Europa a defender la paz, el papa Leon XIV concluye..."
+     ],
+     [
+      "El consenso centrista se rompe en la Union Europea por la crisis de Ceuta"
+     ]
+    ]
+   },
+   "nota": "Mismo patron: continente/region compartida, hechos distintos."
+  },
+  {
+   "id": "err_mezcla_10",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Emiratos Árabes Unidos e Israel confirman reunión entre Netanyahu y Bin Zayed",
+   "resumen_mostrado": "\"Ambas partes abordaron las relaciones bilaterales, así como las formas de reforzarlas y desarrollarlas\", según Emiratos.",
+   "ambito_actual": "internacional",
+   "ciudad_actual": "",
+   "n_fuentes": 6,
+   "fuentes": [
+    {
+     "medio": "NYT",
+     "feed_origen": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+     "titulo": "U.N. Releases New List of Companies It Says Do Business With Israeli Settlements"
+    },
+    {
+     "medio": "La Jornada",
+     "feed_origen": "https://www.jornada.com.mx/rss/mundo.xml",
+     "titulo": "Premier israelí se reúne con el presidente de los Emiratos Árabes"
+    },
+    {
+     "medio": "The Hindu",
+     "feed_origen": "https://www.thehindu.com/news/international/feeder/default.rss",
+     "titulo": "Netanyahu makes unannounced UAE visit, says Israeli media"
+    },
+    {
+     "medio": "Al Jazeera",
+     "feed_origen": "https://www.aljazeera.com/xml/rss/all.xml",
+     "titulo": "UAE confirms Israel PM Netanyahu’s visit to Abu Dhabi"
+    },
+    {
+     "medio": "Straits Times",
+     "feed_origen": "https://www.straitstimes.com/news/world/rss.xml",
+     "titulo": "UAE President discussed bilateral relations with Israel's Netanyahu"
+    },
+    {
+     "medio": "DW",
+     "feed_origen": "https://rss.dw.com/rdf/rss-sp-all",
+     "titulo": "Emiratos Árabes Unidos e Israel confirman reunión entre Netanyahu y Bin Zayed"
+    }
+   ],
+   "motivo_diagnostico": "Fusiona la reunion Netanyahu-EAU con 'U.N. Releases New List of Companies It Says Do Business With Israeli Settlements' -- dos hechos distintos relacionados con Israel, sin ser el mismo suceso.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Emiratos Arabes Unidos e Israel confirman reunion..."
+     ],
+     [
+      "U.N. Releases New List of Companies..."
+     ]
+    ]
+   },
+   "nota": ""
+  },
+  {
+   "id": "err_mezcla_11",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Bill Gates advierte que la IA sin control podría provocar \"mil millones de muertes\"",
+   "resumen_mostrado": "Gates alertó de que una IA en manos equivocadas sería \"sin duda lo suficientemente poderosa\" como para provocar efectos negativos",
+   "ambito_actual": "internacional",
+   "ciudad_actual": "",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "TC Television",
+     "feed_origen": "https://www.tctelevision.com/feed/",
+     "titulo": "Meta podría pagar hasta USD 10.500 millones en EE.UU. por el escándalo de Cambridge Analytica"
+    },
+    {
+     "medio": "CBC News (World)",
+     "feed_origen": "https://www.cbc.ca/webfeed/rss/rss-world",
+     "titulo": "Bill Gates joins call for AI safeguards, wants to discuss concerns with Trump"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Bill Gates advierte que la IA sin control podría provocar \"mil millones de muertes\""
+    }
+   ],
+   "motivo_diagnostico": "Fusiona la advertencia de Bill Gates sobre IA con 'Meta podria pagar hasta USD 10.500 millones en EE.UU. por el escandalo de Cambridge Analytica' -- dos noticias de tecnologia sin relacion real entre si.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Bill Gates advierte que la IA sin control..."
+     ],
+     [
+      "Meta podria pagar hasta USD 10.500 millones... Cambridge Analytica"
+     ]
+    ]
+   },
+   "nota": ""
+  },
+  {
+   "id": "err_mezcla_12",
+   "tipo": "error_mezcla",
+   "titular_mostrado": "Ecuador y Perú buscan reforzar la cooperación contra la minería ilegal en la frontera",
+   "resumen_mostrado": "La cita en Iquitos puso bajo análisis las amenazas que afectan a las poblaciones de la frontera entre Ecuador y Perú.",
+   "ambito_actual": "local",
+   "ciudad_actual": "Cuenca",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Bloque de Seguridad destruye maquinaria en campamento minero ilegal en Azuay"
+    },
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "La minería ilegal entra en la agenda de seguridad de Ecuador y Perú"
+    },
+    {
+     "medio": "El Comercio",
+     "feed_origen": "https://www.elcomercio.com/feed/",
+     "titulo": "Ecuador y Perú buscan reforzar la cooperación contra la minería ilegal en la frontera"
+    }
+   ],
+   "motivo_diagnostico": "Fusiona 'Ecuador y Peru buscan reforzar la cooperacion contra la mineria ilegal' (acuerdo bilateral) con 'Bloque de Seguridad destruye maquinaria en campamento minero ilegal en Azuay' (un operativo puntual) -- relacionados tematicamente pero son dos hechos distintos.",
+   "etiqueta_correcta": {
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Ecuador y Peru buscan reforzar la cooperacion contra la mineria ilegal..."
+     ],
+     [
+      "Bloque de Seguridad destruye maquinaria en campamento minero ilegal en Azuay"
+     ]
+    ]
+   },
+   "nota": "Caso limite: mismo tema (mineria ilegal), hechos puntuales distintos -- linea fina con 'antecedente relacionado'."
+  },
+  {
+   "id": "ok_01",
+   "tipo": "correcto",
+   "titular_mostrado": "¿Qué le espera en Ecuador a la esposa de alias ‘Fito’ tras su captura en Colombia?",
+   "resumen_mostrado": "La captura de Inda Peñarrieta en Colombia permitirá retomar el juicio que tenía pendiente en Ecuador.",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 10,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Esposa e hija de alias ‘Fito’ fueron capturadas en Colombia en operativo conjunto, anuncia ministro John Reimberg"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Abelardo de la Espriella sobre captura de esposa e hija de alias ‘Fito’: ‘Se las voy a enviar con gusto a mi buen amigo Daniel Noboa, para que respondan ante la justicia ecuatoriana’"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "‘Los objetivos de alto valor siguen cayendo’: José Julio Neira tras captura de esposa e hija de alias ‘Fito’"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Esposa e hija de alias ‘Fito’ serán trasladadas a la cárcel de La Roca, confirma ministro John Reimberg"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Daniel Noboa tras la captura de la esposa e hija de alias ‘Fito’: ‘Las capturamos en Colombia y enfrentarán a la justicia en Ecuador’"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "¿Quiénes son la esposa e hija de alias Fito, detenidas en Colombia?"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Fiscalía confirma que caso Blanqueo Fito se reanudará tras detención de esposa e hija de Adolfo Macías, alias ‘Fito’"
+    },
+    {
+     "medio": "RFI (ES)",
+     "feed_origen": "https://www.rfi.fr/es/rss",
+     "titulo": "Colombia: detienen a la esposa y a la hija del narcotraficante ecuatoriano Adolfo Macías"
+    },
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "La esposa e hija de Fito llegarían a Ecuador en máximo dos días, según informó el ministro del Interior, John Reimberg"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Esposa e hija de alias Fito capturadas en Colombia: ¿A qué cárcel irán?"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Esposa e hija de alias ‘Fito’ serán traídas a Ecuador en uno a dos días máximo, según ministro del Interior"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "¿Por qué estaban en Santander la esposa e hija de alias Fito? Esto dijo John Reimberg"
+    },
+    {
+     "medio": "Semana (Colombia)",
+     "feed_origen": "https://www.semana.com/arc/outboundfeeds/rss/",
+     "titulo": "Hija de alias Fito, capturada en Colombia, hizo llamativa publicación tras muerte de Bendito Menor: esto fue lo que escribió"
+    },
+    {
+     "medio": "El Comercio",
+     "feed_origen": "https://www.elcomercio.com/feed/",
+     "titulo": "John Reimberg vincula el nombre de Gustavo Petro con el refugio de la familia de ‘Fito’ en Colombia"
+    },
+    {
+     "medio": "France 24",
+     "feed_origen": "",
+     "titulo": "Informe desde Guayaquil: Colombia captura a la esposa e hija de alias 'Fito'"
+    },
+    {
+     "medio": "Yahoo",
+     "feed_origen": "",
+     "titulo": "Informe desde Guayaquil: Colombia captura a la esposa e hija de alias 'Fito'"
+    },
+    {
+     "medio": "France24 (ES)",
+     "feed_origen": "https://www.france24.com/es/rss",
+     "titulo": "Informe desde Guayaquil: Colombia captura a la esposa e hija de alias 'Fito'"
+    },
+    {
+     "medio": "El Comercio",
+     "feed_origen": "https://www.elcomercio.com/feed/",
+     "titulo": "¿Qué le espera en Ecuador a la esposa de alias ‘Fito’ tras su captura en Colombia?"
+    }
+   ],
+   "motivo_diagnostico": "18 fuentes reales, todas sobre el MISMO hecho (captura de la esposa e hija de alias Fito), agrupamiento correcto pese al volumen.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": null,
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_02",
+   "tipo": "correcto",
+   "titular_mostrado": "Sacapintas balean a mujer para robarle 2.000 dólares en el centro de Guayaquil: así fue el atraco",
+   "resumen_mostrado": "Sacapintas balean a mujer para robarle 2.000 dólares en el centro de Guayaquil: así fue el atraco  extra.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 6,
+   "fuentes": [
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Balacera en el centro de Guayaquil este 28 de septiembre: mujer fue asaltada y herida"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Balacera en el centro de Guayaquil este 28 de septiembre: mujer fue asaltada y herida"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Mujer fue herida de bala durante un asalto en el centro de Guayaquil"
+    },
+    {
+     "medio": "Primicias",
+     "feed_origen": "",
+     "titulo": "Una mujer fue baleada después de retirar USD 2.000 de una entidad bancaria en el centro de Guayaquil"
+    },
+    {
+     "medio": "teleamazonas.com",
+     "feed_origen": "",
+     "titulo": "Robo en Guayaquil: mujer fue baleada tras retirar USD 2 000 de una entidad bancaria"
+    },
+    {
+     "medio": "Ecuavisa",
+     "feed_origen": "",
+     "titulo": "Mujer fue baleada tras retirar USD 2 000 en el centro de Guayaquil"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Sacapintas balean a mujer para robarle 2.000 dólares en el centro de Guayaquil: así fue el atraco"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Sacapintas balean a mujer para robarle 2.000 dólares en el centro de Guayaquil: así fue el atraco"
+    }
+   ],
+   "motivo_diagnostico": "8 fuentes reales sobre el mismo asalto en el centro de Guayaquil, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_03",
+   "tipo": "correcto",
+   "titular_mostrado": "Ataque armado en la vía a Daule: un comerciante muere tras recibir varios disparos",
+   "resumen_mostrado": "Un comerciante de 33 años murió tras recibir varios disparos en la Vía a Daule. La Policía busca a dos sospechosos que huyeron en motocicleta",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Ataque armado en la vía a Daule: matan a comerciante de 33 años en Guayaquil"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Ataque armado en la vía a Daule: matan a comerciante de 33 años en Guayaquil"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Ataque armado en la vía a Daule: un comerciante muere tras recibir varios disparos"
+    }
+   ],
+   "motivo_diagnostico": "3 fuentes reales sobre el mismo ataque armado en la via a Daule, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_04",
+   "tipo": "correcto",
+   "titular_mostrado": "Casas con cámaras y uniformes policiales: lo que encontraron en Socio Vivienda 2",
+   "resumen_mostrado": "Tras un enfrentamiento armado, policías y militares ingresaron a Socio Vivienda 2 y hallaron uniformes similares a los oficiales, armas y droga",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "Policía y Fuerzas Armadas hallan uniformes de uso táctico, armas y cámaras de vigilancia en Socio Vivienda 2"
+    },
+    {
+     "medio": "Ecuavisa",
+     "feed_origen": "",
+     "titulo": "Guayaquil: uniformes similares a los de militares y policías fueron hallados en Socio Vivienda 2"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Casas con cámaras y uniformes policiales: lo que encontraron en Socio Vivienda 2"
+    }
+   ],
+   "motivo_diagnostico": "3 fuentes reales sobre el mismo operativo en Socio Vivienda 2, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_05",
+   "tipo": "correcto",
+   "titular_mostrado": "Guayaquil en alerta por marea alta: ¿Cuáles son las horas críticas y zonas de mayor riesgo de inundación?",
+   "resumen_mostrado": "Guayaquil en alerta por marea alta: ¿Cuáles son las horas críticas y zonas de mayor riesgo de inundación?  Metro Ecuador",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 6,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "La marea alta llegará a 4,54 metros este domingo en Guayaquil"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Marea alta en Guayaquil llegará a 4,54 metros este domingo: horarios y sectores atentos"
+    },
+    {
+     "medio": "Expreso",
+     "feed_origen": "https://www.expreso.ec/rss",
+     "titulo": "Marea en Guayaquil: el nivel llegará a 4,48 metros y ya hay sectores con acumulación de agua"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Marea en Guayaquil: el nivel llegará a 4,48 metros y ya hay sectores con acumulación de agua"
+    },
+    {
+     "medio": "elcomercio.com",
+     "feed_origen": "",
+     "titulo": "Marea alta causa acumulación de agua en Guayaquil"
+    },
+    {
+     "medio": "Ecuavisa",
+     "feed_origen": "",
+     "titulo": "Lluvias, tormenta y marea alta de 4,48 metros: el pronóstico para Guayaquil este 28 de septiembre"
+    },
+    {
+     "medio": "Metro Ecuador",
+     "feed_origen": "",
+     "titulo": "¿Llueve este lunes 28 de septiembre en Guayaquil? Pronósticos alertan tormenta eléctrica y marea alta de 4,48 metros"
+    },
+    {
+     "medio": "Metro Ecuador",
+     "feed_origen": "",
+     "titulo": "Guayaquil en alerta por marea alta: ¿Cuáles son las horas críticas y zonas de mayor riesgo de inundación?"
+    }
+   ],
+   "motivo_diagnostico": "8 fuentes reales sobre la misma alerta de marea alta en Guayaquil, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_06",
+   "tipo": "correcto",
+   "titular_mostrado": "Pasajera española detenida en el aeropuerto de Guayaquil con 18 kilos de cocaína",
+   "resumen_mostrado": "la policía aprehendió de inmediato a la implicada, identificada como Elisbeth del Valle M. C.",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 2,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Ciudadana española es arrestada en el aeropuerto de Guayaquil cuando intentaba viajar a Alemania con droga valorada en $ 843.000"
+    },
+    {
+     "medio": "TC Television",
+     "feed_origen": "https://www.tctelevision.com/feed/",
+     "titulo": "Pasajera española detenida en el aeropuerto de Guayaquil con 18 kilos de cocaína"
+    }
+   ],
+   "motivo_diagnostico": "2 fuentes reales sobre el mismo caso (pasajera detenida con droga en el aeropuerto de Guayaquil), agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_07",
+   "tipo": "correcto",
+   "titular_mostrado": "Cámara captó el secuestro de una nutricionista del IESS al salir de su casa en Durán",
+   "resumen_mostrado": "Cámara captó el secuestro de una nutricionista del IESS al salir de su casa en Durán  Vistazo",
+   "ambito_actual": "local",
+   "ciudad_actual": "",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Una nutricionista fue secuestrada al salir de su vivienda en Durán"
+    },
+    {
+     "medio": "Ecuavisa",
+     "feed_origen": "",
+     "titulo": "Nutricionista de hospital del IESS fue secuestrada en Durán frente a su casa"
+    },
+    {
+     "medio": "Vistazo",
+     "feed_origen": "",
+     "titulo": "Cámara captó el secuestro de una nutricionista del IESS al salir de su casa en Durán"
+    }
+   ],
+   "motivo_diagnostico": "2 fuentes reales sobre el mismo secuestro en Duran, agrupamiento correcto (Duran forma parte del area metropolitana de Guayaquil segun la lista CITIES actual).",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_08",
+   "tipo": "correcto",
+   "titular_mostrado": "Calle Rumichaca deja atrás las reparaciones superficiales y se reconstruye desde sus bases",
+   "resumen_mostrado": "“Esto estaba muy feo aquí, esto se llenaba de agua”, recordó Iván Aguirre Rodríguez, morador de la calle Rumichaca. Durante […]\nThe post Calle Rumichaca deja atrás las reparaciones superficiales y se ",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 1,
+   "fuentes": [
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "Calle Rumichaca deja atrás las reparaciones superficiales y se reconstruye desde sus bases"
+    }
+   ],
+   "motivo_diagnostico": "Fuente unica del Municipio de Guayaquil sobre una obra en una calle real de Guayaquil -- el texto no repite la palabra 'Guayaquil' (tipico de un comunicado municipal hiperlocal), pero ciudad_feed=Guayaquil es correcto: es EXACTAMENTE el caso para el que se diseño esa señal.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": "Caso de aceptacion: el arreglo NO debe exigir mencion textual cuando el feed es confiable y no hay contradiccion."
+  },
+  {
+   "id": "ok_09",
+   "tipo": "correcto",
+   "titular_mostrado": "Alcaldesa (s) verificó condiciones de los CAMI para eventuales afectados por El Niño",
+   "resumen_mostrado": "Con el objetivo de comprobar la capacidad de respuesta ante posibles desastres naturales o antrópicos, la alcaldesa subrogante, Tatiana Coronel, […]\nThe post Alcaldesa (s) verificó condiciones de los ",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 1,
+   "fuentes": [
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "Alcaldesa (s) verificó condiciones de los CAMI para eventuales afectados por El Niño"
+    }
+   ],
+   "motivo_diagnostico": "Fuente del Municipio de Guayaquil sobre una gestion de la alcaldesa subrogante de Guayaquil -- correcto pese a no repetir 'Guayaquil' en el texto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_10",
+   "tipo": "correcto",
+   "titular_mostrado": "Edificios de más de 100 años en Guayaquil presentan daños en plena temporada de lluvias",
+   "resumen_mostrado": "Edificios de más de 100 años en Guayaquil presentan daños en plena temporada de lluvias  expreso.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 2,
+   "fuentes": [
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "Inspeccionan casas patrimoniales en situación de vulnerabilidad para prevenir daños por lluvias"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Edificios de más de 100 años en Guayaquil presentan daños en plena temporada de lluvias"
+    }
+   ],
+   "motivo_diagnostico": "2 fuentes (Municipio + Expreso) sobre el mismo hecho (edificios patrimoniales dañados), agrupamiento correcto pese a bajo solape textual (parafraseo).",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_11",
+   "tipo": "correcto",
+   "titular_mostrado": "Intervienen supuesta clínica clandestina en Guayaquil y encuentran a personas con boletas de captura",
+   "resumen_mostrado": "Intervienen supuesta clínica clandestina en Guayaquil y encuentran a personas con boletas de captura  elcomercio.com",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 2,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Autoridades intervienen una supuesta clínica de adicciones en Guayaquil y hallan a personas requeridas por la justicia"
+    },
+    {
+     "medio": "elcomercio.com",
+     "feed_origen": "",
+     "titulo": "Intervienen supuesta clínica clandestina en Guayaquil y encuentran a personas con boletas de captura"
+    }
+   ],
+   "motivo_diagnostico": "2 fuentes reales sobre la misma clinica clandestina en Guayaquil, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_12",
+   "tipo": "correcto",
+   "titular_mostrado": "Capturan a presunto asaltante de la Metrovía en Guayaquil: esto es lo que se sabe",
+   "resumen_mostrado": "Capturan a presunto asaltante de la Metrovía en Guayaquil: esto es lo que se sabe  eltelegrafo.com.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 5,
+   "fuentes": [
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "Capturan en La Maná a presunto integrante de una banda delictiva que tenía un arma"
+    },
+    {
+     "medio": "El Diario (Manabi)",
+     "feed_origen": "https://www.eldiario.ec/feed/",
+     "titulo": "Aprehenden a sospechoso tras varios asaltos a mano armada en la Metrovía de Guayaquil"
+    },
+    {
+     "medio": "El Universo (Guayaquil)",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/guayaquil/?outputType=xml",
+     "titulo": "Aprehenden a sospechoso de al menos tres asaltos en unidades de la Metrovía"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Aprehenden a sujeto señalado por varios robos en unidades de la Metrovía"
+    },
+    {
+     "medio": "Primicias",
+     "feed_origen": "",
+     "titulo": "Ciudadanos atrapan a sospechoso de cometer tres asaltos armados en un solo día en buses de la Metrovía en Guayaquil"
+    },
+    {
+     "medio": "eltelegrafo.com.ec",
+     "feed_origen": "",
+     "titulo": "Capturan a presunto asaltante de la Metrovía en Guayaquil: esto es lo que se sabe"
+    }
+   ],
+   "motivo_diagnostico": "5 fuentes reales sobre el mismo capturado en la Metrovia de Guayaquil, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_13",
+   "tipo": "correcto",
+   "titular_mostrado": "Bomberos de Guayaquil recorrieron el centro en su tradicional Desfile de Antorchas",
+   "resumen_mostrado": "Bomberos de Guayaquil recorrieron el centro en su tradicional Desfile de Antorchas  expreso.ec",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 4,
+   "fuentes": [
+    {
+     "medio": "Primicias",
+     "feed_origen": "",
+     "titulo": "ATM anuncia cierre vial en el centro de Guayaquil por el Desfile de Antorchas este 26 de septiembre de 2026"
+    },
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "El centro de Guayaquil se iluminó con el tradicional Desfile de las Antorchas"
+    },
+    {
+     "medio": "El Universo (Guayaquil)",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/guayaquil/?outputType=xml",
+     "titulo": "El centro de Guayaquil se iluminó con el tradicional Desfile de las Antorchas"
+    },
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Bomberos de Guayaquil recorrieron el centro en su tradicional Desfile de Antorchas"
+    }
+   ],
+   "motivo_diagnostico": "4 fuentes reales sobre el mismo desfile de antorchas de bomberos, agrupamiento correcto.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": ""
+  },
+  {
+   "id": "ok_14",
+   "tipo": "correcto",
+   "titular_mostrado": "Socio Vivienda 2: Bandas retoman el control tras operativo policial en Guayaquil",
+   "resumen_mostrado": "Organizaciones criminales amenazan a la prensa a pocas horas del despliegue de las Fuerzas Armadas y la Policía. Ellos ya habían retomado el control",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 3,
+   "fuentes": [
+    {
+     "medio": "El Universo",
+     "feed_origen": "https://www.eluniverso.com/arc/outboundfeeds/rss-subsection/noticias/economia?outputType=xml",
+     "titulo": "Aduana incauta $ 70.000 en calzado durante operativo de control en Loja"
+    },
+    {
+     "medio": "Extra",
+     "feed_origen": "https://www.extra.ec/rss",
+     "titulo": "Socio Vivienda 2: Bandas retoman el control tras operativo policial en Guayaquil"
+    },
+    {
+     "medio": "extra.ec",
+     "feed_origen": "",
+     "titulo": "Socio Vivienda 2: Bandas retoman el control tras operativo policial en Guayaquil"
+    }
+   ],
+   "motivo_diagnostico": "Nota real de Guayaquil (Socio Vivienda 2) -- se detecto una fuente adicional de El Universo sobre una incautacion en Loja mezclada por palabras de 'operativo' -- ESTE CASO ya se comprobo como mezcla real (ver diagnostico), se incluye aca como ejemplo de 'casi correcto, roto por una sola fuente ajena' -- el titular principal y la mayoria de fuentes SI son correctas.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": false,
+    "grupos_correctos": [
+     [
+      "Socio Vivienda 2: Bandas retoman el control... (Guayaquil, 2 fuentes)"
+     ],
+     [
+      "Aduana incauta $70.000 en calzado... en Loja (fuente ajena)"
+     ]
+    ]
+   },
+   "nota": "Caso limite: mayoria de fuentes correctas, una sola fuente de Loja se colo -- prueba la regla de 'mayoria', no unanimidad."
+  },
+  {
+   "id": "ok_15",
+   "tipo": "correcto",
+   "titular_mostrado": "Chancho Fest 2026 llevará más de 50 propuestas gastronómicas y espectáculos a Parque Samanes",
+   "resumen_mostrado": "Durante tres días, Parque Samanes se convertirá en el punto de encuentro de los amantes de la gastronomía ecuatoriana con […]\nThe post Chancho Fest 2026 llevará más de 50 propuestas gastronómicas y es",
+   "ambito_actual": "local",
+   "ciudad_actual": "Guayaquil",
+   "n_fuentes": 2,
+   "fuentes": [
+    {
+     "medio": "expreso.ec",
+     "feed_origen": "",
+     "titulo": "Alcaldesa de Guayaquil asegura que Parque Samanes está \"en buen estado\""
+    },
+    {
+     "medio": "Municipio de Guayaquil",
+     "feed_origen": "https://www.guayaquil.gob.ec/feed/",
+     "titulo": "Chancho Fest 2026 llevará más de 50 propuestas gastronómicas y espectáculos a Parque Samanes"
+    }
+   ],
+   "motivo_diagnostico": "2 fuentes sobre Parque Samanes -- declaracion de la alcaldesa sobre el estado del parque + anuncio del festival. Se acepta como UNA historia (mismo lugar especifico, tema continuo de Parque Samanes) aunque el diagnostico automatico lo marco borderline por bajo solape de palabras.",
+   "etiqueta_correcta": {
+    "ciudad_correcta": "Guayaquil",
+    "ambito_correcto": "local",
+    "es_una_sola_historia": true
+   },
+   "nota": "Caso limite aceptado como correcto: comparten lugar especifico real (Parque Samanes), no solo vocabulario generico."
+  }
+ ]
+}

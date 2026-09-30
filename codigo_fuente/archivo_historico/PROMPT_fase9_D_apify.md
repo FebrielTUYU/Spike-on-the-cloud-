@@ -1,0 +1,35 @@
+# Fase 9 (parte D modificada): X vía Apify en vez de la API oficial
+
+Este prompt **reemplaza la parte D** de `PROMPT_fase9.md`. Fernando decidió probar X a través de Apify durante un mes, en lugar de pagar la API oficial. Si ya empezaste la parte D, adapta lo hecho a este prompt y no lo dupliques. Mantén la arquitectura de proveedor: `xapi.py` expone las mismas funciones hacia `monitor.py`/`alertas.py` y por dentro usa un backend. Deja `"apify"` como único backend activo y `"oficial"` como stub para el futuro. Si las partes A–C todavía no terminaron, termínalas primero. D va al final, como estaba previsto.
+
+## Decisión del proyecto (actualiza "Decisiones ya tomadas" en CLAUDE.md)
+Fernando autoriza **X vía Apify**, con un actor de terceros que hace scraping sin cuenta logueada, **solo como prueba de un mes**. Hay que registrar el riesgo real: no es un acceso autorizado por X, puede dejar de funcionar sin aviso si X lo bloquea, y cualquier dato que termine publicado debe verificarse en el tweet original. Sigue prohibido usar una cuenta propia logueada o scrapear X directamente desde el programa.
+
+## Lo que ya se verificó (2026-09-26, prueba real con la cuenta de Fernando)
+- Actor: `kaitoeasyapi/twitter-x-data-tweet-scraper-pay-per-result-cheapest`. Cobra **$0.00025 por tweet** en el plan FREE. El plan gratis de Apify da **$5 de crédito al mes**.
+- La entrada `{"searchTerms": ["Guayaquil lluvias"], "maxItems": 20, "queryType": "Latest", "lang": "es"}` devolvió **20 tweets reales** de las últimas horas en ~25 s.
+- Campos confirmados en la salida: `id`, `text`, `createdAt` (formato "Sat Sep 26 00:44:19 +0000 2026"), `url`, `conversationId`, `isReply`, `inReplyToId`, `replyCount`, `likeCount`, `retweetCount`, `quoteCount`, `viewCount`, `lang`, `author.userName`, `author.name`, `author.location`, `author.followers`, `author.isBlueVerified`, `author.description`.
+- Salió material útil. Un aviso ciudadano de @EmergenciasEc ("Se reportan fuertes lluvias en varios sectores de Guayaquil. Confirmen", 25 respuestas) sirve para alertas. Un cruce político sobre las lluvias entre una candidata y la alcaldesa y un hilo con 14 respuestas sirven para el Pulso social. Medios como Expreso, Extra y El Telégrafo sirven para comparar quién publicó primero.
+- Respaldo si ese actor falla: `apidojo/tweet-scraper` ($0.0004 por tweet; su entrada acepta `searchTerms`, `conversationIds`, `maxItems`, `sort`, `tweetLanguage`).
+
+## Implementación (`xapi.py`, solo stdlib)
+1. **Llamada**: `POST https://api.apify.com/v2/acts/kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest/run-sync-get-dataset-items?token=<TOKEN>&maxTotalChargeUsd=<tope>&timeout=120`, con el input en JSON. Pasa siempre `maxTotalChargeUsd` por llamada, para que Apify corte aunque el código se equivoque. Todo esto vive en el hilo trabajador (`enrich_pass`), nunca en `run_fast`.
+2. **Token**: se lee de `MONITOR_APIFY_TOKEN` o de `x_config.json`. Nunca va en el código, en `data.json`, en logs ni en mensajes de error; ojo con que la URL lo lleva en la query, así que hay que enmascararla al loguear. Sin token, el módulo queda apagado y `estado_x` dice "desactivado: falta token de Apify".
+3. **Gasto real, no estimado**: además del cálculo previo (`maxItems` × $0.00025), después de cada corrida consulta el costo real del run (`GET /v2/actor-runs/<runId>`, campo `usageTotalUsd`, o el equivalente que devuelva la API) y guárdalo en `x_gasto.json`. El endpoint sync no devuelve el runId de forma directa: si no lo puedes obtener, usa `POST .../runs?waitForFinish=120` y después lee el dataset. Cada corrida también consume compute de la plataforma, además del precio por tweet, y eso tiene que entrar en la cuenta.
+4. **Topes** (configurables): `MONITOR_X_TOPE_DIA_USD=0.16` y `MONITOR_X_TOPE_MES_USD=4.50`, que dejan margen dentro de los $5 gratis. Antes de cada llamada, si el costo máximo de esa llamada supera lo que queda, no se hace y `estado_x` lo dice.
+5. **Modo simulación** (`MONITOR_X_SIMULAR=1`): arma las consultas reales a partir de las historias actuales, las muestra con su costo proyectado por día y por mes, y no hace red. Es lo primero que se corre.
+6. **Plan de consultas** (valores por defecto; peor caso ≈ 630 tweets/día ≈ $0.16/día):
+   - **Historias**: las 6 historias locales principales, ya con el agrupamiento corregido de la parte A. `searchTerms` se arma con las entidades de la historia (nombres, siglas, lugar específico) y nunca con el nombre de la categoría. Van `queryType: "Latest"`, `lang: "es"` y 25 tweets por historia, 2 veces al día.
+   - **Debate**: una vez al día, para el tweet con más `replyCount` de cada una de las 3 historias con más volumen, se bajan sus respuestas (30), buscando `conversation_id:<conversationId>` como término. Verifica con una llamada chica que este operador funcione en el actor; si no, usa el respaldo `apidojo/tweet-scraper` con `conversationIds`.
+   - **Alertas Guayaquil**: una vez por hora, tipos de `alertas.py` + Guayaquil/`BARRIOS_GYE`, 10 tweets como máximo. Usa `since_id` (el actor lo acepta) o descarta por `id` ya visto, para no pagar dos veces lo mismo. Entran a `alertas.py` como fuente `"x"`, y la corroboración se deduplica por `author.userName`.
+7. **Clasificación de autores**: persona / medio / institución / político. Usa `es_cuenta_medio()` de `social.py`, más `author.description` y una lista editable de cuentas conocidas (EmapagGye, municipios, ECU911, etc.). Si `author.location` no apunta a Ecuador y el texto no nombra una entidad de la historia, se descarta y se cuenta ("descartados: N").
+8. **Caché** en `x_cache.json` (tweets por historia, por `id`). **Errores** reales en `estado_x`: 401 token inválido, 402 sin crédito, actor caído o timeout.
+9. **Panel "Prueba X"** en Estadísticas: gasto del día y del mes, el gasto restante y el costo por historia con debate útil; % de historias locales principales con 10 o más tweets de personas en Ecuador; alertas originadas o corroboradas por X y sus minutos de adelanto sobre la prensa; proporción de personas frente a medios, instituciones y políticos. Con esto Fernando decide al final del mes si sigue.
+
+## Pruebas (`test_fase9_xapi.py`, sin red, con fixtures)
+Usa como fixture un JSON con la forma real de arriba. Tiene que cubrir: sin token queda apagado; la simulación no hace red; el tope diario corta antes de llamar; el token nunca aparece en logs ni en `estado_x`; un `id` repetido no se procesa dos veces; un 402 queda reportado; un tweet de @EmergenciasEc sobre lluvias en Guayaquil crea o corrobora una alerta; un tweet de medio no cuenta como voz ciudadana.
+
+## Verificación final
+Una sola llamada real y chica (máximo 20 tweets) con el token de Fernando, mostrando el gasto real registrado. Después, `serve` en modo simulación con la proyección de costo. Documenta todo en CLAUDE.md, en "Fase 9 — parte D (Apify)", con sus pendientes reales.
+
+Al final, pídele a Fernando una sola acción: entrar a Apify → **Settings → API & Integrations**, copiar su **Personal API token** y pegarlo donde indiques. Dale el comando listo para copiar.

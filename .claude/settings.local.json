@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(codex exec:*)",
+      "Bash(powershell -NoProfile -Command \"\\(Test-NetConnection -ComputerName 127.0.0.1 -Port 8000 -WarningAction SilentlyContinue\\).TcpTestSucceeded\")"
+    ]
+  }
+}

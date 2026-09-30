@@ -1,0 +1,6 @@
+@echo off
+REM Doble clic: deja el dashboard disponible en el iPhone fuera de casa (via Tailscale).
+cd /d "%~dp0"
+python -c "import movil; movil.activar_tailscale()" || py -c "import movil; movil.activar_tailscale()"
+echo.
+pause

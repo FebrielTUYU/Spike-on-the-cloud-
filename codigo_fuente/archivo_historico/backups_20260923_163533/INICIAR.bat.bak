@@ -1,0 +1,9 @@
+@echo off
+REM Doble clic en este archivo para arrancar el Monitor en tiempo real.
+REM Abre el dashboard en el navegador y se actualiza solo. Deja la ventana abierta.
+cd /d "%~dp0"
+echo Iniciando el Monitor de noticias... (para detener, cierra esta ventana)
+python monitor.py serve || py monitor.py serve
+echo.
+echo El Monitor se detuvo. Revisa el mensaje de arriba si fue por un error.
+pause

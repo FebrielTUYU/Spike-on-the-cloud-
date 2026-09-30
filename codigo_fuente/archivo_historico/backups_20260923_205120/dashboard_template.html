@@ -1,0 +1,2349 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor de noticias — Ecuador</title>
+<link rel="icon" href="logo.png">
+<!-- iPhone: "Compartir > Agregar a pantalla de inicio" lo abre como app, con este icono -->
+<link rel="apple-touch-icon" href="logo.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Monitor">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#16181d; --muted:#5b6472;
+    --line:#e5e8ee; --accent:#1f6feb; --pol:#7c3aed; --eco:#0e9f6e; --intl:#d97706;
+    --loc:#0e9f6e; --chip:#eef1f6;
+    --shadow:0 1px 2px rgba(20,24,35,.06),0 4px 12px rgba(20,24,35,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141824; --card:#1c2130; --ink:#eef2f8; --muted:#9aa6bd;
+           --line:#2b3242; --accent:#5b9bff; --chip:#262d3d; --intl:#f59e0b;
+           --shadow:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.25); }
+  }
+  *{box-sizing:border-box}
+  .topbar{height:5px;background:linear-gradient(90deg,#8b5cf6,#3b82f6,#10b981,#f59e0b,#f43f5e);}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 64px;}
+  header h1{font-size:22px;margin:0 0 2px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .live{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:#e11d48;
+        border-radius:999px;padding:2px 8px;margin-left:8px;vertical-align:middle;}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 16px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
+        border-radius:12px;padding:10px 16px;box-shadow:var(--shadow);min-width:92px;}
+  .stat b{font-size:22px;display:block;line-height:1.1;}
+  .stat span{color:var(--muted);font-size:12px;}
+  #statskpi .stat:nth-child(1){border-left-color:#5b9bff}
+  #statskpi .stat:nth-child(2){border-left-color:#10b981}
+  #statskpi .stat:nth-child(3){border-left-color:#f59e0b}
+  #statskpi .stat:nth-child(4){border-left-color:#f43f5e}
+  .mainnav{display:flex;gap:8px;margin:4px 0 18px;border-bottom:1px solid var(--line);}
+  .mainnav button{font:inherit;font-size:16px;font-weight:700;cursor:pointer;border:0;
+                  background:transparent;color:var(--muted);padding:10px 4px;margin-right:16px;
+                  border-bottom:3px solid transparent;}
+  .mainnav button.active{color:var(--ink);border-bottom-color:var(--accent);}
+  .dist .drow{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px;}
+  .dist .dk{width:96px;color:var(--muted);}
+  .dist .dtrack{flex:1;height:14px;border-radius:6px;background:var(--chip);overflow:hidden;}
+  .dist .dfill{height:100%;border-radius:6px;}
+  .dist .dv{width:34px;text-align:right;font-weight:700;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;}
+  .tab{font:inherit;font-weight:600;font-size:14px;cursor:pointer;
+       background:var(--card);color:var(--muted);border:1px solid var(--line);
+       border-radius:999px;padding:8px 16px;box-shadow:var(--shadow);}
+  .tab:hover{color:var(--ink);}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+       background:var(--card);box-shadow:var(--shadow);margin:0 0 12px;}
+  .seg button{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:0;
+              background:transparent;color:var(--muted);padding:7px 14px;}
+  .seg button+button{border-left:1px solid var(--line);}
+  .seg button.active{background:var(--ink);color:var(--bg);}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+            background:var(--card);border:1px solid var(--line);border-radius:12px;
+            padding:12px;box-shadow:var(--shadow);}
+  select,input{font:inherit;color:var(--ink);background:var(--bg);
+               border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  input{flex:1;min-width:160px;}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;
+         padding:14px 16px;margin:14px 0;box-shadow:var(--shadow);}
+  .panel h2{font-size:14px;margin:0 0 2px;}
+  .panel .hint{color:var(--muted);font-size:12px;margin:0 0 12px;}
+  .sparks{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .spark{background:var(--card);border:1px solid var(--line);border-radius:12px;
+         padding:12px 14px 14px;box-shadow:var(--shadow);cursor:pointer;transition:transform .1s;}
+  .spark:hover{transform:translateY(-2px);}
+  .spark .lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:6px;}
+  .spark .lbl b{font-size:16px;}
+  .spark .lbl span{color:var(--muted);font-size:11px;}
+  #list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        margin:0;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
+  .thumbwrap{position:relative;height:140px;background:var(--chip);}
+  .thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  .phlabel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+           font-weight:800;font-size:13px;letter-spacing:2px;color:#fff;opacity:.85;}
+  .rankno{position:absolute;top:8px;left:8px;background:rgba(15,17,21,.72);color:#fff;
+          font-weight:800;font-size:12px;padding:3px 9px;border-radius:999px;}
+  .starbtn{position:absolute;top:6px;right:6px;width:30px;height:30px;border:0;border-radius:999px;
+           background:rgba(15,17,21,.55);color:#fff;font-size:16px;line-height:1;cursor:pointer;
+           display:flex;align-items:center;justify-content:center;}
+  .starbtn.on{background:#f59e0b;}
+  .starbtn:hover{background:rgba(15,17,21,.8)}
+  .starbtn.on:hover{background:#d97706}
+  .cardbody{padding:12px 14px;}
+  .logo{height:46px;width:46px;border-radius:10px;object-fit:cover;box-shadow:var(--shadow);}
+  .resumen{margin:2px 0 8px;color:var(--muted);font-size:13px;line-height:1.4;
+           display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .ia{margin:2px 0 8px;font-size:13px;line-height:1.45;color:var(--ink);
+      background:var(--chip);border-left:3px solid var(--accent);border-radius:6px;padding:6px 9px;}
+  .ia b{color:var(--accent);}
+  .contexto{margin:2px 0 8px;font-size:13px;line-height:1.45;color:var(--ink);
+      background:var(--chip);border-left:3px solid var(--pol);border-radius:6px;padding:6px 9px;}
+  .contexto b{color:var(--pol);}
+  .contexto .fuenteswiki{color:var(--muted);font-size:12px;}
+  .contexto .fuenteswiki a{color:var(--pol);text-decoration:none;}
+  .contexto.analizando,.contexto.vacio{color:var(--muted);font-style:italic;
+      background:none;border-left-color:var(--line);}
+  .gapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;
+           padding:14px 16px;margin:12px 0;box-shadow:var(--shadow);border-left:5px solid var(--accent);}
+  .gapcard h3{margin:0 0 2px;font-size:16px;}
+  .gaptop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .gapscore{margin-left:auto;font-weight:800;font-size:15px;}
+  .gapwhy{font-size:13.5px;color:var(--ink);margin:6px 0 8px;}
+  .gaplinks a{display:block;color:var(--accent);text-decoration:none;font-size:13px;padding:3px 0;}
+  .gaplinks a:hover{text-decoration:underline;}
+  .gapnone{color:var(--muted);font-size:13px;font-style:italic;}
+  .interp{font-size:14px;line-height:1.55;}
+  .interp li{margin:4px 0;}
+  .interp b{color:var(--ink);}
+  .ph-pol{background:var(--pol)} .ph-eco{background:var(--eco)} .ph-seg{background:#be123c}
+  .ph-soc{background:#2563eb} .ph-gen{background:#64748b}
+  .vermas{display:block;margin:16px auto 0;font:inherit;font-weight:600;cursor:pointer;
+          background:var(--card);color:var(--accent);border:1px solid var(--line);
+          border-radius:999px;padding:9px 20px;box-shadow:var(--shadow);}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;}
+  .bars{margin-top:6px;}
+  .bars .b{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin:2px 0;}
+  .bars .track{flex:1;height:6px;border-radius:999px;background:var(--chip);overflow:hidden;}
+  .bars .fill{display:block;height:100%;border-radius:999px;}  /* sin display:block el span no se veia: las barras salian vacias */
+  .bars .k{width:64px;} .bars .v{width:26px;text-align:right;color:var(--ink);font-weight:600;}
+  .spark{cursor:pointer;}
+  .badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;
+         background:var(--accent);color:#fff;}
+  .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff;}
+  .tag.pol{background:var(--pol)} .tag.eco{background:var(--eco)}
+  .tag.seg{background:#be123c} .tag.soc{background:#2563eb} .tag.gen{background:#64748b}
+  .tag.loc{background:var(--loc)} .tag.intl{background:var(--intl)}
+  .uhrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .uhhora{font-size:12px;color:var(--muted);min-width:64px;flex:none;}
+  .uhtit{flex:1;min-width:200px;color:var(--ink);text-decoration:none;font-weight:600;}
+  .uhtit:hover{text-decoration:underline;}
+  .uhmedio{font-size:12px;color:var(--muted);flex:none;}
+  .tag.gap{background:#e11d48;color:#fff}
+  .dem{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);}
+  .dem b{color:var(--ink);}
+  .chip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);}
+  .titular{font-size:16px;font-weight:600;margin:4px 0;}
+  .time{color:var(--muted);font-size:12px;margin-left:auto;}
+  details{margin-top:8px;} summary{cursor:pointer;color:var(--accent);font-size:13px;}
+  .src{font-size:13px;padding:6px 0;border-top:1px solid var(--line);}
+  .src a{color:var(--accent);text-decoration:none;} .src a:hover{text-decoration:underline;}
+  .src .o{color:var(--muted);font-size:12px;}
+  .empty{color:var(--muted);text-align:center;padding:40px;}
+  .note{background:var(--card);border:1px dashed var(--line);border-radius:10px;
+        padding:10px 12px;color:var(--muted);font-size:13px;margin:14px 0;}
+  footer{color:var(--muted);font-size:12px;margin-top:26px;text-align:center;word-break:break-word;}
+  .card,.gapcard[data-tema]{cursor:pointer;}
+  /* ---- modal de detalle (Parte E): SOLO el contenido del item, sin chat ---- */
+  .modaloverlay{position:fixed;inset:0;background:rgba(10,12,18,.55);display:flex;
+    align-items:flex-start;justify-content:center;padding:24px 16px;z-index:900;overflow-y:auto;}
+  /* Bug real: una regla de autor que fija "display" (como la de arriba) le
+     GANA a la regla "[hidden]{display:none}" del navegador sin importar
+     especificidad (una regla de autor siempre le gana a una del navegador) --
+     asi que aunque el JS pusiera hidden=true, la ventana seguia viendose, y
+     los botones de cerrar/minimizar parecian no hacer nada. Con el selector
+     de ID + [hidden] de abajo (mas especifico, y tambien de autor) se
+     restaura el ocultamiento real. */
+  #modalOverlay[hidden]{display:none;}
+  #chatWidget[hidden]{display:none;}
+  /* mismo bug, ya existia antes de hoy: .live y .vermas tambien fijan
+     "display" en su regla de clase, asi que EN VIVO y "Ver mas" podian
+     quedar visibles siempre aunque el JS les pusiera hidden=true/false. */
+  #live[hidden]{display:none;}
+  #vermas[hidden]{display:none;}
+  .modalbox{background:var(--card);border-radius:14px;max-width:720px;width:100%;
+    max-height:calc(100vh - 48px);overflow-y:auto;
+    padding:20px 22px 18px;position:relative;box-shadow:0 12px 44px rgba(0,0,0,.35);margin:auto 0;}
+  .modalclose{position:absolute;top:12px;right:12px;width:32px;height:32px;border:0;border-radius:999px;
+    background:var(--chip);color:var(--ink);font-size:15px;cursor:pointer;}
+  .modalclose:hover{background:var(--line);}
+  .modalhead{margin:0 0 6px}
+  #modalBody h2{font-size:19px;margin:6px 34px 8px 0}
+  #modalBody h4{font-size:13px;margin:14px 0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  /* ---- chat flotante (Parte E): esquina inferior derecha, chico, nunca tapa
+     la pantalla -- se puede seguir viendo/clickeando noticias con el chat
+     abierto. z-index MAYOR que el modal para que el chat quede siempre
+     encima y accesible aunque haya un detalle abierto atras. ---- */
+  .chatbubble{position:fixed;right:18px;bottom:18px;width:54px;height:54px;border-radius:999px;
+    border:0;background:var(--accent);color:#fff;font-size:23px;cursor:pointer;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:950;}
+  .chatbubble:hover{filter:brightness(1.08);}
+  .chatwidget{position:fixed;right:18px;bottom:18px;width:min(350px,calc(100vw - 36px));
+    max-height:min(480px,calc(100vh - 36px));display:flex;flex-direction:column;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 10px 36px rgba(0,0,0,.3);z-index:950;overflow:hidden;}
+  .chatwidget-head{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:10px 8px 10px 14px;border-bottom:1px solid var(--line);background:var(--chip);flex:none;}
+  .chatwidget-title{display:flex;flex-direction:column;min-width:0;font-weight:700;font-size:13px;}
+  .chatwidget-item{font-weight:500;color:var(--muted);font-size:12px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+  .chatwidget-btns{display:flex;gap:2px;flex:none;}
+  .chatwidget-btns button{width:26px;height:26px;border:0;border-radius:7px;background:transparent;
+    color:var(--muted);font-size:14px;cursor:pointer;line-height:1;}
+  .chatwidget-btns button:hover{background:var(--line);color:var(--ink);}
+  .chatlog{flex:1;overflow-y:auto;margin:0;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px;}
+  .chatmsg{padding:8px 11px;border-radius:10px;font-size:13.5px;line-height:1.45;max-width:88%;white-space:pre-wrap;}
+  .chatmsg.usuario{background:var(--accent);color:#fff;align-self:flex-end;}
+  .chatmsg.ia{background:var(--chip);color:var(--ink);align-self:flex-start;}
+  .chatmsg.sistema{background:none;color:var(--muted);font-style:italic;align-self:center;font-size:12.5px;}
+  .chatmsg.ia .cursor{opacity:.5;animation:parpadeo 1s step-start infinite;}
+  @keyframes parpadeo{50%{opacity:0}}
+  .chatmodo{display:flex;gap:6px;padding:8px 12px 0;flex:none;}
+  .chatmodo button{font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;
+    background:var(--chip);color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:4px 10px;}
+  .chatmodo button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .chatform{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);flex:none;}
+  .chatform input,.chatform textarea{flex:1;min-width:0;font:inherit;resize:vertical;}
+  .asistentelog{min-height:280px;max-height:55vh;border:1px solid var(--line);border-radius:12px;background:var(--card);margin:10px 0;}
+  .chatform button{font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;
+    border:0;border-radius:8px;padding:8px 14px;flex:none;}
+  .chatform button:disabled{opacity:.6;cursor:default;}
+  /* ---- Celular (iPhone): la barra de secciones se desliza en vez de desbordar,
+     y se compacta un poco todo para que quepa mas en pantalla ---- */
+  @media (max-width: 600px){
+    .mainnav{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
+    .mainnav::-webkit-scrollbar{display:none;}
+    .mainnav button{white-space:nowrap;flex:0 0 auto;font-size:15px;}
+    body{font-size:14px;}
+    #list{grid-template-columns:1fr;}
+    .sparks{grid-template-columns:1fr;}
+    img,svg,canvas,table{max-width:100%;}
+  }
+
+  /* --- 2026-09-22: interaccion, notas, graficos legibles --- */
+  .pillbtn{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);
+           background:var(--card);color:var(--ink);border-radius:999px;padding:7px 14px;box-shadow:var(--shadow);}
+  .pillbtn:hover{border-color:var(--accent);}
+  .pillbtn:disabled{opacity:.6;cursor:wait;}
+  #nuevoPill{background:#e11d48;color:#fff;border-color:#e11d48;}
+  .lc{position:relative;}
+  .lc .lcguide{position:absolute;top:0;bottom:18px;width:1px;background:var(--muted);opacity:.6;pointer-events:none;display:none;}
+  .lc .lctip{position:absolute;top:-6px;transform:translate(-50%,-100%);background:var(--ink);color:var(--bg);
+             font-size:12px;padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;display:none;z-index:3;}
+  .lc .lcaxis{display:flex;justify-content:space-between;gap:6px;font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .lc .lcaxis span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lc:hover .lcguide,.lc:hover .lctip{display:block;}
+  .nota{margin:6px 0 0;padding:6px 10px;border-left:3px solid #f59e0b;background:rgba(245,158,11,.10);
+        border-radius:6px;font-size:13px;white-space:pre-wrap;}
+  .notabtn{position:absolute;top:6px;right:42px;border:0;border-radius:999px;width:30px;height:30px;cursor:pointer;
+           background:rgba(15,17,21,.55);color:#fff;font-size:14px;}
+  .notabtn:hover{background:rgba(15,17,21,.8)}
+  .notabtn.on{background:#f59e0b;}
+  .notabox textarea{width:100%;min-height:90px;font:inherit;font-size:14px;padding:8px;border-radius:8px;
+           border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical;}
+  .notabox .row{margin-top:6px;}
+  .quick{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;}
+  .quick button{font:inherit;font-size:12px;cursor:pointer;border:1px solid var(--line);background:var(--chip);
+           color:var(--ink);border-radius:999px;padding:5px 10px;}
+  .quick button:hover{border-color:var(--accent);}
+  .fcbox summary{cursor:pointer;font-size:13px;font-weight:600;}
+  .voz{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-right:4px;}
+  .voz.persona{background:#7c3aed;color:#fff;} .voz.medio{background:var(--chip);color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+<div class="wrap">
+  <header style="display:flex;align-items:center;gap:12px;">
+    <img src="logo.png" class="logo" alt="" onerror="this.style.display='none'">
+    <div>
+      <h1 style="margin:0">Monitor de noticias — Ecuador <span class="live" id="live" hidden>EN VIVO</span></h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <button class="pillbtn" id="nuevoPill" hidden title="Llegaron datos nuevos mientras leías">● Hay datos nuevos — mostrar</button>
+      <button class="pillbtn" id="refrescarBtn" hidden title="Trae los feeds ya mismo, sin reiniciar el programa">↻ Actualizar ahora</button>
+    </div>
+  </header>
+
+  <div class="mainnav" id="mainnav">
+    <button class="active" data-sec="noticias">Noticias</button>
+    <button data-sec="ultimahora">Última hora <span id="uhBadge" class="badge" hidden></span></button>
+    <button data-sec="social">Pulso social</button>
+    <button data-sec="stats">Estadisticas</button>
+    <button data-sec="gap">Oportunidades</button>
+    <button data-sec="contraste">Contraste</button>
+    <button data-sec="guardadas">Guardadas y notas</button>
+    <button data-sec="asistente">Asistente</button>
+    <button data-sec="buscar">Buscar</button>
+  </div>
+
+  <section id="secNoticias">
+    <div class="stats" id="stats"></div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-view="">Portada</button>
+      <button class="tab" data-view="politica">Politica</button>
+      <button class="tab" data-view="economia">Economia</button>
+      <button class="tab" data-view="seguridad">Seguridad</button>
+      <button class="tab" data-view="sociedad">Sociedad</button>
+      <button class="tab" data-view="general">General</button>
+    </div>
+
+    <div class="seg" id="seg">
+      <button data-origin="">Todos</button>
+      <button class="active" data-origin="local">Ecuador</button>
+      <button data-origin="guayaquil">Guayaquil</button>
+      <button data-origin="internacional">Internacional</button>
+    </div>
+
+    <div class="seg" id="freshseg">
+      <button class="active" data-fresh="recientes">Recientes</button>
+      <button data-fresh="anteriores">Anteriores</button>
+    </div>
+    <p class="hint" id="freshhint" style="margin:0 0 10px"></p>
+
+    <div class="controls">
+      <select id="orden">
+        <option value="relevancia">Mas relevantes</option>
+        <option value="reciente">Mas recientes</option>
+      </select>
+      <select id="tema"><option value="">Todos los temas</option></select>
+      <input id="q" placeholder="Buscar en titulares...">
+    </div>
+
+    <p class="hint" id="feedhint" style="margin:12px 2px 6px"></p>
+    <div id="list"></div>
+    <button class="vermas" id="vermas" hidden>Ver mas</button>
+  </section>
+
+  <!-- Fase 0 (velocidad): vista aparte, ordenada SOLO por hora de publicacion
+       (no por interes/relevancia como Noticias) -- para ver lo que acaba de
+       salir sin que el ranking lo entierre. El badge del boton de arriba
+       (#uhBadge) se actualiza en CADA poll() sin importar si estas leyendo
+       con scroll (bug real encontrado en el diagnostico: el resto del
+       dashboard NO aplica datos nuevos si scrolleaste mas de 400px, para no
+       interrumpir la lectura -- correcto ahi, pero aca el punto es
+       justamente enterarse rapido de lo nuevo). -->
+  <section id="secUltimaHora" hidden>
+    <div class="panel" style="border-left:4px solid #ef4444">
+      <h2 style="margin:0 0 4px">Última hora</h2>
+      <p class="hint">Ordenado solo por hora de publicación (no por relevancia). Se actualiza solo.</p>
+    </div>
+    <div class="seg" id="uhSeg">
+      <button class="active" data-ua="">Todos</button>
+      <button data-ua="local">Ecuador</button>
+      <button data-ua="guayaquil">Guayaquil</button>
+      <button data-ua="internacional">Internacional</button>
+    </div>
+    <div id="uhList"></div>
+  </section>
+
+  <section id="secStats" hidden>
+    <div class="seg" id="statseg" style="margin-bottom:14px">
+      <button class="active" data-sa="">Todo</button>
+      <button data-sa="local">Ecuador</button>
+      <button data-sa="guayaquil">Guayaquil</button>
+      <button data-sa="internacional">Mundo</button>
+    </div>
+
+    <div class="stats" id="statskpi"></div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 2px">Participacion de mercado</h2>
+      <p class="hint">Cómo se reparte cada "mercado" por categoria: el <b>total</b> de historias,
+      la <b>cobertura</b> de prensa (GDELT) y las <b>busquedas</b> del publico, con porcentajes.</p>
+      <div class="sparks" id="pies"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 6px">Interpretacion</h2>
+      <ul class="interp" id="interp"></ul>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 2px">Historias por categoria</h2>
+      <p class="hint">Cuanto se esta publicando de cada categoria ahora mismo.</p>
+      <div id="dist"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 2px">Evolución por categoría — <span id="evolAmbLabel"></span></h2>
+      <p class="hint">Cuantas historias hubo de cada categoría en cada pasada del feed, con datos
+      propios del monitor (no depende de GDELT). Respeta el filtro Todo/Ecuador/Guayaquil/Mundo de
+      arriba.</p>
+      <div id="evolCat"></div>
+    </div>
+
+    <div class="panel" id="chartpanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="margin:0">Interes por tema: <span id="fuente"></span></h2>
+        <div class="seg" id="rankseg" style="margin:0">
+          <button class="active" data-rank="buscado">Mas buscado</button>
+          <button data-rank="brecha">Brecha</button>
+        </div>
+      </div>
+      <p class="hint" id="charthint"></p>
+      <div class="sparks" id="sparks"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 2px">Prensa: volumen y tono — <span id="gdeltsrc"></span></h2>
+      <p class="hint">Cuanto cubre la prensa cada tema (miles de medios via GDELT) y con que
+      <b>tono</b>: <span style="color:#10b981">verde = positivo</span>,
+      <span style="color:#f43f5e">rojo = negativo</span>. Es la cobertura real, mas alla de tus feeds.</p>
+      <div class="sparks" id="gdeltsparks"></div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin:0 0 2px">Demora real por medio (Fase 0)</h2>
+      <p class="hint">Cuanto tarda una nota en pasar de "el medio la publicó" (según su propio feed)
+      a "el monitor la vio" — medido de verdad desde que arrancó esto, no estimado. Un medio sin
+      historial todavía no tiene fila (hace falta que pase al menos una nota nueva suya).</p>
+      <div id="latenciaFeeds"></div>
+    </div>
+
+  </section>
+
+  <section id="secSocial" hidden>
+    <div class="panel" style="border-left:4px solid #7c3aed">
+      <h2 style="margin:0 0 4px">¿Qué dice la gente al respecto? — <span id="socialsrc"></span></h2>
+      <p class="hint">Qué se dice en redes <b>públicas y abiertas</b> (Bluesky, Mastodon, Reddit y
+      YouTube — comentarios de video incluidos —, sin cuentas) sobre cada tema top, leído por tu IA
+      local (OSINT): volumen de conversación, <b>sentimiento</b>, <b>polarización</b>, de qué se habla
+      y las publicaciones con más reacción, separadas en <b>lo que dice la gente</b> (personas y
+      creadores/canales independientes) y <b>lo que dicen los medios</b> (cuentas y canales de medios
+      conocidos). Cada publicación de YouTube dice ademas si el canal del video es un medio o un
+      creador (y sus suscriptores, si el canal los muestra).
+      <b>Telegram es distinto</b>: son canales de difusión (broadcast) de medios/fuentes de
+      seguridad ecuatorianos, no conversación ciudadana — sirve para el eje de seguridad y
+      la recencia (suelen postear primero ahí), no para medir opinión pública.</p>
+      <details style="margin-top:6px"><summary class="hint">Por qué no están X, TikTok, Instagram ni Facebook</summary>
+        <p class="hint" style="margin-top:6px">Ninguna da acceso público y gratis a buscar publicaciones sin
+        iniciar sesión con una cuenta real (esta herramienta nunca scrapea logueada). Lo que haría falta
+        para sumarlas mas adelante:</p>
+        <ul class="hint" style="margin:0 0 0 18px">
+          <li><b>X (Twitter)</b>: API de pago (plan Basic desde ~$200 USD/mes) con cupo de lecturas muy bajo
+          para ese precio; el nivel gratuito actual no permite búsqueda.</li>
+          <li><b>TikTok</b>: la Research API es gratis pero solo para investigación académica verificada
+          (requiere afiliación universitaria/instituto de investigación aprobado por TikTok); no hay
+          acceso público equivalente para un proyecto personal.</li>
+          <li><b>Instagram / Facebook</b> (Meta Graph API): requiere una app de Meta revisada y aprobada,
+          y en la práctica solo da datos de páginas/cuentas propias o con permiso explícito del dueño —
+          no búsqueda abierta de lo que publica el público en general.</li>
+        </ul>
+        <p class="hint" style="margin-top:6px">El módulo (<code>social.py</code>) ya está separado por fuente
+        (una función por red, todas devuelven el mismo <code>SocialPost</code>) para poder sumar una de estas
+        despues sin tocar el resto, si en algún momento vale pagar la API o conseguir el acceso académico.</p>
+      </details>
+    </div>
+    <div class="seg" id="socialseg" style="margin-bottom:14px">
+      <button class="active" data-so="">Todos</button>
+      <button data-so="ecuador">Ecuador</button>
+      <button data-so="guayaquil">Guayaquil</button>
+      <button data-so="internacional">Internacional</button>
+    </div>
+    <div id="socialbox"></div>
+  </section>
+
+  <section id="secGap" hidden>
+    <div class="panel" style="border-left:4px solid #e11d48">
+      <h2 style="margin:0 0 4px">Oportunidades — brecha entre busqueda y cobertura</h2>
+      <p class="hint">Temas donde la gente <b>busca mas de lo que los medios cubren</b>.
+      Es interes desatendido: tu ventaja para diferenciar tu trabajo. Ordenado de mayor a menor brecha.</p>
+    </div>
+    <div class="seg" id="gapseg" style="margin-bottom:14px">
+      <button class="active" data-ga="">Todo</button>
+      <button data-ga="local">Ecuador</button>
+      <button data-ga="internacional">Mundo</button>
+    </div>
+    <div id="gaplist"></div>
+  </section>
+
+  <section id="secContraste" hidden>
+    <div class="panel" style="border-left:4px solid #e11d48">
+      <h2 style="margin:0 0 4px">Contraste con documentacion oficial</h2>
+      <p class="hint">Noticias junto a <b>contratos oficiales (SERCOP)</b> y <b>verificaciones
+      periodísticas</b> (Google Fact Check) que coinciden con el caso. Solo entra una verificación
+      si comparte la misma persona o institución <b>y</b> el mismo hecho que la nota; los detalles
+      están plegados para que la página no se alargue. Son pistas para verificar, no conclusiones.</p>
+      <p class="hint" id="oficialEstado" style="margin-top:8px"></p>
+    </div>
+    <div class="seg" id="contrasteseg" style="margin-bottom:14px">
+      <button class="active" data-co="">Todos</button>
+      <button data-co="ecuador">Ecuador</button>
+      <button data-co="guayaquil">Guayaquil</button>
+      <button data-co="internacional">Internacional</button>
+    </div>
+    <div id="contrastelist"></div>
+  </section>
+
+  <section id="secGuardadas" hidden>
+    <div class="panel" style="border-left:4px solid #f59e0b">
+      <h2 style="margin:0 0 4px">Guardadas y notas — para pensar un reportaje</h2>
+      <p class="hint" id="guardadashint"></p>
+      <p class="hint" style="margin:6px 0 0">Tus <b>notas</b> (botón ✎ en cada tarjeta, o dentro del detalle de un tema) aparecen aquí abajo.</p>
+    </div>
+    <div id="guardadaslist"></div>
+  </section>
+
+  <!-- Bloque 2 (Parte F): el Asistente -- NO es el chat por item de arriba.
+       Este consulta datos reales del monitor (feed, guardadas, notas,
+       demanda, GDELT, pulso social, SERCOP) con un ciclo de herramientas
+       antes de responder, y redacta con un modelo mas capaz (el mismo de
+       "Profundo" en el chat por item). Cada respuesta cita de donde sale
+       cada dato y separa lo que es dato de lo que es lectura propia. -->
+  <section id="secAsistente" hidden>
+    <div class="panel" style="border-left:4px solid #6366f1">
+      <h2 style="margin:0 0 4px">Asistente — preguntale a tus datos</h2>
+      <p class="hint">Consulta el feed, tus Guardadas y notas, demanda de busqueda, cobertura de
+        prensa, pulso social y contratos SERCOP antes de responder. Cita cada dato y avisa cuando
+        no tiene con que responder — nunca completa con su conocimiento general sin decirlo. Puede
+        tardar 30-90s: primero busca en tus datos, despues redacta con el modelo mas capaz
+        instalado.</p>
+    </div>
+    <div class="chatlog asistentelog" id="asistenteLog"></div>
+    <form id="asistenteForm" class="chatform">
+      <textarea id="asistenteMsg" rows="2" placeholder="Ej: ¿Qué se sabe hoy sobre cárceles? ¿Hay contradicciones entre medios en algún tema? ¿Qué brecha vale la pena reportear?"></textarea>
+      <button type="submit" id="asistenteSend">Preguntar</button>
+    </form>
+  </section>
+
+  <!-- Fase 4: buscador EN VIVO -- a diferencia del Asistente (que solo lee
+       lo ya calculado), esto dispara llamadas de red nuevas en el momento.
+       Tres columnas SIEMPRE separadas (Guayaquil/Ecuador/Mundo), nunca
+       mezcladas. -->
+  <section id="secBuscar" hidden>
+    <div class="panel" style="border-left:4px solid #059669">
+      <h2 style="margin:0 0 4px">Buscar — investigación en vivo</h2>
+      <p class="hint">Escribí un tema y lo investigo EN VIVO (no solo en tus datos ya guardados):
+        noticias, lo que dice la gente, interés de búsqueda y contraste oficial, separado en
+        Guayaquil / Ecuador / Mundo. Tarda 15-25s. Las búsquedas quedan guardadas para volver a
+        verlas.</p>
+    </div>
+    <form id="buscarForm" class="chatform">
+      <input id="buscarQ" placeholder="Ej: cárceles, apagones, elecciones seccionales...">
+      <button type="submit" id="buscarSend">Investigar</button>
+    </form>
+    <div id="buscarResultado"></div>
+    <div class="panel" style="margin-top:18px">
+      <h2 style="margin:0 0 4px">Búsquedas anteriores</h2>
+      <div id="buscarHistorial"></div>
+    </div>
+  </section>
+
+  <footer id="feedrep"></footer>
+</div>
+
+<!-- Parte E: detalle expandido de un item (modal, sin chat adentro) -->
+<div class="modaloverlay" id="modalOverlay" hidden>
+  <div class="modalbox" id="modalBox">
+    <button class="modalclose" id="modalClose" aria-label="Cerrar">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Chat con la IA local, anclado a UN item -- widget chico en la esquina
+     inferior derecha (no tapa la pantalla): se puede seguir leyendo/clickeando
+     noticias con el chat abierto. Burbuja cuando esta minimizado. -->
+<button class="chatbubble" id="chatBubble" hidden title="Abrir chat">💬</button>
+<div class="chatwidget" id="chatWidget" hidden>
+  <div class="chatwidget-head" id="chatWidgetHead">
+    <div class="chatwidget-title">
+      <span>Chat con la IA local</span>
+      <span class="chatwidget-item" id="chatWidgetItem"></span>
+    </div>
+    <div class="chatwidget-btns">
+      <button id="chatMin" title="Minimizar">–</button>
+      <button id="chatClose" title="Cerrar chat" aria-label="Cerrar chat">✕</button>
+    </div>
+  </div>
+  <div id="chatLog" class="chatlog"></div>
+  <div class="chatmodo" id="chatModoSeg">
+    <button type="button" class="active" data-modo="rapido" title="Consulta rapida (~15-30s): lo que la propia tarjeta ya responde">⚡ Rápido</button>
+    <button type="button" data-modo="profundo" title="Analisis critico mas a fondo (~1 min): mas contexto, mas margen para pensar">🔍 Profundo</button>
+  </div>
+  <form id="chatForm" class="chatform">
+    <input id="chatMsg" type="text" placeholder="Escribe acá..." autocomplete="off">
+    <button type="submit" id="chatSend">➤</button>
+  </form>
+</div>
+
+<script id="payload" type="application/json">/*__DATA__*/null</script>
+<script>
+let DATA = JSON.parse(document.getElementById("payload").textContent) || {};
+let view = "";         // "", "politica", "economia", "seguridad", "sociedad", "general"
+let origin = "local";  // arranca en Ecuador; el mundo es un clic aparte
+let fresh = "recientes"; // "recientes" | "anteriores" (ver s.antigua, Parte B)
+let rank = "buscado";  // orden del panel: "buscado" | "brecha"
+const PAGE = 12;
+let shown = PAGE;      // cuantas historias se muestran (paginacion)
+const $ = s => document.querySelector(s);
+const SEC_LABEL = {politica:"Politica", economia:"Economia", seguridad:"Seguridad",
+                   sociedad:"Sociedad", general:"General"};
+const SEC_CLS = {politica:"pol", economia:"eco", seguridad:"seg", sociedad:"soc", general:"gen"};
+const CATCOLOR = {politica:"#8b5cf6", economia:"#10b981", seguridad:"#f43f5e",
+                  sociedad:"#3b82f6", general:"#94a3b8"};
+const THEME_CAT = {
+  "Elecciones":"politica","Asamblea/Leyes":"politica","Ejecutivo":"politica","Justicia/Corrupcion":"politica",
+  "Fiscal/Presupuesto":"economia","Impuestos":"economia","Petroleo/Energia":"economia","Empleo":"economia","Precios/Costo de vida":"economia","Comercio/Inversion":"economia",
+  "Narcotrafico":"seguridad","Crimen/Violencia":"seguridad","Carceles":"seguridad","Policia/Militar":"seguridad",
+  "Salud":"sociedad","Educacion":"sociedad","Ambiente":"sociedad","Migracion":"sociedad","Cultura/Comunidad":"sociedad",
+};
+const themeColor = t => CATCOLOR[THEME_CAT[t]] || CATCOLOR.general;
+
+function esc(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function fmtWhen(h){
+  if(h==null) return "";
+  if(h<1) return "hace <1 h";
+  if(h<24) return "hace "+Math.round(h)+" h";
+  return "hace "+Math.round(h/24)+" d";
+}
+function fmtAgo(iso){
+  if(!iso) return "";
+  const m=Math.max(0,(Date.now()-new Date(iso))/60000);
+  if(m<1) return "hace segundos";
+  if(m<60) return "hace "+Math.round(m)+" min";
+  return "hace "+Math.round(m/60)+" h";
+}
+// Fase 0: hora ABSOLUTA siempre en America/Guayaquil, explicito -- sin esto,
+// toLocaleString usa la zona horaria del sistema del navegador, que puede no
+// ser Ecuador (aunque "es-EC" fija el idioma/formato, NO fija la zona).
+function fmtHoraEC(iso){
+  if(!iso) return "";
+  try{
+    return new Date(iso).toLocaleString("es-EC", {timeZone:"America/Guayaquil",
+      day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+  }catch(e){ return new Date(iso).toLocaleString("es-EC"); }
+}
+
+function matchOrigin(h){
+  if(origin==="local") return !!h.es_local;
+  if(origin==="guayaquil") return h.ciudad==="Guayaquil";
+  if(origin==="internacional") return !!h.internacional;
+  return true;
+}
+function currentSet(){
+  return (DATA.historias||[]).filter(h=>{
+    if(view && h.seccion!==view) return false;
+    if(fresh==="anteriores" ? !h.antigua : !!h.antigua) return false;
+    return matchOrigin(h);
+  });
+}
+let statAmb="";  // filtro de la seccion Estadisticas: "", "local", "guayaquil", "internacional"
+function statSet(){
+  return (DATA.historias||[]).filter(h=>{
+    if(statAmb==="guayaquil") return h.ciudad==="Guayaquil";
+    if(statAmb==="local") return !!h.es_local;  // incluye Guayaquil (es parte de Ecuador)
+    if(statAmb==="internacional") return !!h.internacional;
+    return true;
+  });
+}
+
+// ------- grafico de linea de busquedas (Google Trends) -------
+// Grafico de linea INTERACTIVO: al pasar el mouse muestra fecha y valor del
+// punto mas cercano (antes era un dibujo mudo de 96px sin ejes ni valores).
+// 'times' opcional (etiquetas de cada punto); 'unidad' se agrega al valor.
+let LC_SEQ=0; const LC_DATA={};
+// "15 sept 2026 a la(s) 4:00 p.m." -> "15 sept 4:00 p.m."
+function fechaCorta(t){ return String(t||"").replace(/\s20\d\d/,"").replace(" a la(s) "," ").replace(/\s?([ap])\.\s?m\./,"$1m").slice(0,16); }
+function lineChart(vals, color, times, unidad){
+  color = color || "var(--accent)";
+  vals = (vals||[]).map(v=>+v||0);
+  const w=280,h=110,n=vals.length;
+  if(!n) return `<div class="hint" style="height:60px;display:flex;align-items:center">sin datos para graficar</div>`;
+  const id="lc"+(++LC_SEQ);
+  LC_DATA[id]={vals, times:times||[], unidad:unidad||""};
+  const max=Math.max(1,...vals), min=Math.min(...vals);
+  const X=i=>n===1?w/2:(i/(n-1))*w, Y=v=>h-4-(h-12)*v/max;
+  const pts=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  const area=`0,${h} `+pts+` ${w},${h}`;
+  const lx=X(n-1), ly=Y(vals[n-1]);
+  const t0=(times&&times[0])||"", t1=(times&&times[n-1])||"";
+  const avg=Math.round(vals.reduce((a,b)=>a+b,0)/n);
+  return `<div class="lc" data-lc="${id}">
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block">
+      <line x1="0" x2="${w}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" stroke="currentColor" stroke-dasharray="3 4" opacity=".25"/>
+      <polygon points="${area}" fill="${color}" opacity=".18"/>
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.5" fill="${color}"/>
+    </svg>
+    <div class="lcguide"></div><div class="lctip"></div>
+    <div class="lcaxis"><span>${esc(fechaCorta(t0))}</span><span>máx ${max}${esc(unidad||"")} · prom ${avg}</span><span>${esc(fechaCorta(t1))}</span></div>
+  </div>`;
+}
+document.addEventListener("mousemove", e=>{
+  const el=e.target.closest && e.target.closest(".lc"); if(!el) return;
+  const d=LC_DATA[el.dataset.lc]; if(!d||!d.vals.length) return;
+  const svg=el.querySelector("svg"), r=svg.getBoundingClientRect();
+  const x=Math.min(Math.max(e.clientX-r.left,0),r.width);
+  const n=d.vals.length, i=n===1?0:Math.round(x/r.width*(n-1));
+  const px=n===1?r.width/2:i/(n-1)*r.width;
+  const g=el.querySelector(".lcguide"), t=el.querySelector(".lctip");
+  g.style.left=px+"px"; t.style.left=Math.min(Math.max(px,50),r.width-50)+"px";
+  t.textContent=(d.times[i]?fechaCorta(d.times[i])+": ":"")+d.vals[i]+(d.unidad||"");
+});
+// demanda de busqueda de un tema: promedio de la ultima semana COMPLETA que
+// calcula el motor (DATA.demanda_tema). Antes se tomaba el ULTIMO punto de la
+// serie = el periodo en curso, incompleto -> ceros o picos falsos.
+function demandaTema(t){
+  const d=(DATA.demanda_tema||{})[t];
+  if(d!=null) return d;
+  const v=((DATA.tendencias||{})[t]||{}).v||[];
+  if(!v.length) return null;
+  const tail=v.slice(-8,-1).length?v.slice(-8,-1):v;
+  return Math.round(tail.reduce((a,b)=>a+b,0)/tail.length);
+}
+function renderCharts(){
+  const tend=DATA.tendencias||{};
+  const hist=DATA.historial||[];
+  const hasTrends=Object.keys(tend).length>0;
+  const hint=$("#charthint"), box=$("#sparks");
+  // usa el ambito elegido en la seccion Estadisticas (Todo / Ecuador / Mundo)
+  const cur=statSet(), cov={};
+  cur.forEach(h=>(h.temas||[]).forEach(t=>cov[t]=(cov[t]||0)+1));
+  const temas=[...new Set([...Object.keys(cov),...Object.keys(tend)])];
+  if(!temas.length){ box.innerHTML=""; hint.textContent="Sin temas en esta vista."; return; }
+  const covMax=Math.max(1,...temas.map(t=>cov[t]||0));
+  const demOf=t=>demandaTema(t);
+  const gapOf=t=>{const d=demOf(t); if(d==null) return -1; return d-100*(cov[t]||0)/covMax;};
+  const volSerie=t=>hist.map(s=>(s.temas&&s.temas[t])||0);
+  // orden: por demanda (mas buscado) o por brecha
+  if(rank==="brecha") temas.sort((a,b)=>gapOf(b)-gapOf(a));
+  else temas.sort((a,b)=>(demOf(b)??-1)-(demOf(a)??-1) || (cov[b]||0)-(cov[a]||0));
+  box.innerHTML = temas.slice(0,8).map(t=>{
+    const dem=demOf(t), c=cov[t]||0, gap=gapOf(t);
+    const tieneSerie = !!(tend[t]&&tend[t].v&&tend[t].v.length);
+    const serie = tieneSerie ? tend[t].v : volSerie(t);
+    const color = themeColor(t);
+    const gaptag = (dem!=null && gap>=25) ? `<span class="tag gap">Brecha</span>` : "";
+    const covPct = Math.round(100*(c)/covMax);
+    const bars = `<div class="bars">
+      <div class="b"><span class="k">busqueda</span><span class="track"><span class="fill" style="width:${dem||0}%;background:${color}"></span></span><span class="v">${dem!=null?dem:'—'}</span></div>
+      <div class="b"><span class="k">cobertura</span><span class="track"><span class="fill" style="width:${covPct}%;background:var(--muted)"></span></span><span class="v">${c}</span></div>
+    </div>`;
+    return `<div class="spark" data-tema="${esc(t)}" title="Clic para ver noticias de ${esc(t)}" style="border-top:4px solid ${color}">
+      <div class="lbl"><span style="color:${color};font-weight:700">${esc(t)}</span> ${gaptag}</div>
+      ${lineChart(serie, color, tieneSerie?(tend[t].t||[]):hist.map(x=>(x.ts||"").slice(5,16).replace("T"," ")), tieneSerie?"/100":" historias")}
+      ${bars}
+    </div>`;
+  }).join("");
+  // clic en un tema -> ir a Noticias filtrado por ese tema
+  box.querySelectorAll(".spark").forEach(el=>el.addEventListener("click",()=>{
+    const t=el.dataset.tema; const sel=$("#tema");
+    sel.value=t; shown=PAGE; showSection("noticias"); render();
+  }));
+  const src=DATA.fuente_interes||"?";
+  hint.innerHTML = hasTrends
+    ? (`Linea = <b>interes</b> segun ${esc(src)} (${src==="Wikipedia"?"vistas de articulos":"busquedas, geo Ecuador"}). `
+       + `Barras: interes vs <b>cobertura</b> (historias del tema). ${rank==="brecha"
+          ?"Orden por <b>brecha</b> (mucho interes + poca cobertura = tema desatendido)."
+          :"Orden por lo <b>mas buscado</b>."} Clic en un tema para ver sus noticias.`)
+    : (`No hubo datos de busqueda esta corrida (${esc(DATA.estado_interes||"sin fuente")}). `
+       + `La linea muestra el <b>volumen</b> de cobertura en el tiempo. `
+       + `Clic en un tema para ver sus noticias.`);
+}
+
+// ------- seccion Estadisticas: KPIs + distribucion por categoria -------
+const CAT_ORDER=["politica","economia","seguridad","sociedad","general"];
+function renderStats(){
+  const all=DATA.historias||[];
+  const H=statSet();  // respeta el toggle Todo/Ecuador/Mundo
+  const loc=all.filter(h=>h.es_local).length, intl=all.filter(h=>h.internacional).length;
+  const rep=DATA.reporte_feeds||[]; const okf=rep.filter(f=>f.estado==="ok").length;
+  const ambLabel = statAmb==="local"?"Ecuador":statAmb==="internacional"?"Mundo":"total";
+  $("#statskpi").innerHTML=`
+    <div class="stat"><b>${H.length}</b><span>historias (${ambLabel})</span></div>
+    <div class="stat"><b>${loc}</b><span>Ecuador</span></div>
+    <div class="stat"><b>${intl}</b><span>Mundo</span></div>
+    <div class="stat"><b>${okf}/${rep.length}</b><span>fuentes activas</span></div>`;
+  // distribucion por categoria -- Fase 2: SIEMPRE las 5, aunque sea en 0
+  // (antes CAT_ORDER.filter(c=>cnt[c]) hacia desaparecer en silencio una
+  // categoria sin historias en vez de mostrar "0" -- un cero real y un dato
+  // que nunca se calculo se veian exactamente igual: invisibles).
+  const cnt={}; CAT_ORDER.forEach(c=>cnt[c]=0); H.forEach(h=>cnt[h.seccion]=(cnt[h.seccion]||0)+1);
+  const cats=CAT_ORDER; const mx=Math.max(1,...cats.map(c=>cnt[c]));
+  $("#dist").innerHTML=`<div class="dist">`+cats.map(c=>`
+    <div class="drow"><span class="dk">${esc(SEC_LABEL[c]||c)}</span>
+      <span class="dtrack"><span class="dfill ph-${SEC_CLS[c]||'gen'}" style="width:${100*cnt[c]/mx}%"></span></span>
+      <span class="dv">${cnt[c]}</span></div>`).join("")+`</div>`;
+  const f=DATA.fuente_interes||"";
+  $("#fuente").textContent = (f && f!=="?") ? f : "sin datos de busqueda";
+  renderInterp(H, cnt, cats);
+  renderPies();
+  renderEvolCat();
+  renderCharts();
+  renderGdelt();
+  renderLatenciaFeeds();
+}
+
+// ------- Fase 2: evolucion de categorias en el tiempo, por ambito -------
+function renderEvolCat(){
+  const box=$("#evolCat"); if(!box) return;
+  const ambLabel = statAmb==="guayaquil"?"Guayaquil":statAmb==="local"?"Ecuador":statAmb==="internacional"?"Mundo":"Todo";
+  const lbl=$("#evolAmbLabel"); if(lbl) lbl.textContent=ambLabel;
+  const hist=(DATA.historial||[]).filter(s=>statAmb ? !!(s.secciones_ambito&&s.secciones_ambito[statAmb]) : !!s.secciones);
+  if(hist.length<2){
+    box.innerHTML='<div class="gapnone">Todavía no hay suficiente historial para graficar la evolución '
+      +'de este ámbito — hace falta que el monitor lleve un rato corriendo con `serve`.</div>';
+    return;
+  }
+  box.innerHTML = `<div class="sparks">` + CAT_ORDER.map(c=>{
+    const vals = hist.map(s=>(statAmb ? s.secciones_ambito[statAmb] : s.secciones)[c] || 0);
+    const times = hist.map(s=>fmtHoraEC(s.ts));
+    return `<div class="spark"><div class="lbl"><b>${esc(SEC_LABEL[c]||c)}</b></div>${lineChart(vals, catColor(c), times, ' historias')}</div>`;
+  }).join("") + `</div>`;
+}
+
+// ------- Fase 0: demora real por medio (first_seen - publicado) -------
+function renderLatenciaFeeds(){
+  const box=$("#latenciaFeeds"); if(!box) return;
+  const lat=DATA.latencia_feeds||{};
+  const outlets=Object.keys(lat).sort((a,b)=>lat[b].n-lat[a].n);
+  if(!outlets.length){
+    box.innerHTML='<div class="gapnone">Todavía no hay datos suficientes — hace falta que el monitor '
+      +'lleve un rato corriendo con `serve` para acumular medidas reales.</div>';
+    return;
+  }
+  box.innerHTML = `<div class="dist">` + outlets.map(o=>{
+    const d=lat[o];
+    const feo = d.mediana_min>10 ? 'color:#e11d48;font-weight:700' : '';
+    return `<div class="drow"><span class="dk">${esc(o)}</span>
+      <span class="dv" style="${feo}">mediana ${d.mediana_min<1?'<1':Math.round(d.mediana_min)} min</span>
+      <span class="dv">peor ${Math.round(d.peor_min)} min</span>
+      <span class="dv">${d.mas_de_10min}/${d.n} tardaron &gt;10min</span></div>`;
+  }).join("") + `</div>`;
+}
+
+// interpretacion escrita (no solo graficos): lee los datos y saca conclusiones
+function renderInterp(H, cnt, cats){
+  const box=$("#interp");
+  if(!H.length){ box.innerHTML="<li>Sin historias para este ambito.</li>"; return; }
+  const tend=DATA.tendencias||{};
+  const cov={}; H.forEach(h=>(h.temas||[]).forEach(t=>cov[t]=(cov[t]||0)+1));
+  const covMax=Math.max(1,...Object.values(cov),1);
+  const demOf=t=>demandaTema(t);
+  const li=[];
+  const ambTxt = statAmb==="local"?"de Ecuador":statAmb==="internacional"?"del mundo":"en total";
+  li.push(`Ahora mismo hay <b>${H.length}</b> historias ${ambTxt}.`);
+  // categoria dominante
+  if(cats.length){
+    const top=cats.slice().sort((a,b)=>cnt[b]-cnt[a])[0];
+    const pct=Math.round(100*cnt[top]/H.length);
+    li.push(`La agenda esta dominada por <b>${esc(SEC_LABEL[top])}</b> (${cnt[top]} historias, ${pct}%).`);
+  }
+  // historia mas levantada (mas medios)
+  const most=H.slice().sort((a,b)=>b.n_outlets-a.n_outlets)[0];
+  if(most && most.n_outlets>1)
+    li.push(`Lo mas cubierto: <b>"${esc(most.titular)}"</b> (${most.n_outlets} medios) — cuando varios coinciden, suele ser lo importante del dia.`);
+  // tema mas buscado
+  const temasDem=Object.keys(tend).filter(t=>cov[t]!=null).sort((a,b)=>(demOf(b)??-1)-(demOf(a)??-1));
+  if(temasDem.length && demOf(temasDem[0])!=null)
+    li.push(`El tema con mas <b>interes de busqueda</b> es <b>${esc(temasDem[0])}</b> (${demOf(temasDem[0])}/100, fuente ${esc(DATA.fuente_interes||"?")}).`);
+  // mayor brecha (interes alto, cobertura baja)
+  let gapT=null,gapV=-1;
+  Object.keys(tend).forEach(t=>{const d=demOf(t);if(d==null)return;const g=d-100*(cov[t]||0)/covMax;if(g>gapV){gapV=g;gapT=t;}});
+  if(gapT && gapV>=20)
+    li.push(`<b>Brecha</b>: <b>${esc(gapT)}</b> tiene mucho interes y poca cobertura (${cov[gapT]||0} historias) — posible tema desatendido para investigar.`);
+  // balance Ecuador vs mundo (solo en "Todo")
+  if(!statAmb){
+    const all=DATA.historias||[];
+    const l=all.filter(h=>h.es_local).length, m=all.filter(h=>h.internacional).length;
+    li.push(`Balance: <b>${l}</b> historias de Ecuador vs <b>${m}</b> del mundo.`);
+  }
+  box.innerHTML=li.map(s=>`<li>${s}</li>`).join("");
+}
+// ------- salud de los datos de esta corrida (Problema 3) -------
+// DATA.salud_fuentes: [{fuente, ok:true|false|null, detalle}], armado en
+// monitor.py (construir_salud_fuentes). ok=null es "desactivado a proposito"
+// (no es un fallo). Un vistazo rapido de que tan completos estan los datos
+// antes de confiar en las oportunidades calculadas mas abajo.
+function renderSaludFuentes(){
+  const fuentes=DATA.salud_fuentes||[];
+  if(!fuentes.length) return "";
+  const chip=f=>{
+    const color = f.ok===true?"#10b981":f.ok===false?"#f43f5e":"#64748b";
+    const icono = f.ok===true?"●":f.ok===false?"✕":"○";
+    return `<span class="chip" title="${esc(f.detalle||"")}" style="border-color:${color};color:${color}">`
+         + `${icono} ${esc(f.fuente)}</span>`;
+  };
+  const fallando=fuentes.filter(f=>f.ok===false).length;
+  return `<div class="panel" style="margin-bottom:14px">
+    <h2 style="margin:0 0 4px">Salud de los datos de esta corrida</h2>
+    <p class="hint">${fallando?`${fallando} fuente(s) sin datos frescos esta corrida — `:""}`
+      +`pasa el mouse sobre cada una para el detalle. Cuando una fuente falla, las tarjetas de abajo
+      usan el ultimo dato bueno que haya quedado guardado (marcado con su antiguedad) en vez de
+      dejarlo vacio.</p>
+    <div class="bars" style="display:flex;flex-wrap:wrap;gap:6px">${fuentes.map(chip).join("")}</div>
+  </div>`;
+}
+
+// ------- apartado Oportunidades -------
+let gapAmb="";  // "", "local", "internacional"
+function renderGap(){
+  const box=$("#gaplist");
+  const tend=DATA.tendencias||{};
+  const H=(DATA.historias||[]).filter(h=>
+    gapAmb==="local"? !!h.es_local : gapAmb==="internacional"? !!h.internacional : true);
+  const cov={}; H.forEach(h=>(h.temas||[]).forEach(t=>cov[t]=(cov[t]||0)+1));
+  const covMax=Math.max(1,...Object.values(cov),1);
+  const demOf=t=>demandaTema(t);
+  // "Lo que dice la gente" (pulso social, Parte C): n_posts es una senal
+  // RELATIVA (cuantas publicaciones se captaron para ese tema en ESTA
+  // corrida, ver social.py), no un conteo absoluto -- se normaliza 0-100
+  // contra el maximo entre los pocos temas que si se consultaron
+  // (SOCIAL_MAX), solo para poder compararla en la misma escala que la
+  // demanda de busqueda. Se filtra por el mismo ambito que el resto del
+  // panel (gapAmb) usando soc[t].ambito, ya calculado en tema_ambito_map.
+  const socAll=DATA.social||{};
+  const soc={}; Object.keys(socAll).forEach(t=>{
+    const d=socAll[t];
+    const amb = gapAmb==="local" ? (d.ambito==="ecuador"||d.ambito==="guayaquil")
+              : gapAmb==="internacional" ? d.ambito==="internacional" : true;
+    if(amb && d.n_posts) soc[t]=d;
+  });
+  const socMax=Math.max(1,...Object.keys(soc).map(t=>soc[t].n_posts||0));
+  const socOf=t=>(soc[t]&&soc[t].n_posts) ? Math.round(100*soc[t].n_posts/socMax) : null;
+  // Interes publico combinado: la MAYOR de las dos senales disponibles (una
+  // sola persona buscando mucho en Trends y poca gente hablando en redes no
+  // deberia anular una conversacion social fuerte con poca busqueda, y
+  // viceversa -- cualquiera de las dos ya es una senal real de interes).
+  const pubOf=t=>{const d=demOf(t), so=socOf(t);
+    if(d==null&&so==null) return null;
+    if(d==null) return so; if(so==null) return d;
+    return Math.max(d,so);};
+  const g=DATA.gdelt||{};
+  const toneNote=t=>{const x=g[t]&&g[t].tone; if(x==null)return"";
+    return x<-0.5?` La cobertura es mayormente <b style="color:#f43f5e">negativa</b> (tono ${x}).`
+         : x>0.5?` La cobertura es mayormente <b style="color:#10b981">positiva</b> (tono +${x}).`:"";};
+  const fuente=DATA.fuente_interes||"?";
+  const notasDe=t=>H.filter(h=>(h.temas||[]).includes(t)).slice(0,3);
+  const linksHTML=notas=> notas.length
+      ? `<div class="gaplinks">`+notas.map(h=>{const f=(h.fuentes&&h.fuentes[0])||{};
+          return `<a href="${esc(f.link||"#")}" target="_blank" rel="noopener">› ${esc(h.titular)}</a>`;}).join("")+`</div>`
+      : `<div class="gapnone">Nadie lo esta cubriendo ahora mismo — oportunidad en bruto.</div>`;
+
+  let html="";
+
+  // --- Salud de los datos de esta corrida (Problema 3: no inventar
+  // oportunidades con datos incompletos -- primero mostrar que tan completos
+  // estan) ---
+  html += renderSaludFuentes();
+
+  // --- BLOQUE 1: brecha interes publico (busqueda + redes) vs cobertura ---
+  const todosLosTemas=[...new Set([...Object.keys(tend),...Object.keys(soc),...Object.keys(cov)])];
+  const conPub=todosLosTemas.filter(t=>pubOf(t)!=null);
+  const incompletos=todosLosTemas.filter(t=>pubOf(t)==null && (cov[t]||0)>0);
+  if(conPub.length){
+    const rows=conPub.map(t=>{const d=pubOf(t),c=cov[t]||0;return {t,d,c,dBusq:demOf(t),dSoc:socOf(t),
+                              gap:Math.round(d-100*c/covMax)};})
+                     .sort((a,b)=>b.gap-a.gap);
+    html+=`<p class="hint" style="margin:0 0 8px">Brecha entre <b>interes publico</b> `
+      +`(busqueda segun ${esc(fuente)} + <b>lo que dice la gente en redes</b>, la que sea mayor) y cobertura de medios.</p>`;
+    html+=rows.map(r=>{
+      const color=themeColor(r.t);
+      const senal = r.dBusq!=null && r.dSoc!=null
+          ? `busqueda ${r.dBusq}/100 y conversacion en redes ${r.dSoc}/100 (relativo)`
+        : r.dSoc!=null ? `conversacion en redes ${r.dSoc}/100 (relativo, sin dato de busqueda esta corrida)`
+        : `busqueda ${r.dBusq}/100`;
+      let why;
+      if(r.c===0) why=`La gente ${r.dSoc!=null&&r.dBusq==null?'habla de esto':'lo busca/comenta'} (${senal}) pero <b>ningun medio</b> lo cubre. Oportunidad fuerte.`;
+      else if(r.gap>=25) why=`Interes publico (${senal}) por encima de lo que se cubre (${r.c}). Tema <b>desatendido</b>.`;
+      else if(r.gap>=0) why=`Interes (${senal}) algo por encima de su cobertura (${r.c}). Vale seguirlo.`;
+      else why=`Bien cubierto para su interes (${senal}, ${r.c}). Poca oportunidad.`;
+      const tag=r.gap>=25?`<span class="tag gap">Brecha alta</span>`:r.gap>=0?`<span class="tag" style="background:${color}">Brecha</span>`:`<span class="chip">cubierto</span>`;
+      const barSoc = r.dSoc!=null ? `<div class="b"><span class="k">redes</span><span class="track"><span class="fill" style="width:${r.dSoc}%;background:#7c3aed"></span></span><span class="v">${r.dSoc}</span></div>` : "";
+      const barBusq = r.dBusq!=null ? `<div class="b"><span class="k">busqueda</span><span class="track"><span class="fill" style="width:${r.dBusq}%;background:${color}"></span></span><span class="v">${r.dBusq}</span></div>` : "";
+      return `<div class="gapcard" data-tema="${esc(r.t)}" style="border-left-color:${color}">
+        <div class="gaptop"><h3 style="color:${color}">${esc(r.t)}</h3>${tag}
+          <span class="gapscore" style="color:${color}">brecha ${r.gap>0?'+':''}${r.gap}</span></div>
+        <div class="bars">
+          ${barBusq}${barSoc}
+          <div class="b"><span class="k">cobertura</span><span class="track"><span class="fill" style="width:${Math.round(100*r.c/covMax)}%;background:var(--muted)"></span></span><span class="v">${r.c}</span></div>
+        </div>
+        <div class="gapwhy">${why}${toneNote(r.t)}</div>${linksHTML(notasDe(r.t))}</div>`;
+    }).join("");
+  } else {
+    html+=`<div class="panel gapnone">Sin datos de busqueda ni de redes esta corrida `
+      +`(${esc(DATA.estado_interes||"sin fuente")} · ${esc(DATA.estado_social||"sin fuente")}): la brecha por interes no se puede calcular. `
+      +`Abajo tienes igual los temas menos cubiertos.</div>`;
+  }
+
+  // --- Oportunidades INCOMPLETAS: hay historias del tema pero falta la
+  // señal de interes publico (ni busqueda ni redes) para poder calcular una
+  // brecha de verdad. Antes estos temas desaparecian en silencio de este
+  // panel -- ahora se listan aparte, marcados "incompleta" con el dato que
+  // falta, para no inventar una brecha con datos a medias ni esconder que
+  // faltan (Problema 3). ---
+  if(incompletos.length){
+    html+=`<div class="panel" style="border-left:4px solid #f59e0b;margin-top:18px">
+        <h2 style="margin:0 0 4px">Incompletas — falta señal de interes</h2>
+        <p class="hint">Hay historias de estos temas, pero esta corrida no consiguio ni busqueda
+        ni redes para saber si hay interes publico. No se calcula una brecha con datos a medias.</p></div>`;
+    html+=incompletos.map(t=>{
+      const color=themeColor(t);
+      const falta = [tend[t]==null?"busqueda":null, soc[t]==null?"redes":null].filter(Boolean).join(" y ");
+      return `<div class="gapcard" data-tema="${esc(t)}" style="border-left-color:${color};opacity:.85">
+        <div class="gaptop"><h3 style="color:${color}">${esc(t)}</h3><span class="tag" style="background:#f59e0b">Incompleta</span></div>
+        <div class="gapwhy">Falta dato de <b>${esc(falta)}</b> esta corrida (${cov[t]} historia(s) en agenda).
+        ${esc(DATA.estado_interes||"")}${soc[t]==null?" · "+esc(DATA.estado_social||""):""}</div>
+        ${linksHTML(notasDe(t))}</div>`;
+    }).join("");
+  }
+
+  // --- BLOQUE 2: temas MENOS cubiertos ahora (no depende de Trends) ---
+  // candidatos a reportaje exhaustivo: poca o nula cobertura en la agenda actual.
+  const allThemes=Object.keys(THEME_CAT);
+  const poco=allThemes.map(t=>({t,c:cov[t]||0})).sort((a,b)=>a.c-b.c).slice(0,8);
+  html+=`<div class="panel" style="border-left:4px solid #64748b;margin-top:18px">
+      <h2 style="margin:0 0 4px">Temas poco cubiertos — candidatos a reportaje</h2>
+      <p class="hint">Con poca o ninguna cobertura en la agenda de ahora. Un vacio puede ser
+      oportunidad para un reportaje exhaustivo (o simplemente calma; el criterio es tuyo).</p></div>`;
+  html+=poco.map(r=>{
+    const color=themeColor(r.t);
+    const estado = r.c===0?`<span class="tag gap">Sin cobertura</span>`:`<span class="chip">${r.c} historia(s)</span>`;
+    const why = r.c===0?`Nadie lo esta tocando en esta agenda. Terreno abierto para investigar a fondo.`
+                       :`Apenas ${r.c} historia(s). Espacio para profundizar mas que el resto.`;
+    return `<div class="gapcard" data-tema="${esc(r.t)}" style="border-left-color:${color}">
+      <div class="gaptop"><h3 style="color:${color}">${esc(r.t)}</h3>${estado}</div>
+      <div class="gapwhy">${why}</div>${r.c?linksHTML(notasDe(r.t)):""}</div>`;
+  }).join("");
+
+  box.innerHTML=html;
+}
+// ------- panel GDELT: volumen de prensa + tono por tema -------
+function renderGdelt(){
+  const box=$("#gdeltsparks"), g=DATA.gdelt||{};
+  $("#gdeltsrc").textContent = Object.keys(g).length ? "GDELT" : "sin datos";
+  if(!Object.keys(g).length){
+    box.innerHTML=`<div class="gapnone">Todavia no hay datos de GDELT `
+      +`(${esc(DATA.estado_gdelt||"sin fuente")}). Se reintenta solo en segundo plano: `
+      +`no hace falta reiniciar el programa.</div>`;
+    return;
+  }
+  // ordenar por volumen reciente de cobertura
+  const volNow=t=>{const v=((g[t]&&g[t].vol)||[]).slice(-4,-1);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;};
+  const temas=Object.keys(g).sort((a,b)=>volNow(b)-volNow(a));
+  box.innerHTML = temas.map(t=>{
+    const color=themeColor(t);
+    const vol=g[t].vol||[], tone=g[t].tone;
+    const toneColor = tone==null?"var(--muted)":(tone>0.5?"#10b981":tone<-0.5?"#f43f5e":"var(--muted)");
+    const toneTxt = tone==null?"s/d":(tone>0?"+"+tone:""+tone);
+    const toneLbl = tone==null?"":(tone>0.5?"positivo":tone<-0.5?"negativo":"neutral");
+    return `<div class="spark" data-abrir-tema="${esc(t)}" title="Clic: detalle del tema y chat" style="border-top:4px solid ${color}">
+      <div class="lbl"><span style="color:${color};font-weight:700">${esc(t)}</span>
+        <span class="dem" style="color:${toneColor}">tono <b>${toneTxt}</b> ${toneLbl}</span></div>
+      ${lineChart(vol.map(v=>Math.round(v*100)/100), color, (g[t].fechas&&g[t].fechas.length===vol.length)?g[t].fechas:vol.map((_,i)=>"punto "+(i+1)), "%")}
+    </div>`;
+  }).join("");
+}
+// ------- panel "¿Que dice la gente al respecto?": redes publicas + OSINT por tema -------
+const FUENTE_INFO={
+  bluesky:{label:"Bluesky", color:"#1f6feb"},
+  reddit: {label:"Reddit",  color:"#ff4500"},
+  youtube:{label:"YouTube", color:"#ff0000"},
+  mastodon:{label:"Mastodon", color:"#6364FF"},
+  telegram:{label:"Telegram (canal, no opinión)", color:"#229ED9"},
+};
+function fuenteChip(f){
+  const info=FUENTE_INFO[f]||{label:f||"?", color:"var(--muted)"};
+  return `<span class="chip" style="background:${info.color}22;color:${info.color};font-weight:800">${esc(info.label)}</span>`;
+}
+let socialAmb="";  // "", "ecuador", "guayaquil", "internacional"
+function renderSocial(){
+  const box=$("#socialbox"), s=DATA.social||{};
+  const todos=Object.keys(s);
+  const fuentesActivas=[...new Set(todos.flatMap(t=>(s[t].top||[]).map(p=>p.fuente)))];
+  $("#socialsrc").textContent = fuentesActivas.length
+    ? fuentesActivas.map(f=>(FUENTE_INFO[f]||{label:f}).label).join(" · ")
+    : (todos.length ? "sin publicaciones" : "sin datos");
+  if(!todos.length){
+    box.innerHTML=`<div class="gapnone">Sin escucha social esta corrida `
+      +`(${esc(DATA.estado_social||"sin fuente")}). Bluesky es publico y no necesita cuenta; `
+      +`YouTube necesita MONITOR_YT_KEY; la lectura OSINT necesita tu Ollama con un modelo.</div>`;
+    return;
+  }
+  const temas=todos.filter(t=>!socialAmb || s[t].ambito===socialAmb);
+  if(!temas.length){
+    box.innerHTML=`<div class="gapnone">Sin temas de escucha social en este ambito por ahora.</div>`;
+    return;
+  }
+  const sentColor=v=>v==="positivo"?"#10b981":v==="negativo"?"#f43f5e":v==="mixto"?"#f59e0b":"var(--muted)";
+  const polColor=v=>v==="alta"?"#f43f5e":v==="media"?"#f59e0b":v==="baja"?"#10b981":"var(--muted)";
+  temas.sort((a,b)=>(s[b].n_posts||0)-(s[a].n_posts||0));
+  const ORDEN_F=["bluesky","reddit","youtube","mastodon","telegram"];
+  // Fernando: "el pulso social sigue sin diferenciar bien entre
+  // internacional, Ecuador y Guayaquil" -- con el toggle en "Todos" cada
+  // tarjeta de tema no mostraba a que ambito pertenecia, asi que no se
+  // podia verificar a simple vista sin ir tocando cada boton. Ahora cada
+  // tarjeta lleva su propia etiqueta de ambito (mismo estilo .tag que usan
+  // las tarjetas de Noticias).
+  const AMBITO_LABEL_SOC = {internacional:"Mundo", ecuador:"Ecuador", guayaquil:"Guayaquil"};
+  const ambTag = amb => `<span class="tag ${amb==="internacional"?"intl":"loc"}">${esc(AMBITO_LABEL_SOC[amb]||amb||"?")}</span>`;
+  box.innerHTML = temas.map(t=>{
+    const d=s[t], color=themeColor(t);
+    // sin conversacion captada: el trabajador intento este tema pero, tras el
+    // filtro de ruido, no quedo nada real que mostrar (o directamente no hubo
+    // publicaciones). Nunca se inventa contenido para rellenar.
+    if(!d.n_posts || !(d.top||[]).length){
+      return `<div class="gapcard" style="border-left-color:${color};margin-bottom:12px">
+        <div class="gaptop"><h3 style="color:${color}">${esc(t)}</h3>${ambTag(d.ambito)}</div>
+        <div class="o" style="font-style:italic">sin conversación captada</div>
+      </div>`;
+    }
+    const sent=d.sentimiento?`<span class="chip" style="background:${sentColor(d.sentimiento)}22;color:${sentColor(d.sentimiento)}">sentimiento: ${esc(d.sentimiento)}</span>`:"";
+    const pol=d.polarizacion?`<span class="chip" style="background:${polColor(d.polarizacion)}22;color:${polColor(d.polarizacion)}">polarización: ${esc(d.polarizacion)}</span>`:"";
+    const temasRec=(d.temas_recurrentes||[]).length
+      ? `<div class="o" style="margin-top:4px">Habla de: ${d.temas_recurrentes.slice(0,6).map(x=>esc(x)).join(" · ")}</div>` : "";
+    // BUG REAL (Fernando: tema "Ambiente" con 119 posts salio con
+    // sentimiento=None sin explicacion): antes este mensaje era generico
+    // ("puede faltar Ollama o haber fallado la lectura puntual"), siempre
+    // igual sin importar la causa real. Ahora, si el motivo esta disponible
+    // (monitor.py: entry["osint_error"], el social.last_error real de ese
+    // intento), se muestra tal cual en vez de adivinar.
+    const resumen=d.resumen?`<div class="gapwhy" style="margin-top:6px"><b style="color:var(--accent)">OSINT ·</b> ${esc(d.resumen)}</div>`
+      : `<div class="o" style="margin-top:6px">Sin lectura OSINT esta vez${d.osint_error?` (motivo: ${esc(d.osint_error)})`:" (motivo no registrado)"}. Se muestran las publicaciones igual.</div>`;
+    // desglose por fuente: nunca ocultar que YouTube/Reddit tambien aportaron
+    const porFuenteTxt=ORDEN_F.filter(f=>d.por_fuente&&d.por_fuente[f]!=null)
+      .map(f=>`${fuenteChip(f)} ${d.por_fuente[f]}`).join(" · ");
+    // Hasta 1 publicacion por (fuente, tipo) -- la mejor DENTRO de esa
+    // combinacion: nunca se rankea por engagement crudo mezclando
+    // plataformas (likes de YouTube y reposts de Bluesky no son
+    // comparables). Problema 1: separadas en dos bloques con encabezado
+    // propio -- "Lo que dice la gente" primero (es el punto del panel),
+    // "Lo que dicen los medios" aparte -- en vez de solo una etiqueta
+    // inline mezclada en una lista unica.
+    const postHTML=p=>`<div class="src">
+        <a href="${esc(p.url||'#')}" target="_blank" rel="noopener">${esc(p.texto||'(sin texto)')}</a>
+        <div class="o">${fuenteChip(p.fuente)} ${esc(p.autor||'')}${p.canal?` · en un video de <b>${esc(p.canal)}</b>${p.canal_tipo?` (canal ${p.canal_tipo}${p.canal_subs?`, ${p.canal_subs.toLocaleString('es')} suscriptores`:''})`:''}`:""} · ${p.fuente==='telegram'?`👁 ${p.likes||0} vistas`:`♥ ${p.likes||0} · ↺ ${p.reposts||0}`}${p.fecha?' · '+esc(p.fecha):''}</div></div>`;
+    const esMedio=p=>p.tipo==="medio"||p.fuente==="telegram";
+    const postsGente=(d.top||[]).filter(p=>!esMedio(p));
+    const postsMedios=(d.top||[]).filter(esMedio);
+    const posts=
+      (postsGente.length ? `<div class="o" style="margin-top:8px;font-weight:700;color:var(--accent)">🗣 Lo que dice la gente</div>${postsGente.map(postHTML).join("")}` : "")
+      + (postsMedios.length ? `<div class="o" style="margin-top:8px;font-weight:700">📰 Lo que dicen los medios</div>${postsMedios.map(postHTML).join("")}` : "");
+    // cuanto de lo captado es gente y cuanto son cuentas de medios
+    const vozTxt = (d.n_personas!=null)
+      ? `<div class="o" style="margin-top:4px"><span class="voz persona">personas ${d.n_personas}</span><span class="voz medio">cuentas de medios ${d.n_medios||0}</span>`
+        + (d.n_personas<3?` <i>— casi no hay voz ciudadana captada: la lectura de abajo refleja sobre todo a los medios.</i>`:` <i>— la lectura OSINT se hizo solo con lo que escriben personas.</i>`)
+        + (d.busqueda?` <span class="hint">· búsqueda: "${esc(d.busqueda)}"</span>`:"")+`</div>`
+      : "";
+    return `<div class="gapcard" data-tema="${esc(t)}" style="border-left-color:${color};margin-bottom:12px">
+      <div class="gaptop"><h3 style="color:${color}">${esc(t)}</h3>${ambTag(d.ambito)}
+        <span class="chip" title="Cuantas publicaciones se captaron para este termino en esta corrida; no representa cuanta gente opina">
+          ${d.n_posts} publicaciones (volumen relativo)</span></div>
+      ${porFuenteTxt?`<div class="o" style="margin-top:2px">Por fuente: ${porFuenteTxt}</div>`:""}
+      ${vozTxt}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${sent}${pol}</div>
+      ${temasRec}${resumen}
+      ${posts}
+    </div>`;
+  }).join("");
+}
+// ------- apartado Contraste (documentacion oficial) -------
+function renderFactcheck(h){
+  // h.factcheck no existe o vacio: no se muestra nada. Antes se ponia "sin
+  // verificaciones relacionadas" y la lista entera abierta en cada tarjeta:
+  // con cientos de verificaciones sueltas la pagina se volvia eterna.
+  if(!h.factcheck || !h.factcheck.length) return "";
+  const items=h.factcheck.map(c=>`<div class="src">
+      <a href="${esc(c.url||'#')}" target="_blank" rel="noopener">${esc(c.claim||'(afirmacion)')}</a>
+      <div class="o"><b>${esc(c.calificacion||'?')}</b> · ${esc(c.verificador||'')}${c.fecha?' · '+esc(c.fecha):''}</div></div>`).join("");
+  return `<details class="fcbox" style="margin-top:6px"><summary>✔ ${h.factcheck.length} verificación(es) relacionada(s)</summary>${items}
+    <div class="o" style="padding:6px 0;font-style:italic">Comparten personas y hechos con esta nota; igual revisa que sea el mismo caso.</div></details>`;
+}
+// Orden pedido para el sector Contraste: Internacional, luego Ecuador
+// (nacional), luego Guayaquil aparte (aunque Guayaquil implica Ecuador en el
+// resto del dashboard, aqui se separa como su propio grupo).
+const CONTRASTE_GRUPOS = [
+  {key:"internacional", label:"Internacional", color:"var(--intl)"},
+  {key:"ecuador",       label:"Nacional (Ecuador)", color:"var(--loc)"},
+  {key:"guayaquil",     label:"Guayaquil", color:"var(--accent)"},
+];
+function contrasteAmbito(h){
+  if(h.ambito==="internacional") return "internacional";
+  return h.ciudad==="Guayaquil" ? "guayaquil" : "ecuador";
+}
+// Estado del veredicto (Problema 4, get_veredicto en monitor.py): las
+// CONTRADICCIONES van primero (lo mas urgente de revisar), despues lo que
+// coincide, despues lo que no tiene datos suficientes, y al final lo
+// pendiente de procesar (el trabajador todavia no llego).
+const VEREDICTO_LABEL = {coincide: "Coincide", contradice: "Contradice",
+                          sin_datos: "Sin datos suficientes", pendiente: "Pendiente"};
+const VEREDICTO_COLOR = {coincide: "#10b981", contradice: "#f43f5e",
+                          sin_datos: "#64748b", pendiente: "#f59e0b"};
+const VEREDICTO_ORDEN = {contradice: 0, coincide: 1, sin_datos: 2, pendiente: 3};
+
+function veredictoDe(h){
+  return h.veredicto || {estado: "pendiente", texto: "Todavia no procesado.", citas: []};
+}
+
+// --- Estructura FIJA por noticia, en este orden (pedido de Fernando):
+// 1) afirmacion  2) contexto actual  3) fuentes oficiales (SERCOP)
+// 4) verificadores (FactCheck)  5) estado. Lo secundario (fuentes/detalle de
+// cada contrato o claim) queda plegado en <details>. Tarjeta dedicada para
+// Contraste (no reusa cardHTML: esta vista necesita el orden fijo completo,
+// Noticias/Guardadas no).
+function contrasteCardHTML(h){
+  const key = storyKey(h);
+  const v = veredictoDe(h);
+  const color = VEREDICTO_COLOR[v.estado] || VEREDICTO_COLOR.pendiente;
+  const label = VEREDICTO_LABEL[v.estado] || v.estado;
+
+  // 3) Fuentes oficiales (SERCOP)
+  const contr = (h.contratos && h.contratos.length)
+    ? `<details style="margin-top:6px"><summary style="color:#e11d48">Fuentes oficiales (SERCOP) · ${h.contratos.length} contrato(s)</summary>`
+      + h.contratos.map(c => `<div class="src"><a href="${esc(c.link||'#')}" target="_blank" rel="noopener">${esc(c.objeto||c.ocid||'contrato')}</a>
+        <div class="o">${esc(c.entidad||'')}${c.monto?' · $'+esc(c.monto):''}${c.fecha?' · '+esc(c.fecha):''}</div></div>`).join("")
+      + `<div class="o" style="padding:6px 0;font-style:italic">Pistas oficiales para verificar — no implican que la nota trate de estos contratos.</div></details>`
+    : `<p class="o" style="margin-top:6px;opacity:.65">Fuentes oficiales (SERCOP): sin contratos relacionados.</p>`;
+
+  // 4) Verificadores (FactCheck) — renderFactcheck ya viene plegado en <details>
+  const fc = renderFactcheck(h)
+    || `<p class="o" style="margin-top:2px;opacity:.65">Verificadores (FactCheck): sin verificaciones relacionadas.</p>`;
+
+  const fuentes = (h.fuentes || []).map(f => `
+    <div class="src"><a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.title)}</a>
+    <div class="o">${esc(f.outlet)}</div></div>`).join("");
+
+  return `<div class="card" data-storykey="${esc(key)}">
+    <div class="cardbody">
+      <div class="titular">${esc(h.titular)}</div>
+      ${h.resumen?`<p class="resumen">${esc(h.resumen)}</p>`:""}
+      ${renderContexto(h)}
+      ${contr}
+      ${fc}
+      <div class="veredicto" style="border-left:3px solid ${color};padding:6px 10px;margin-top:8px;border-radius:4px;background:rgba(148,163,184,.08)">
+        <b style="color:${color}">Estado: ${esc(label)}</b>
+        ${v.texto ? `<div class="o" style="margin-top:2px">${esc(v.texto)}</div>` : ""}
+        ${(v.citas&&v.citas.length) ? `<div class="o" style="margin-top:2px;font-style:italic">Citas: ${v.citas.map(esc).join(", ")}</div>` : ""}
+      </div>
+      <details style="margin-top:6px"><summary>Ver ${h.fuentes.length} fuente(s)</summary>${fuentes}</details>
+    </div>
+  </div>`;
+}
+
+// Toggle de ambito para Contraste (Fernando: "debes categorizarlo como las
+// otras pestañas lo hacen" -- mismo patron que socialAmb/gapAmb). Con un
+// ambito elegido, la pagina muestra SOLO ese grupo en vez de las 3 listas
+// apiladas -- la pagina "eterna" se vuelve una lista corta por alcance.
+let contrasteAmb="";  // "", "ecuador", "guayaquil", "internacional"
+const CONTRASTE_PAGE = 12;  // tarjetas por grupo antes de "Ver mas" (mismo limite que Noticias, PAGE)
+let contrasteExpandido = {};  // {ambito: true} -- grupos que el usuario pidio ver completos
+
+function renderContraste(){
+  // Fase 3: disponibilidad de la base de contraste oficial (Constitucion +
+  // boletines institucionales) -- honesto sobre que hay y que no, sin
+  // prometer una integracion por-nota que todavia no existe (eso es una
+  // herramienta del Asistente por ahora, ver Pendientes de la Fase 3).
+  const of=DATA.oficial||{};
+  const oc=of.constitucion||{}, ob=of.boletines||{};
+  const nBoletines=Object.values(ob).reduce((a,b)=>a+(b||0),0);
+  $("#oficialEstado").innerHTML = `<b>Base de contraste oficial</b> (Fase 3): `
+    + (oc.disponible ? `Constitución indexada (${oc.n_articulos} artículos, vía Wikisource)` : "Constitución: aún no indexada")
+    + ` · ${nBoletines} boletines institucionales en caché`
+    + (nBoletines ? ` (${Object.entries(ob).filter(([k,v])=>v).map(([k,v])=>`${esc(k)}: ${v}`).join(", ")})` : "")
+    + `. Consultalo desde el Asistente ("¿qué dice la Constitución sobre...?", "¿qué boletines oficiales hay sobre...?").`;
+  const box=$("#contrastelist");
+  const H=(DATA.historias||[]).filter(h=>(h.contratos&&h.contratos.length) || (h.factcheck&&h.factcheck.length)
+                                        || (h.veredicto && h.veredicto.estado!=="pendiente"));
+  if(!H.length){
+    const st=DATA.estado_sercop||"", fc=DATA.estado_factcheck||"";
+    box.innerHTML=`<div class="panel gapnone">No hay noticias con contratos oficiales ni verificaciones `
+      +`que coincidan de verdad con alguna nota ahora mismo${st?` (SERCOP: ${esc(st)})`:""}${fc?` (FactCheck: ${esc(fc)})`:""}. `
+      +`Es lo esperable la mayoria del tiempo: los verificadores revisan pocas afirmaciones y casi `
+      +`nunca las del mismo dia. Se muestran solo cuando la verificacion comparte la misma persona/`
+      +`institucion Y el mismo hecho que la nota (antes se colaban cientos sin relacion).</div>`;
+    return;
+  }
+  // tarjetas con estructura fija (ver contrasteCardHTML), agrupadas por
+  // ambito (Internacional / Ecuador / Guayaquil) y ORDENADAS por estado
+  // (contradicciones primero) y despues por relevancia (interes). Si hay un
+  // ambito elegido en el toggle, se muestra SOLO ese grupo (pagina corta);
+  // con "Todos" se apilan los 3, como antes.
+  const grupos = contrasteAmb ? CONTRASTE_GRUPOS.filter(g=>g.key===contrasteAmb) : CONTRASTE_GRUPOS;
+  const totalVisible = H.filter(h=>!contrasteAmb || contrasteAmbito(h)===contrasteAmb).length;
+  box.innerHTML = `<p class="hint">${totalVisible} nota(s) con documentos, verificaciones o contexto suficiente `
+    + `para contrastar${contrasteAmb?` en ${esc(CONTRASTE_GRUPOS.find(g=>g.key===contrasteAmb).label)}`:""}. `
+    + `Las <b style="color:${VEREDICTO_COLOR.contradice}">contradicciones</b> van primero. `
+    + `Clic en una tarjeta para el detalle.</p>`
+    + grupos.map(g=>{
+    const items = H.filter(h=>contrasteAmbito(h)===g.key)
+      .slice()
+      .sort((a,b) => {
+        const oa=VEREDICTO_ORDEN[veredictoDe(a).estado]??9, ob=VEREDICTO_ORDEN[veredictoDe(b).estado]??9;
+        if(oa!==ob) return oa-ob;
+        return (b.interes||0)-(a.interes||0);
+      });
+    if(!items.length) return contrasteAmb
+      ? `<div class="gapnone">Sin notas de ${esc(g.label)} para contrastar ahora mismo.</div>` : "";
+    // pagina "eterna" (Fernando): tope de CONTRASTE_PAGE tarjetas por grupo,
+    // con "Ver mas" para el resto -- mismo criterio que Noticias (PAGE=12).
+    const expandido = !!contrasteExpandido[g.key];
+    const visibles = expandido ? items : items.slice(0, CONTRASTE_PAGE);
+    const vermas = (!expandido && items.length > CONTRASTE_PAGE)
+      ? `<button class="vermas" data-vermasco="${g.key}" style="margin:10px 0">Ver mas (${items.length - CONTRASTE_PAGE} restantes)</button>`
+      : "";
+    return `<h3 style="margin:18px 2px 8px;color:${g.color}">${esc(g.label)} <span class="chip">${items.length}</span></h3>`
+      + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">`
+      + visibles.map(h=>contrasteCardHTML(h)).join("")
+      + `</div>` + vermas;
+  }).join("");
+  box.querySelectorAll("[data-vermasco]").forEach(b=>b.addEventListener("click",()=>{
+    contrasteExpandido[b.dataset.vermasco] = true; renderContraste();
+  }));
+}
+
+// ------- graficos de pastel (participacion de mercado) -------
+function pieChart(items){ // items: [{label,value,color}]
+  const total=items.reduce((s,i)=>s+i.value,0);
+  if(total<=0) return `<div class="gapnone">Sin datos.</div>`;
+  const R=54, C=60, cir=2*Math.PI*R; let off=0;
+  const ring=items.filter(i=>i.value>0).map(i=>{
+    const frac=i.value/total, len=frac*cir;
+    const seg=`<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="${i.color}" stroke-width="16"
+      stroke-dasharray="${len.toFixed(2)} ${(cir-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}"
+      transform="rotate(-90 ${C} ${C})"></circle>`;
+    off+=len; return seg;
+  }).join("");
+  const leg=items.filter(i=>i.value>0).sort((a,b)=>b.value-a.value).map(i=>
+    `<div class="b"><span style="width:11px;height:11px;border-radius:3px;background:${i.color};display:inline-block"></span>
+     <span class="k" style="width:auto;flex:1">${esc(i.label)}</span>
+     <span class="v">${Math.round(100*i.value/total)}%</span></div>`).join("");
+  return `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <svg width="120" height="120" viewBox="0 0 120 120" style="flex:none">${ring}</svg>
+    <div class="bars" style="flex:1;min-width:150px">${leg}</div></div>`;
+}
+function catColor(c){return CATCOLOR[c]||CATCOLOR.general;}
+function renderPies(){
+  const box=$("#pies"); const H=statSet(); const g=DATA.gdelt||{}, tend=DATA.tendencias||{};
+  // 1) mercado total: historias por categoria
+  const cat={}; H.forEach(h=>cat[h.seccion]=(cat[h.seccion]||0)+1);
+  const totItems=CAT_ORDER.filter(c=>cat[c]).map(c=>({label:SEC_LABEL[c]||c,value:cat[c],color:catColor(c)}));
+  // 2) mercado de cobertura -- Fase 2 (2026-09-23/24), pedido explicito de
+  // Fernando: "el marco principal se calcula con NUESTROS propios datos...
+  // GDELT queda como capa complementaria cuando responda". Antes esto
+  // dependia 100% de GDELT (bloqueado la mayor parte del tiempo, ver Problema
+  // 2 de una ronda anterior) -- ahora usa el volumen REAL de articulos que
+  // el propio monitor ya recolecto (n_articles por historia, sumado por
+  // categoria): siempre disponible, nunca depende de que GDELT responda.
+  // SIEMPRE las 5 categorias (mismo criterio que el panel de arriba).
+  const cov={}; CAT_ORDER.forEach(c=>cov[c]=0);
+  H.forEach(h=>{cov[h.seccion]=(cov[h.seccion]||0)+(h.n_articles||1);});
+  const covItems=CAT_ORDER.map(c=>({label:SEC_LABEL[c]||c,value:cov[c],color:catColor(c)}));
+  // GDELT queda como dato COMPLEMENTARIO, mostrado aparte (nunca reemplaza
+  // el grafico de arriba): si respondio poco, se avisa cuanto -- el panel ya
+  // no depende de que responda para existir.
+  const temasPresentes=new Set(); H.forEach(h=>(h.temas||[]).forEach(t=>temasPresentes.add(t)));
+  const nTemasGdelt=Object.keys(g).length, nTemasTotal=temasPresentes.size;
+  const gdeltAviso = nTemasTotal>0
+    ? `<div class="hint" style="margin-top:6px;font-size:.8em">Complementario -- GDELT (prensa mundial vía Google): `
+      +`dato de ${nTemasGdelt} de ${nTemasTotal} temas hoy (${esc(DATA.estado_gdelt||"sin fuente")}). `
+      +`Ver el panel "Prensa: volumen y tono" mas abajo para el detalle por tema.</div>`
+    : "";
+  // 3) mercado de busquedas: demanda por categoria
+  const dem={}; Object.keys(tend).forEach(t=>{const last=demandaTema(t)||0;
+    const c=THEME_CAT[t]||"general"; dem[c]=(dem[c]||0)+last;});
+  const demItems=CAT_ORDER.filter(c=>dem[c]>0).map(c=>({label:SEC_LABEL[c]||c,value:dem[c],color:catColor(c)}));
+  box.innerHTML=`
+    <div class="spark"><div class="lbl"><b>Mercado total</b><span class="dem">${H.length} historias</span></div>${pieChart(totItems)}</div>
+    <div class="spark"><div class="lbl"><b>Mercado de cobertura</b><span class="dem">articulos propios</span></div>${pieChart(covItems)}${gdeltAviso}</div>
+    <div class="spark"><div class="lbl"><b>Mercado de busquedas</b><span class="dem">${DATA.fuente_interes||''}</span></div>${demItems.length?pieChart(demItems):'<div class="gapnone">Sin datos de busqueda.</div>'}</div>`;
+}
+function showSection(sec){
+  document.querySelectorAll("#mainnav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===sec));
+  $("#secNoticias").hidden = sec!=="noticias";
+  $("#secUltimaHora").hidden = sec!=="ultimahora";
+  $("#secSocial").hidden = sec!=="social";
+  $("#secStats").hidden = sec!=="stats";
+  $("#secGap").hidden = sec!=="gap";
+  $("#secContraste").hidden = sec!=="contraste";
+  $("#secGuardadas").hidden = sec!=="guardadas";
+  $("#secAsistente").hidden = sec!=="asistente";
+  $("#secBuscar").hidden = sec!=="buscar";
+  if(sec==="social") renderSocial();
+  if(sec==="stats") renderStats();
+  if(sec==="gap") renderGap();
+  if(sec==="contraste") renderContraste();
+  if(sec==="guardadas") cargarGuardadas().then(renderGuardadas);
+  if(sec==="asistente") renderAsistente();
+  if(sec==="buscar") cargarHistorialBusquedas();
+  if(sec==="ultimahora"){ uhVisto=Date.now(); $("#uhBadge").hidden=true; renderUltimaHora(); }
+}
+
+// ------- contexto real por entidad (Parte B: Wikipedia + GDELT, grounded) -------
+function renderContexto(h){
+  // h.contexto no existe todavia = el trabajador de fondo no llego a esta
+  // historia en su ultima pasada (llegara en <= MONITOR_FEED_MIN minutos).
+  if(h.contexto===undefined || h.contexto===null)
+    return `<p class="contexto analizando">Contexto (Wikipedia + GDELT): analizando…</p>`;
+  const c=h.contexto;
+  // "Tambien aparecio..." (registro propio, entities.json -- Parte B, caso
+  // Jordan): se muestra AUNQUE no haya contexto de Wikipedia/GDELT, porque es
+  // justo el caso de una entidad sin pagina propia (ver Decisiones ya
+  // tomadas). Nunca se esconde detras del "sin contexto disponible".
+  const previas=(c.previas||[]).slice(0,3);
+  const previasHTML = previas.length
+    ? `<p class="contexto previas"><b>También apareció ·</b> `
+      + previas.map(p=>`<a href="${esc(p.link||'#')}" target="_blank" rel="noopener">${esc(p.titular)}</a>`
+                       + ` <span class="fuenteswiki">(${esc((p.fecha||'').slice(0,10))})</span>`).join(" · ")
+      + `</p>`
+    : "";
+  if(!c.texto || c.texto==="sin contexto disponible"){
+    return previas.length ? previasHTML
+      : `<p class="contexto vacio">Contexto (Wikipedia + GDELT): sin contexto disponible.</p>`;
+  }
+  const verif=(c.entidades||[]).map(e=>
+    e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener">${esc(e.nombre)}</a>` : esc(e.nombre)
+  ).join(", ");
+  return `<p class="contexto"><b>Contexto (Wikipedia + GDELT) ·</b> ${esc(c.texto)}`
+    + (verif ? ` <span class="fuenteswiki">— verificado en Wikipedia: ${verif}</span>` : "")
+    + `</p>` + previasHTML;
+}
+
+// ------- tarjeta de una historia (usada por Noticias y por Guardadas) -------
+function cardHTML(h, i, opts){
+  opts = opts || {};
+  const cls=SEC_CLS[h.seccion]||"gen";
+  const seclabel=SEC_LABEL[h.seccion]||h.seccion;
+  const sectag=`<span class="tag ${cls}">${esc(seclabel)}</span>`;
+  const amb = h.ambito==="internacional"
+    ? `<span class="tag intl">Mundo</span>`
+    : (h.ciudad ? `<span class="tag loc">${esc(h.ciudad)}</span>` : `<span class="tag loc">Ecuador</span>`);
+  const gap = h.brecha?`<span class="tag gap" title="Mucha busqueda + poca cobertura">Brecha</span>`:"";
+  const dem = (h.demanda!=null)?`<span class="dem">busq <b>${h.demanda}</b></span>`:"";
+  const medios=h.n_outlets>1?`<span class="badge">${h.n_outlets} medios</span>`:"";
+  const img = h.image
+    ? `<img class="thumb" src="${esc(h.image)}" loading="lazy" onerror="this.remove()">` : "";
+  const key = storyKey(h);
+  const guardada = savedKeys.has(key);
+  const star = `<button class="starbtn ${guardada?'on':''}" data-key="${esc(key)}"
+      title="${guardada?'Quitar de Guardadas':'Guardar para reportaje'}">${guardada?'★':'☆'}</button>`;
+  const nota = NOTAS[key];
+  const notabtn = `<button class="notabtn ${nota?'on':''}" data-notakey="${esc(key)}" title="${nota?'Ver/editar tu nota':'Agregar una nota'}">✎</button>`;
+  const corner = opts.guardada ? `<span class="rankno">guardada ${fmtAgo(h._guardado_ts)}</span>` : `<span class="rankno">#${i+1}</span>`;
+  const thumb = `<div class="thumbwrap">
+      <span class="phlabel ph-${cls}">${esc(seclabel).toUpperCase()}</span>
+      ${img}${corner}${notabtn}${star}</div>`;
+  const fuentes=(h.fuentes||[]).map(f=>`
+    <div class="src"><a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.title)}</a>
+    <div class="o">${esc(f.outlet)}</div></div>`).join("");
+  const contr=(h.contratos&&h.contratos.length)
+    ? `<details><summary style="color:#e11d48">Contraste oficial: ${h.contratos.length} contrato(s) SERCOP</summary>`
+      + h.contratos.map(c=>`<div class="src"><a href="${esc(c.link||'#')}" target="_blank" rel="noopener">${esc(c.objeto||c.ocid||'contrato')}</a>
+        <div class="o">${esc(c.entidad||'')}${c.monto?' · $'+esc(c.monto):''}${c.fecha?' · '+esc(c.fecha):''}</div></div>`).join("")
+      + `<div class="o" style="padding:6px 0;font-style:italic">Pistas oficiales para verificar — no implican que la nota trate de estos contratos.</div></details>`
+    : "";
+  // Contraste ahora tiene su propia tarjeta dedicada (contrasteCardHTML, con
+  // el orden fijo pedido para esa seccion) -- esta (compartida por Noticias/
+  // Guardadas) sigue mostrando el detalle de FactCheck cuando hay, igual que
+  // ya mostraba el de SERCOP arriba.
+  const fc = renderFactcheck(h);
+  return `<div class="card" data-storykey="${esc(key)}">
+    ${thumb}
+    <div class="cardbody">
+      <div class="titular">${esc(h.titular)}</div>
+      ${h.resumen?`<p class="resumen">${esc(h.resumen)}</p>`:""}
+      ${h.ia?`<p class="ia"><b>Lectura IA ·</b> ${esc(h.ia)}</p>`:""}
+      ${renderContexto(h)}
+      ${nota?`<div class="nota"><b>Tu nota ·</b> ${esc(nota.texto.length>160?nota.texto.slice(0,160)+"…":nota.texto)}</div>`:""}
+      <div class="row">${medios}${sectag}${amb}${gap}${dem}
+        <span class="time">${fmtWhen(h.hours)}</span></div>
+      <details><summary>Ver ${h.fuentes.length} fuente(s)</summary>${fuentes}</details>
+      ${contr}${fc}
+    </div>
+  </div>`;
+}
+
+// ------- lista de historias -------
+// ------- Fase 0: Última hora (orden puro por publicacion, no por interes) -------
+let uhAmb = "";       // "" | "local" | "guayaquil" | "internacional"
+let uhVisto = Date.now();  // cuando se abrio/miro por ultima vez esta pestaña
+function uhFiltradas(){
+  return (DATA.historias||[]).filter(h=>{
+    if(!uhAmb) return true;
+    if(uhAmb==="guayaquil") return h.ciudad==="Guayaquil";
+    if(uhAmb==="local") return h.ambito==="local";
+    return h.ambito==="internacional";
+  }).slice().sort((a,b)=>(a.hours==null?1e9:a.hours)-(b.hours==null?1e9:b.hours));
+}
+function uhRowHTML(h){
+  const key=storyKey(h);
+  const ultima=(h.fuentes&&h.fuentes.length)?h.fuentes[h.fuentes.length-1]:null; // la mas nueva (fuentes va de mas vieja a mas nueva, ver story_key)
+  const amb=h.ciudad==="Guayaquil"?"Guayaquil":(h.ambito==="internacional"?"Mundo":"Ecuador");
+  return `<div class="uhrow" data-storykey="${esc(key)}">
+    <span class="uhhora">${esc(fmtAgo(h.newest))}</span>
+    <span class="tag ${SEC_CLS[h.seccion]||'gen'}" style="flex:none">${esc(amb)}</span>
+    <a href="${esc((ultima&&ultima.link)||'#')}" target="_blank" rel="noopener" class="uhtit">${esc(h.titular)}</a>
+    <span class="uhmedio">${esc((ultima&&ultima.outlet)||(h.outlets&&h.outlets[0])||'')}</span>
+  </div>`;
+}
+function renderUltimaHora(){
+  const hs=uhFiltradas().slice(0,60);
+  $("#uhList").innerHTML = hs.length
+    ? hs.map(uhRowHTML).join("")
+    : '<div class="empty">Sin historias para este filtro.</div>';
+}
+document.querySelectorAll("#uhSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#uhSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); uhAmb=b.dataset.ua; renderUltimaHora();
+}));
+
+function render(){
+  const tema=$("#tema").value, q=$("#q").value.toLowerCase().trim();
+  let hs=currentSet().filter(h=>{
+    if(tema && !(h.temas||[]).includes(tema)) return false;
+    if(q && !h.titular.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  // orden: por relevancia (interes) o por lo mas reciente
+  if($("#orden").value==="reciente")
+    hs=hs.slice().sort((a,b)=>(a.hours==null?1e9:a.hours)-(b.hours==null?1e9:b.hours));
+  else
+    hs=hs.slice().sort((a,b)=>(b.interes||0)-(a.interes||0));
+  const list=$("#list"), more=$("#vermas");
+  if(!hs.length){ list.innerHTML='<div class="empty">Sin historias para este filtro.</div>'; more.hidden=true; return; }
+  const vis=hs.slice(0, shown);
+  more.hidden = hs.length<=shown;
+  if(!more.hidden) more.textContent = `Ver mas (${hs.length-shown} restantes)`;
+  list.innerHTML = vis.map((h,i)=>cardHTML(h,i)).join("");
+}
+
+// ------- Parte C: Guardadas / para reportaje -------
+// Guarda la historia COMPLETA (no solo un id): asi sobrevive a que la noticia
+// caduque del feed o el dashboard se regenere. Persistencia:
+//  - Si el dashboard se sirve por http (python monitor.py serve, el modo
+//    normal de uso): saved.json EN DISCO, via el endpoint POST /api/guardar
+//    del propio servidor. Sobrevive a reinicios del programa y es el mismo
+//    archivo para cualquier navegador que abras.
+//  - Si se abrio el archivo dashboard.html directo (sin servidor, file://):
+//    no hay forma de escribir a disco desde el navegador, asi que cae a
+//    localStorage -- solo vive EN ESTE NAVEGADOR, en ESTA compu; se pierde si
+//    limpias datos del sitio o abres el archivo desde otro navegador/perfil.
+// ------- Notas personales (2026-09-22) -------
+// Una nota por historia (clave = storyKey) o por tema (clave = "tema:<nombre>").
+// Con el servidor: notas.json en disco via POST /api/nota (sobrevive a
+// reinicios). Sin servidor (file://): localStorage de este navegador.
+let NOTAS = {};
+const LS_NOTAS = "monitor_notas_v1";
+const conServidor = location.protocol==="http:"||location.protocol==="https:";
+async function cargarNotas(){
+  if(conServidor){
+    try{ const r=await fetch("notas.json?t="+Date.now(),{cache:"no-store"}); if(r.ok){ NOTAS=await r.json()||{}; return; } }catch(e){}
+    NOTAS = NOTAS || {};
+    return;
+  }
+  try{ NOTAS = JSON.parse(localStorage.getItem(LS_NOTAS)||"{}"); }catch(e){ NOTAS={}; }
+}
+async function guardarNota(key, texto, titular){
+  texto=(texto||"").trim();
+  if(conServidor){
+    const r=await fetch("api/nota",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({id:key, texto, titular})});
+    if(!r.ok) throw new Error("no se pudo guardar");
+    NOTAS=(await r.json()).notas||{};
+  } else {
+    if(texto) NOTAS[key]={texto, titular, ts:new Date().toISOString()}; else delete NOTAS[key];
+    try{ localStorage.setItem(LS_NOTAS, JSON.stringify(NOTAS)); }catch(e){}
+  }
+}
+function notaBoxHTML(key, titular){
+  const n=NOTAS[key];
+  return `<div class="notabox" data-notakey="${esc(key)}" data-titular="${esc(titular||"")}">
+    <h4 style="margin:14px 0 6px">Tu nota</h4>
+    <textarea placeholder="Ideas, fuentes a llamar, dudas, ángulo para el reportaje…">${esc(n?n.texto:"")}</textarea>
+    <div class="row"><button class="pillbtn notaguardar">Guardar nota</button>
+      ${n?`<button class="pillbtn notaborrar">Borrar</button>`:""}
+      <span class="hint notaestado">${n?"guardada "+fmtAgo(n.ts):""}</span></div>
+  </div>`;
+}
+document.body.addEventListener("click", async e=>{
+  const g=e.target.closest(".notaguardar, .notaborrar"); if(!g) return;
+  const box=g.closest(".notabox"); const key=box.dataset.notakey;
+  const ta=box.querySelector("textarea"); const est=box.querySelector(".notaestado");
+  const texto = g.classList.contains("notaborrar") ? "" : ta.value;
+  g.disabled=true; est.textContent="guardando…";
+  try{ await guardarNota(key, texto, box.dataset.titular); est.textContent = texto.trim()?"guardada ✓":"borrada";
+       if(!texto.trim()) ta.value=""; aplicarPendiente(true); }
+  catch(err){ est.textContent="no se pudo guardar (¿sigue corriendo el programa?)"; }
+  g.disabled=false;
+});
+
+const LS_KEY = "monitor_guardadas_v1";
+function storyKey(h){
+  const f0 = (h.fuentes && h.fuentes[0]) || {};
+  return ((f0.link || h.titular || "")).slice(0,180);
+}
+function lsGetAll(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }catch(e){ return []; }
+}
+function lsSetAll(items){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(items)); }catch(e){}
+}
+let savedItems = [];
+let savedKeys = new Set();
+let modoGuardado = "local";  // se decide una vez al cargar, ver cargarGuardadas()
+
+async function cargarGuardadas(){
+  if(location.protocol==="http:"||location.protocol==="https:"){
+    modoGuardado = "servidor";
+    try{
+      const r = await fetch("saved.json?t="+Date.now(),{cache:"no-store"});
+      savedItems = r.ok ? await r.json() : [];  // 404 = todavia no guardaste ninguna
+    }catch(e){ savedItems = []; }
+  } else {
+    modoGuardado = "local";
+    savedItems = lsGetAll();
+  }
+  savedKeys = new Set(savedItems.map(storyKey));
+}
+async function apiGuardar(h){
+  const key = storyKey(h);
+  if(modoGuardado==="servidor"){
+    try{
+      const r = await fetch("api/guardar",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({accion:"guardar", historia:h})});
+      if(r.ok){ const d=await r.json(); savedItems=d.guardadas||savedItems; savedKeys.add(key); return; }
+    }catch(e){}
+    alert("No se pudo guardar: el servidor no respondio. Intenta de nuevo.");
+    return;
+  }
+  const items = lsGetAll().filter(x=>storyKey(x)!==key);
+  items.push(Object.assign({}, h, {_guardado_ts:new Date().toISOString()}));
+  lsSetAll(items); savedItems=items; savedKeys.add(key);
+}
+async function apiQuitar(key){
+  if(modoGuardado==="servidor"){
+    try{
+      const r = await fetch("api/guardar",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({accion:"quitar", id:key})});
+      if(r.ok){ const d=await r.json(); savedItems=d.guardadas||[]; savedKeys.delete(key); return; }
+    }catch(e){}
+    alert("No se pudo quitar: el servidor no respondio. Intenta de nuevo.");
+    return;
+  }
+  const items = lsGetAll().filter(x=>storyKey(x)!==key);
+  lsSetAll(items); savedItems=items; savedKeys.delete(key);
+}
+async function toggleGuardado(h, key){
+  if(savedKeys.has(key)) await apiQuitar(key);
+  else await apiGuardar(h);
+  render();
+  if(sec==="guardadas") renderGuardadas();
+}
+function renderGuardadas(){
+  const box=$("#guardadaslist"), hint=$("#guardadashint");
+  hint.innerHTML = modoGuardado==="servidor"
+    ? `Guardadas en <b>saved.json</b>, en la carpeta del programa (via el servidor local) — `
+      + `sobreviven a que la noticia caduque del feed y a que reinicies el programa.`
+    : `No hay servidor corriendo (abriste el archivo directo): se guardan en el `
+      + `<b>almacenamiento de este navegador</b> — solo en esta compu y este navegador; `
+      + `se pierden si limpias datos del sitio o lo abres desde otro navegador. Para la `
+      + `version que sobrevive siempre, corre <code>python monitor.py serve</code>.`;
+  // Mis notas: todas las notas (de historias y de temas), la mas reciente arriba
+  const notas=Object.entries(NOTAS).sort((a,b)=>new Date(b[1].ts||0)-new Date(a[1].ts||0));
+  const notasHTML = notas.length ? `<div class="panel"><h2 style="margin:0 0 6px">Mis notas (${notas.length})</h2>`
+    + notas.map(([k,n])=>{
+        const esTema=k.startsWith("tema:");
+        const h=esTema?null:((DATA.historias||[]).find(x=>storyKey(x)===k)||savedItems.find(x=>storyKey(x)===k));
+        const abrir = esTema ? `data-abrir-tema="${esc(k.slice(5))}"` : (h?`data-abrir-nota="${esc(k)}"`:"");
+        return `<div class="src" ${abrir} style="${abrir?'cursor:pointer':''}">
+          <b>${esc(n.titular||k)}</b> <span class="hint">· ${fmtAgo(n.ts)}${!esTema&&!h?" · la noticia ya salió del feed":""}</span>
+          <div class="nota">${esc(n.texto)}</div></div>`;}).join("") + `</div>` : "";
+  if(!savedItems.length){
+    box.innerHTML = notasHTML + `<div class="empty">Todavia no guardaste ninguna noticia. Toca la estrella (☆) en una tarjeta de Noticias.</div>`;
+    return;
+  }
+  const ord = savedItems.slice().sort((a,b)=>new Date(b._guardado_ts||0)-new Date(a._guardado_ts||0));
+  box.innerHTML = notasHTML + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">`
+    + ord.map((h,i)=>cardHTML(h,i,{guardada:true})).join("") + `</div>`;
+}
+// clic en la estrella (delegado: las tarjetas se re-renderizan seguido)
+document.body.addEventListener("click", e=>{
+  const b=e.target.closest(".starbtn");
+  if(!b) return;
+  const key=b.dataset.key;
+  const h=(DATA.historias||[]).find(x=>storyKey(x)===key)
+        || savedItems.find(x=>storyKey(x)===key);
+  if(h) toggleGuardado(h, key);
+});
+
+// ------- Parte E: detalle expandido de un item + chat con la IA local -------
+// Cada item (noticia/Contraste = historia completa; Oportunidad/Pulso social
+// = un tema) se puede clickear para expandir TODOS sus datos, y desde ahi
+// charlar con Ollama sobre ESE item puntual. El navegador nunca habla
+// directo con Ollama -- todo pasa por POST /api/chat en este mismo servidor
+// (ver do_POST en monitor.py). El hilo de chat vive solo en esta pestana del
+// navegador (se pierde al recargar) -- "por ahora el chat es discusion por
+// item", persistirlo es un paso posterior.
+let chatItem = null;      // {tipo:"historia"|"tema", key, datos} del item abierto
+const chatHilos = {};     // key -> [{rol:"usuario"|"ia"|"sistema", texto}]
+let chatModo = "rapido";  // "rapido" | "profundo" (Frente B) -- decide modelo y cuanto contexto se manda
+
+// Frente B: contexto MAGRO (modo rapido, por defecto) vs COMPLETO (modo
+// profundo). "no mandes toda la tarjeta si no hace falta" -- el modo rapido
+// manda lo minimo para responder una consulta que la propia nota ya
+// contesta (titular/resumen/interpretacion); el profundo agrega fuentes,
+// contraste oficial y el contexto verificado entero.
+function contextoChatHistoria(h, profundo){
+  const partes = [
+    `Noticia: ${h.titular}`,
+    h.resumen ? `Resumen: ${(h.resumen||"").slice(0, profundo?500:180)}` : "",
+    `Seccion: ${SEC_LABEL[h.seccion]||h.seccion} | Ambito: ${h.ambito==="internacional"?"Mundo":(h.ciudad||"Ecuador")}`,
+    h.ia ? `Interpretacion IA previa: ${h.ia}` : "",
+  ];
+  const contextoOk = h.contexto && h.contexto.texto && h.contexto.texto!=="sin contexto disponible";
+  if(profundo){
+    partes.push(
+      contextoOk ? `Contexto verificado: ${h.contexto.texto}` : "",
+      (h.fuentes&&h.fuentes.length) ? `Fuentes: ${[...new Set(h.fuentes.map(f=>f.outlet))].join(", ")}` : "",
+      (h.contratos&&h.contratos.length) ? `Contratos SERCOP relacionados: ${h.contratos.map(c=>c.objeto||c.ocid).join("; ")}` : "",
+      (h.factcheck&&h.factcheck.length) ? `Verificaciones (FactCheck): ${h.factcheck.map(c=>`${c.claim} (${c.calificacion})`).join("; ")}` : "",
+    );
+  } else if(contextoOk){
+    partes.push(`Contexto verificado (resumen): ${h.contexto.texto.slice(0,150)}`);
+  }
+  return partes.filter(Boolean).join("\n");
+}
+function contextoChatTema(tema, profundo){
+  const tend=(DATA.tendencias||{})[tema], soc=(DATA.social||{})[tema], g=(DATA.gdelt||{})[tema];
+  const cov=(DATA.historias||[]).filter(h=>(h.temas||[]).includes(tema));
+  const partes = [
+    `Tema: ${tema}`,
+    demandaTema(tema)!=null ? `Demanda de busqueda (0-100, promedio ultima semana, fuente ${DATA.fuente_interes||"?"}): ${demandaTema(tema)}` : "",
+    soc&&soc.n_posts ? `Conversacion en redes: ${soc.n_posts} publicaciones captadas (relativo, no es un conteo absoluto)` : "",
+    `Cobertura de medios (esta agenda): ${cov.length} historia(s)`,
+  ];
+  if(profundo){
+    partes.push(
+      soc&&soc.resumen ? `Resumen OSINT del pulso social: ${soc.resumen}` : "",
+      soc&&soc.sentimiento ? `Sentimiento en redes: ${soc.sentimiento} (polarizacion: ${soc.polarizacion||"?"})` : "",
+      g&&g.tone!=null ? `Tono de la cobertura (GDELT): ${g.tone}` : "",
+      cov.length ? `Historias relacionadas: ${cov.slice(0,5).map(h=>h.titular).join("; ")}` : "",
+    );
+  } else if(cov.length){
+    partes.push(`Historias relacionadas: ${cov.slice(0,2).map(h=>h.titular).join("; ")}`);
+  }
+  return partes.filter(Boolean).join("\n");
+}
+
+function chatLogHTML(key){
+  return (chatHilos[key]||[]).map(m=>
+    `<div class="chatmsg ${m.rol}">${esc(m.texto)}</div>`).join("");
+}
+function mostrarDetalle(headHTML){
+  $("#modalBody").innerHTML = headHTML;
+  $("#modalOverlay").hidden = false;
+}
+function cerrarModal(){
+  $("#modalOverlay").hidden = true;
+  if(PENDIENTE && !usuarioOcupado()) aplicarPendiente();
+  // el chat NO se cierra con el modal a proposito: es un widget aparte, en
+  // la esquina, para poder seguir viendo/clickeando otras noticias mientras
+  // se sigue esa conversacion (el pedido explicito de Fernando).
+}
+// Chat flotante (esquina inferior derecha): se abre EXPANDIDO al entrar a un
+// item (para que quede accesible de una), con el titulo del item bien visible
+// arriba para que quede claro de que se esta hablando. Cambiar de item
+// (abrir otra tarjeta) re-apunta el chat a ese item nuevo.
+function abrirChat(tipo, key, datos, label){
+  chatItem = {tipo, key, datos};
+  if(!chatHilos[key]) chatHilos[key] = [];
+  $("#chatWidgetItem").textContent = label;
+  $("#chatWidgetItem").title = label;
+  $("#chatLog").innerHTML = chatLogHTML(key) || `<div class="chatmsg sistema">Pregunta algo sobre este item, o pedile a la IA que revise la interpretacion.</div>`;
+  $("#chatBubble").hidden = true;
+  $("#chatWidget").hidden = false;
+  $("#chatMsg").value = "";
+  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+}
+function minimizarChat(){
+  $("#chatWidget").hidden = true;
+  $("#chatBubble").hidden = !chatItem;  // solo mostrar la burbuja si hay un chat activo
+}
+function cerrarChat(){
+  $("#chatWidget").hidden = true;
+  $("#chatBubble").hidden = true;
+  chatItem = null;
+}
+function abrirDetalleHistoria(h){
+  const key = storyKey(h);
+  const fuentes=(h.fuentes||[]).map(f=>`<div class="src"><a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.title)}</a><div class="o">${esc(f.outlet)}</div></div>`).join("");
+  const contr=(h.contratos&&h.contratos.length)
+    ? `<h4>Contraste oficial — SERCOP</h4>` + h.contratos.map(c=>`<div class="src"><a href="${esc(c.link||'#')}" target="_blank" rel="noopener">${esc(c.objeto||c.ocid||'contrato')}</a>
+        <div class="o">${esc(c.entidad||'')}${c.monto?' · $'+esc(c.monto):''}${c.fecha?' · '+esc(c.fecha):''}</div></div>`).join("")
+    : "";
+  const head = `
+    <div class="modalhead"><span class="tag ${SEC_CLS[h.seccion]||'gen'}">${esc(SEC_LABEL[h.seccion]||h.seccion)}</span>
+      ${h.ambito==="internacional"?'<span class="tag intl">Mundo</span>':`<span class="tag loc">${esc(h.ciudad||"Ecuador")}</span>`}
+      ${h.n_outlets>1?`<span class="badge">${h.n_outlets} medios</span>`:""}</div>
+    <h2>${esc(h.titular)}</h2>
+    ${h.resumen?`<p class="resumen" style="-webkit-line-clamp:unset">${esc(h.resumen)}</p>`:""}
+    ${h.ia?`<p class="ia"><b>IA ·</b> ${esc(h.ia)}</p>`:""}
+    ${renderContexto(h)}
+    <h4>Fuentes (${h.fuentes.length})</h4>${fuentes}
+    ${contr}
+    ${renderFactcheck(h)}
+    ${notaBoxHTML(key, h.titular)}
+    <h4 style="margin:14px 0 0">Preguntarle a la IA (se abre en el chat, modo profundo)</h4>
+    <div class="quick">
+      <button data-q="¿Qué información clave le falta a esta nota y a quién habría que consultar para completarla?">¿Qué le falta?</button>
+      <button data-q="¿A quién beneficia y a quién perjudica este hecho? Sé concreto y no inventes datos.">¿A quién beneficia?</button>
+      <button data-q="Propón dos ángulos de reportaje propio a partir de esta nota, con qué dato habría que buscar para cada uno.">Ángulos de reportaje</button>
+      <button data-q="¿Qué afirmaciones de esta nota habría que verificar y con qué documento o fuente oficial?">¿Qué verificar?</button>
+    </div>`;
+  mostrarDetalle(head);
+  abrirChat("historia", key, h, h.titular);
+}
+function abrirDetalleTema(tema){
+  const tend=(DATA.tendencias||{})[tema], soc=(DATA.social||{})[tema], g=(DATA.gdelt||{})[tema];
+  const cov=(DATA.historias||[]).filter(h=>(h.temas||[]).includes(tema));
+  const color=themeColor(tema);
+  const dT=demandaTema(tema);
+  const demHTML = dT!=null
+    ? `<div class="b"><span class="k">busqueda</span><span class="track"><span class="fill" style="width:${dT}%;background:${color}"></span></span><span class="v">${dT}</span></div>` : "";
+  const socHTML = soc&&soc.n_posts
+    ? `<div class="b"><span class="k">redes</span><span class="track"><span class="fill" style="width:${Math.min(100,soc.n_posts*2)}%;background:#7c3aed"></span></span><span class="v">${soc.n_posts}</span></div>` : "";
+  const socDetalle = soc&&soc.n_posts ? `
+    <h4>Pulso social</h4>
+    ${soc.sentimiento?`<span class="chip">sentimiento: ${esc(soc.sentimiento)}</span> `:""}
+    ${soc.polarizacion?`<span class="chip">polarización: ${esc(soc.polarizacion)}</span>`:""}
+    ${soc.resumen?`<p class="gapwhy"><b style="color:var(--accent)">OSINT ·</b> ${esc(soc.resumen)}</p>`:""}` : "";
+  const notas = cov.slice(0,6).map(h=>{const f0=(h.fuentes&&h.fuentes[0])||{};
+    return `<a href="${esc(f0.link||'#')}" target="_blank" rel="noopener" style="display:block;padding:3px 0;color:var(--accent);font-size:13px">› ${esc(h.titular)}</a>`;}).join("");
+  const head = `
+    <h2 style="color:${color}">${esc(tema)}</h2>
+    <div class="bars">${demHTML}${socHTML}
+      <div class="b"><span class="k">cobertura</span><span class="track"><span class="fill" style="width:${Math.min(100,cov.length*20)}%;background:var(--muted)"></span></span><span class="v">${cov.length}</span></div>
+    </div>
+    ${g&&g.tone!=null?`<p class="hint">Tono de cobertura (GDELT): <b>${g.tone}</b></p>`:""}
+    ${socDetalle}
+    <h4>Historias de este tema (${cov.length})</h4>${notas||'<div class="gapnone">Ninguna en esta agenda.</div>'}
+    ${notaBoxHTML("tema:"+tema, "Tema: "+tema)}`;
+  mostrarDetalle(head);
+  abrirChat("tema", tema, tema, tema);
+}
+// clic para abrir el detalle: cualquier click dentro de una tarjeta que NO
+// sea un link/boton/detalle propio (esos deben seguir funcionando normal)
+document.body.addEventListener("click", e=>{
+  if(e.target.closest("a,button,summary,details,input")) return;
+  const cardEl = e.target.closest(".card[data-storykey]");
+  if(cardEl){
+    const key = cardEl.dataset.storykey;
+    const h = (DATA.historias||[]).find(x=>storyKey(x)===key) || savedItems.find(x=>storyKey(x)===key);
+    if(h) abrirDetalleHistoria(h);
+    return;
+  }
+  const gapEl = e.target.closest(".gapcard[data-tema]");
+  if(gapEl){ abrirDetalleTema(gapEl.dataset.tema); return; }
+  const temaEl = e.target.closest("[data-abrir-tema]");
+  if(temaEl){ abrirDetalleTema(temaEl.dataset.abrirTema); return; }
+  const notaEl = e.target.closest("[data-abrir-nota]");
+  if(notaEl){
+    const k=notaEl.dataset.abrirNota;
+    const h=(DATA.historias||[]).find(x=>storyKey(x)===k)||savedItems.find(x=>storyKey(x)===k);
+    if(h) abrirDetalleHistoria(h);
+  }
+});
+document.body.addEventListener("click", e=>{
+  const q=e.target.closest(".quick button[data-q]");
+  if(q && chatItem){
+    // preguntas de lectura critica: van al modelo profundo
+    document.querySelectorAll("#chatModoSeg button").forEach(x=>x.classList.toggle("active", x.dataset.modo==="profundo"));
+    chatModo="profundo";
+    $("#chatWidget").hidden=false; $("#chatBubble").hidden=true;
+    $("#chatMsg").value=q.dataset.q;
+    $("#chatForm").requestSubmit();
+    return;
+  }
+  const nb=e.target.closest(".notabtn[data-notakey]");
+  if(nb){
+    const key=nb.dataset.notakey;
+    const h=(DATA.historias||[]).find(x=>storyKey(x)===key) || savedItems.find(x=>storyKey(x)===key);
+    if(h){ abrirDetalleHistoria(h); const ta=$("#modalBody .notabox textarea"); if(ta){ ta.scrollIntoView({block:"center"}); ta.focus(); } }
+  }
+});
+$("#modalClose").addEventListener("click", cerrarModal);
+$("#modalOverlay").addEventListener("click", e=>{ if(e.target.id==="modalOverlay") cerrarModal(); });
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Escape") return;
+  if(!$("#modalOverlay").hidden) cerrarModal();
+  else if(!$("#chatWidget").hidden) minimizarChat();
+});
+$("#chatMin").addEventListener("click", minimizarChat);
+$("#chatClose").addEventListener("click", cerrarChat);
+$("#chatBubble").addEventListener("click", ()=>{
+  $("#chatBubble").hidden = true;
+  $("#chatWidget").hidden = false;
+  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+  $("#chatMsg").focus();
+});
+
+// Frente B: modo rapido/profundo -- decide modelo (ia.py) y cuanto contexto
+// se manda (contextoChatHistoria/Tema de arriba).
+document.querySelectorAll("#chatModoSeg button").forEach(b=>b.addEventListener("click", ()=>{
+  document.querySelectorAll("#chatModoSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  chatModo = b.dataset.modo;
+}));
+function contextoDeChatItem(){
+  if(!chatItem) return "";
+  const profundo = chatModo==="profundo";
+  return chatItem.tipo==="historia"
+    ? contextoChatHistoria(chatItem.datos, profundo)
+    : contextoChatTema(chatItem.datos, profundo);
+}
+
+$("#chatForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  if(!chatItem) return;
+  const msg = $("#chatMsg").value.trim();
+  if(!msg) return;
+  const key = chatItem.key;
+  chatHilos[key].push({rol:"usuario", texto:msg});
+  $("#chatLog").innerHTML = chatLogHTML(key);
+  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+  $("#chatMsg").value = "";
+  $("#chatMsg").disabled = true; $("#chatSend").disabled = true;
+
+  // Frente B: streaming -- la burbuja de la IA se va llenando en vivo, token
+  // a token, en vez de esperar el bloque completo (aunque el modelo tarde lo
+  // mismo en generar todo, la espera se siente MUCHO mas corta con progreso
+  // visible que con un "Pensando..." estatico).
+  const burbuja = document.createElement("div");
+  burbuja.className = "chatmsg ia";
+  burbuja.innerHTML = `<span class="txt">Pensando…</span><span class="cursor">▌</span>`;
+  $("#chatLog").appendChild(burbuja);
+  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+  const txtEl = burbuja.querySelector(".txt");
+  let acumulado = "", huboError = null, terminoOk = null, primerToken = true;
+
+  try{
+    const r = await fetch("api/chat", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({item: contextoDeChatItem(), mensaje: msg, modo: chatModo,
+        historial: chatHilos[key].filter(m=>m.rol!=="sistema")})});
+    if(!r.ok || !r.body) throw new Error("sin respuesta del servidor");
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, {stream:true});
+      let idx;
+      while((idx = buffer.indexOf("\n")) >= 0){
+        const linea = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx+1);
+        if(!linea) continue;
+        let obj; try{ obj = JSON.parse(linea); }catch(err){ continue; }
+        if(obj.delta){
+          if(primerToken){ acumulado = ""; primerToken = false; }  // saca el "Pensando..." al primer token real
+          acumulado += obj.delta;
+          txtEl.textContent = acumulado;
+          $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+        }
+        if(obj.done){ terminoOk = obj.ok; if(!obj.ok) huboError = obj.error; }
+      }
+    }
+    burbuja.remove();
+    if(acumulado.trim()){
+      chatHilos[key].push({rol:"ia", texto:acumulado.trim()});
+      if(terminoOk===false) chatHilos[key].push({rol:"sistema", texto:"(la respuesta se cortó: "+(huboError||"error")+")"});
+    } else {
+      chatHilos[key].push({rol:"sistema", texto:"No se pudo consultar la IA local: "+(huboError||"sin respuesta")+". ¿Esta Ollama corriendo?"});
+    }
+  }catch(err){
+    burbuja.remove();
+    chatHilos[key].push({rol:"sistema", texto:"No se pudo conectar con el servidor. ¿Sigue corriendo 'python monitor.py serve'?"});
+  }
+  $("#chatLog").innerHTML = chatLogHTML(key);
+  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
+  $("#chatMsg").disabled = false; $("#chatSend").disabled = false;
+  $("#chatMsg").focus();
+});
+
+// ------- Bloque 2 (Parte F): el Asistente -------
+// Distinto del chat por item de arriba: no esta anclado a UNA historia/tema,
+// consulta los datos del monitor con un ciclo de herramientas del lado del
+// servidor (agente.py) antes de responder. Mismo criterio de persistencia
+// que el chat por item (memoria del navegador, se pierde al recargar --
+// "recordar la conversacion DENTRO de la sesion" es justamente esto).
+const asistenteHilo = [];  // [{rol:"usuario"|"ia"|"sistema"|"progreso", texto}]
+function asistenteLogHTML(){
+  return asistenteHilo.map(m=>`<div class="chatmsg ${m.rol}">${esc(m.texto)}</div>`).join("")
+    || `<div class="chatmsg sistema">Preguntale al asistente sobre lo que esta pasando hoy: temas, brechas, contradicciones entre medios, tus guardadas y notas.</div>`;
+}
+function renderAsistente(){
+  $("#asistenteLog").innerHTML = asistenteLogHTML();
+  $("#asistenteLog").scrollTop = $("#asistenteLog").scrollHeight;
+}
+$("#asistenteForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg = $("#asistenteMsg").value.trim();
+  if(!msg) return;
+  asistenteHilo.push({rol:"usuario", texto:msg});
+  renderAsistente();
+  $("#asistenteMsg").value = "";
+  $("#asistenteMsg").disabled = true; $("#asistenteSend").disabled = true;
+
+  const burbuja = document.createElement("div");
+  burbuja.className = "chatmsg ia";
+  burbuja.innerHTML = `<span class="txt">Revisando tus datos…</span><span class="cursor">▌</span>`;
+  $("#asistenteLog").appendChild(burbuja);
+  $("#asistenteLog").scrollTop = $("#asistenteLog").scrollHeight;
+  const txtEl = burbuja.querySelector(".txt");
+  let acumulado = "", huboError = null, terminoOk = null, primerToken = true;
+
+  try{
+    const r = await fetch("api/asistente", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({mensaje: msg,
+        historial: asistenteHilo.filter(m=>m.rol==="usuario"||m.rol==="ia")})});
+    if(!r.ok || !r.body) throw new Error("sin respuesta del servidor");
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, {stream:true});
+      let idx;
+      while((idx = buffer.indexOf("\n")) >= 0){
+        const linea = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx+1);
+        if(!linea) continue;
+        let obj; try{ obj = JSON.parse(linea); }catch(err){ continue; }
+        if(obj.progreso){
+          txtEl.textContent = "🔎 " + obj.progreso;
+          $("#asistenteLog").scrollTop = $("#asistenteLog").scrollHeight;
+        }
+        if(obj.delta){
+          if(primerToken){ acumulado = ""; primerToken = false; }
+          acumulado += obj.delta;
+          txtEl.textContent = acumulado;
+          $("#asistenteLog").scrollTop = $("#asistenteLog").scrollHeight;
+        }
+        if(obj.done){ terminoOk = obj.ok; if(!obj.ok) huboError = obj.error; }
+      }
+    }
+    burbuja.remove();
+    if(acumulado.trim()){
+      asistenteHilo.push({rol:"ia", texto:acumulado.trim()});
+      if(terminoOk===false) asistenteHilo.push({rol:"sistema", texto:"(la respuesta se cortó: "+(huboError||"error")+")"});
+    } else {
+      asistenteHilo.push({rol:"sistema", texto:"No se pudo consultar al asistente: "+(huboError||"sin respuesta")+". ¿Esta Ollama corriendo?"});
+    }
+  }catch(err){
+    burbuja.remove();
+    asistenteHilo.push({rol:"sistema", texto:"No se pudo conectar con el servidor. ¿Sigue corriendo 'python monitor.py serve'?"});
+  }
+  renderAsistente();
+  $("#asistenteMsg").disabled = false; $("#asistenteSend").disabled = false;
+  $("#asistenteMsg").focus();
+});
+
+// ------- Fase 4: buscador en vivo -------
+const AMB_BUSCAR_LABEL = {guayaquil:"Guayaquil", ecuador:"Ecuador", mundo:"Mundo"};
+function buscarColumnaHTML(amb, datos){
+  const noticias = (datos.noticias||[]).map(n=>
+    `<div class="src"><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.titulo)}</a>
+     ${n.fecha?`<div class="o">${esc(fmtAgo(n.fecha))}</div>`:""}</div>`).join("");
+  const gente = (datos.gente||[]).map(p=>
+    `<div class="src">${fuenteChip(p.fuente)} <b>${esc(p.autor||"")}</b>: ${esc((p.texto||"").slice(0,140))}
+     ${p.url?` <a href="${esc(p.url)}" target="_blank" rel="noopener">ver</a>`:""}</div>`).join("");
+  const interes = datos.interes
+    ? `<div class="hint">Interés (${esc(datos.interes.fuente)}): <b>${datos.interes.valor}</b>/100</div>`
+    : `<div class="gapnone">Sin dato de interés para este ámbito.</div>`;
+  const c = datos.contraste||{constitucion:[],boletines:[],sercop:[]};
+  const contrasteHTML = (c.constitucion.length||c.boletines.length||c.sercop.length)
+    ? [
+        c.constitucion.map(a=>`<div class="src">Art. ${esc(a.numero)} de la Constitución: ${esc(a.texto.slice(0,140))}…</div>`).join(""),
+        c.boletines.map(b=>`<div class="src">${esc(b.institucion)}: <a href="${esc(b.link)}" target="_blank" rel="noopener">${esc(b.titulo)}</a></div>`).join(""),
+        c.sercop.map(s=>`<div class="src">SERCOP: ${esc(s.entidad||s.objeto||"contrato")}</div>`).join(""),
+      ].join("")
+    : `<div class="gapnone">Sin contraste oficial relacionado.</div>`;
+  return `<div class="panel">
+    <h3 style="margin:0 0 8px">${esc(AMB_BUSCAR_LABEL[amb]||amb)}</h3>
+    ${datos.vacio ? '<div class="gapnone">Sin resultados en este ámbito.</div>' : `
+    <h4 style="margin:10px 0 4px">📰 Noticias</h4>${noticias || '<div class="gapnone">Sin noticias.</div>'}
+    <h4 style="margin:10px 0 4px">🗣 Lo que dice la gente</h4>${gente || '<div class="gapnone">Sin conversación captada.</div>'}
+    <h4 style="margin:10px 0 4px">📈 Interés</h4>${interes}
+    ${amb!=="mundo" ? `<h4 style="margin:10px 0 4px">⚖️ Contraste oficial</h4>${contrasteHTML}` : ""}
+    `}
+  </div>`;
+}
+let buscarActual = null; // {query, ambitos} -- lo que /api/buscar_leer manda a leer
+function renderResultadoBusqueda(query, ambitos){
+  buscarActual = {query, ambitos};
+  $("#buscarResultado").innerHTML = `<h3 style="margin:14px 0 8px">Resultados para "${esc(query)}"</h3>
+    <div class="sparks" style="align-items:start">
+      ${["guayaquil","ecuador","mundo"].map(amb=>buscarColumnaHTML(amb, ambitos[amb]||{vacio:true})).join("")}
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <button class="pillbtn" id="buscarLeerBtn">🧠 Leer con el Asistente (cita fuentes, puede tardar 1-2 min)</button>
+      <div id="buscarLeerOut" style="margin-top:10px"></div>
+    </div>`;
+  $("#buscarLeerBtn").addEventListener("click", leerBusquedaConAsistente);
+}
+async function leerBusquedaConAsistente(){
+  if(!buscarActual) return;
+  const btn = $("#buscarLeerBtn");
+  const out = $("#buscarLeerOut");
+  btn.disabled = true;
+  out.innerHTML = `<span class="txt">Leyendo los resultados…</span><span class="cursor">▌</span>`;
+  const txtEl = out.querySelector(".txt");
+  let acumulado = "", huboError = null, terminoOk = null;
+  try{
+    const r = await fetch("api/buscar_leer", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({query: buscarActual.query, ambitos: buscarActual.ambitos})});
+    if(!r.ok || !r.body) throw new Error("sin respuesta del servidor");
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, {stream:true});
+      let idx;
+      while((idx = buffer.indexOf("\n")) >= 0){
+        const linea = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx+1);
+        if(!linea) continue;
+        let obj; try{ obj = JSON.parse(linea); }catch(err){ continue; }
+        if(obj.delta){ acumulado += obj.delta; txtEl.textContent = acumulado; }
+        if(obj.done){ terminoOk = obj.ok; if(!obj.ok) huboError = obj.error; }
+      }
+    }
+    if(acumulado.trim()){
+      out.innerHTML = `<div class="chatmsg ia">${esc(acumulado.trim()).replace(/\n/g,"<br>")}</div>`
+        + (terminoOk===false ? `<div class="hint">(se cortó: ${esc(huboError||"error")})</div>` : "");
+    } else {
+      out.innerHTML = `<div class="gapnone">No se pudo leer: ${esc(huboError||"sin respuesta")}. ¿Está Ollama corriendo?</div>`;
+    }
+  }catch(err){
+    out.innerHTML = '<div class="gapnone">No se pudo conectar con el servidor.</div>';
+  }
+  btn.disabled = false;
+}
+async function cargarHistorialBusquedas(){
+  let items=[];
+  try{ const r=await fetch("busquedas.json?t="+Date.now(),{cache:"no-store"}); if(r.ok) items=await r.json()||[]; }catch(e){}
+  const box=$("#buscarHistorial");
+  if(!items.length){ box.innerHTML='<div class="gapnone">Todavía no hiciste ninguna búsqueda.</div>'; return; }
+  box.innerHTML = items.slice().reverse().slice(0,15).map((b,i)=>
+    `<button class="pillbtn" data-histidx="${items.length-1-i}" style="margin:3px">${esc(b.query)} — ${esc(fmtAgo(b.ts))}</button>`
+  ).join(" ");
+  box.querySelectorAll("[data-histidx]").forEach(btn=>btn.addEventListener("click", ()=>{
+    const b = items[+btn.dataset.histidx];
+    if(b) renderResultadoBusqueda(b.query, b.ambitos);
+  }));
+}
+$("#buscarForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const q = $("#buscarQ").value.trim();
+  if(!q) return;
+  $("#buscarQ").disabled = true; $("#buscarSend").disabled = true;
+  $("#buscarSend").textContent = "Investigando… (15-25s)";
+  $("#buscarResultado").innerHTML = '<div class="gapnone">Buscando en vivo — noticias, redes, interés y contraste oficial…</div>';
+  try{
+    const r = await fetch("api/buscar", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({query: q})});
+    const data = await r.json();
+    if(data.ok){
+      renderResultadoBusqueda(data.resultado.query, data.resultado.ambitos);
+      cargarHistorialBusquedas();
+    } else {
+      $("#buscarResultado").innerHTML = `<div class="gapnone">No se pudo completar la búsqueda: ${esc(data.error||"error desconocido")}</div>`;
+    }
+  }catch(err){
+    $("#buscarResultado").innerHTML = '<div class="gapnone">No se pudo conectar con el servidor.</div>';
+  }
+  $("#buscarQ").disabled = false; $("#buscarSend").disabled = false; $("#buscarSend").textContent = "Investigar";
+});
+
+// ------- cabecera / stats / temas -------
+function hydrate(){
+  const g=DATA.generado?new Date(DATA.generado):null;
+  $("#sub").textContent = g ? ("Actualizado "+fmtAgo(DATA.generado)+" ("+fmtHoraEC(DATA.generado)+")") : "";
+  $("#feedhint").innerHTML = `Ordenadas por <b>interes</b>: cuantos medios la cubren `
+    + `(lo que mas se habla) + busqueda en Google Trends + que tan reciente. `
+    + `Arriba, lo mas relevante. <b>Brecha</b> = mucha busqueda y poca cobertura.`;
+  const freshH = DATA.feed_fresh_h!=null ? DATA.feed_fresh_h : 10;
+  const maxD = DATA.max_age_dias!=null ? DATA.max_age_dias : 3;
+  const nAnt = (DATA.historias||[]).filter(h=>h.antigua).length;
+  $("#freshhint").innerHTML = `<b>Recientes</b> = de menos de ${freshH}h. `
+    + `<b>Anteriores</b> = mas viejas pero todavia dentro de ${maxD} dias (nada se descarta en silencio)`
+    + (nAnt ? ` — hay <b>${nAnt}</b> ahora mismo.` : `.`);
+  const H=(DATA.historias||[]);
+  const loc=H.filter(h=>h.es_local).length, intl=H.filter(h=>h.internacional).length;
+  $("#stats").innerHTML=`
+    <div class="stat"><b>${DATA.total_historias||0}</b><span>historias</span></div>
+    <div class="stat"><b>${loc}</b><span>Ecuador</span></div>
+    <div class="stat"><b>${intl}</b><span>Mundo</span></div>`;
+  // temas (conservar seleccion)
+  const sel=$("#tema"), prev=sel.value, set=new Set();
+  H.forEach(h=>(h.temas||[]).forEach(t=>set.add(t)));
+  sel.innerHTML='<option value="">Todos los temas</option>'+
+    [...set].sort().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  if([...set].includes(prev)) sel.value=prev;
+  // reporte de feeds
+  const rep=DATA.reporte_feeds||[];
+  const ok=rep.filter(f=>f.estado==="ok").length;
+  $("#feedrep").textContent=`Feeds activos: ${ok}/${rep.length}. `+
+    rep.map(f=>`${f.outlet}:${f.items}${f.estado==="ok"?"":"("+f.estado+")"}`).join("  ");
+}
+
+let sec="noticias";
+function renderAll(){
+  render();
+  if(sec==="social") renderSocial();
+  if(sec==="stats") renderStats();
+  if(sec==="gap") renderGap();
+  if(sec==="contraste") renderContraste();
+  if(sec==="guardadas") cargarGuardadas().then(renderGuardadas);
+}
+// toggle Ecuador/Mundo en Oportunidades
+document.querySelectorAll("#gapseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#gapseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); gapAmb=b.dataset.ga; renderGap();
+}));
+// toggle Ecuador/Guayaquil/Internacional en Pulso social
+document.querySelectorAll("#socialseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#socialseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); socialAmb=b.dataset.so; renderSocial();
+}));
+// toggle Ecuador/Guayaquil/Internacional en Contraste
+document.querySelectorAll("#contrasteseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#contrasteseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); contrasteAmb=b.dataset.co; renderContraste();
+}));
+// navegacion principal Noticias / Estadisticas
+document.querySelectorAll("#mainnav button").forEach(b=>b.addEventListener("click",()=>{
+  sec=b.dataset.sec; showSection(sec);
+}));
+// tabs (categoria)
+document.querySelectorAll("#tabs .tab").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#tabs .tab").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); view=b.dataset.view; shown=PAGE; render();
+}));
+// segmento (ambito)
+document.querySelectorAll("#seg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); origin=b.dataset.origin; shown=PAGE; render();
+}));
+// segmento Recientes / Anteriores (Parte B: nada se descarta en silencio)
+document.querySelectorAll("#freshseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#freshseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); fresh=b.dataset.fresh; shown=PAGE; render();
+}));
+// interruptor Mas buscado / Brecha
+document.querySelectorAll("#rankseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#rankseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); rank=b.dataset.rank; renderCharts();
+}));
+// toggle ambito de Estadisticas (Todo / Ecuador / Mundo)
+document.querySelectorAll("#statseg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#statseg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); statAmb=b.dataset.sa; renderStats();
+}));
+// ver mas (paginacion)
+$("#vermas").addEventListener("click",()=>{ shown+=PAGE; render(); });
+["#tema","#q","#orden"].forEach(s=>$(s).addEventListener("input",()=>{ shown=PAGE; render(); }));
+
+// ------- actualizacion en vivo (solo cuando se sirve por http) -------
+// BUG REAL (2026-09-22, "no permite interactuar"): antes, cada minuto se
+// redibujaba TODO aunque nada hubiera cambiado -- se cerraban las fuentes o
+// verificaciones que uno habia abierto, se perdia la pagina de "Ver mas" y
+// saltaba la vista. Ahora: (1) solo se aplica si data.json cambio de verdad;
+// (2) si estas escribiendo, con un detalle/chat abierto o leyendo mas abajo,
+// NO se te mueve nada: aparece "Hay datos nuevos" y lo aplicas vos; (3) al
+// aplicar se conservan los desplegables abiertos y la posicion de la pagina.
+let PENDIENTE=null;
+function usuarioOcupado(){
+  const a=document.activeElement;
+  if(a && (a.tagName==="TEXTAREA" || (a.tagName==="INPUT" && a.id!=="q"))) return true;
+  if(!$("#modalOverlay").hidden) return true;
+  return window.scrollY > 400;
+}
+function aplicarPendiente(forzar){
+  if(PENDIENTE){ DATA=PENDIENTE; PENDIENTE=null; }
+  else if(!forzar) return;
+  const abiertos=new Set([...document.querySelectorAll(".card[data-storykey] details[open]")]
+    .map(d=>d.closest(".card").dataset.storykey+"|"+[...d.parentNode.children].indexOf(d)));
+  const y=window.scrollY;
+  hydrate(); renderAll();
+  document.querySelectorAll(".card[data-storykey] details").forEach(d=>{
+    const k=d.closest(".card").dataset.storykey+"|"+[...d.parentNode.children].indexOf(d);
+    if(abiertos.has(k)) d.open=true;
+  });
+  window.scrollTo(0,y);
+  $("#nuevoPill").hidden=true;
+}
+async function poll(){
+  try{
+    const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
+    if(!r.ok) return false;
+    const nuevo=await r.json();
+    if(nuevo.generado===DATA.generado && !PENDIENTE) return false;
+    PENDIENTE=nuevo;
+    // Fase 0 (velocidad): "Ultima hora" se entera SIEMPRE, sin esperar a que
+    // el usuario deje de estar "ocupado" (scrolleado) -- ver bug real
+    // documentado en el diagnostico: esa condicion (usuarioOcupado) es
+    // correcta para el resto del dashboard, que no quiere interrumpir la
+    // lectura, pero en ESTA pestaña puntual el objetivo es justamente
+    // enterarse rapido de lo nuevo, y quedarse esperando a que el usuario
+    // scrollee para arriba podia significar horas sin verlo.
+    const nNuevas = (nuevo.historias||[]).filter(h=>h.newest && new Date(h.newest).getTime()>uhVisto).length;
+    const badge=$("#uhBadge");
+    if(sec==="ultimahora"){
+      DATA=nuevo; renderUltimaHora(); badge.hidden=true; uhVisto=Date.now();
+    } else if(nNuevas>0){
+      badge.textContent = nNuevas>99?"99+":String(nNuevas); badge.hidden=false;
+    }
+    if(usuarioOcupado()) $("#nuevoPill").hidden=false;
+    else aplicarPendiente();
+    return true;
+  }catch(e){ return false; /* file:// o sin servidor: se queda con lo embebido */ }
+}
+$("#nuevoPill").addEventListener("click", ()=>aplicarPendiente());
+$("#refrescarBtn").addEventListener("click", async ()=>{
+  const b=$("#refrescarBtn"); b.disabled=true; b.textContent="↻ Buscando noticias…";
+  const antes=DATA.generado;
+  try{ await fetch("api/refrescar",{method:"POST"}); }catch(e){}
+  // el feed tarda ~20-60 s en leer todos los medios: mirar cada 5 s hasta 3 min
+  for(let i=0;i<36;i++){
+    await new Promise(r=>setTimeout(r,5000));
+    const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"}).catch(()=>null);
+    if(r&&r.ok){ const d=await r.json(); if(d.generado!==antes){ PENDIENTE=d; aplicarPendiente(); break; } }
+  }
+  b.disabled=false; b.textContent="↻ Actualizar ahora";
+});
+if(conServidor){
+  $("#live").hidden=false;
+  $("#refrescarBtn").hidden=false;
+  setInterval(poll, 20000);  // Fase 0: el backend ahora puede publicar cada 1 min (antes 2), 20s le sigue el paso
+  // al volver a la parte de arriba, aplicar lo que haya quedado pendiente
+  window.addEventListener("scroll", ()=>{ if(PENDIENTE && !usuarioOcupado()) aplicarPendiente(); }, {passive:true});
+}
+// refresca la etiqueta "hace X min" cada 30s
+setInterval(()=>{ if(DATA.generado) $("#sub").textContent="Actualizado "+fmtAgo(DATA.generado)+" ("+fmtHoraEC(DATA.generado)+")"; },30000);
+
+Promise.all([cargarGuardadas(), cargarNotas()]).then(()=>{ hydrate(); renderAll(); });
+</script>
+</body>
+</html>

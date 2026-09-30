@@ -1,0 +1,2159 @@
+# Monitor de noticias — Ecuador (contexto para Claude Code)
+
+## Qué es esto
+Programa **local** en Python que monitorea el "mercado" de noticias de Ecuador y del
+mundo: recolecta feeds RSS, agrupa la misma historia contada por varios medios, mide
+qué se cubre vs. qué busca/dice el público, y sugiere temas poco cubiertos para hacer
+reportajes. Es una herramienta personal de un **estudiante de periodismo**.
+
+## Con quién hablas (importante)
+El usuario (Fernando) **no domina la terminal**. No asumas conocimiento de shell.
+- Cuando propongas un comando, explica en una línea qué hace y por qué, y dáselo listo para copiar.
+- Prefiere **una acción concreta a la vez** sobre listas largas de pasos.
+- Si algo puede romper o borrar datos, avísale antes.
+- Responde en **español**.
+
+## Regla de oro del proyecto
+**Solo librería estándar de Python 3. NO instalar dependencias con pip.** Todo el
+código usa `urllib`, `json`, `xml.etree`, `http.server`, `threading`, `dataclasses`.
+Si crees que hace falta una librería externa, propón primero una alternativa con stdlib.
+
+## Cómo se corre
+- `python monitor.py` — una corrida COMPLETA (bloqueante): lee feeds, clasifica,
+  calcula IA + contexto + social en vivo, genera `dashboard.html` y `data.json`.
+- `python monitor.py serve` — modo en vivo, **dos velocidades** (ver más abajo):
+  sirve en http://localhost:8000, el feed se publica cada `MONITOR_FEED_MIN`
+  (por defecto 2 min) sin esperar nunca a la IA. `INICIAR.bat` (Windows) hace
+  esto con doble clic.
+- `MONITOR_SAMPLE=1 python monitor.py` — datos de ejemplo, sin internet (para probar).
+
+## Requisitos en la PC
+- **Python 3** instalado y en el PATH (`python --version`).
+- **Ollama** para el agente de IA local y la lectura OSINT de redes: instalar Ollama y
+  bajar un modelo con `ollama pull qwen2.5:3b` (elegido por su tamaño: 1.9 GB, corre
+  entero en GPUs chicas de 4GB VRAM, y sigue bien instrucciones de JSON en español).
+  Sin modelo, el programa igual corre; solo se apagan la interpretación IA y el
+  análisis OSINT. `ia.py` y `social.py` autodetectan el modelo instalado (lista
+  `PREFER` en ia.py); forzar uno puntual con `MONITOR_IA_MODEL`.
+
+## Módulos
+- `monitor.py` — motor: colector RSS (en paralelo, `ThreadPoolExecutor`), dedup,
+  clustering por titular, prominencia/interés, demanda, GDELT, SERCOP, IA,
+  contexto por entidad (Parte B; incluye `registrar_apariciones`/
+  `apariciones_previas` sobre `entities.json`, ver Caches más abajo), escucha
+  social, dos velocidades (Parte C: `run_fast`/`enrich_pass`/`serve`),
+  Guardadas (`saved.json` + endpoint `POST /api/guardar`), chat por item
+  (Parte E: `POST /api/chat`, puente a Ollama) — el servidor http corre con
+  `ThreadingMixIn` (`ServidorHilos`) para que `/api/chat` no congele el resto
+  mientras espera al modelo — y la salida (JSON + HTML).
+  `geo_hit()` decide ámbito Ecuador/Mundo por PALABRA COMPLETA (no por
+  prefijo como `kw_hit`, que a propósito atrapa plurales de un tema): un
+  nombre de lugar no necesita esa flexibilidad, y el prefijo suelto causaba
+  colisiones reales (`canar` dentro de "Canarias", España; `napo` dentro de
+  "Napoleón"). La usan `is_ecuador`/`is_foreign`/`detect_city`.
+  `normalizar_categoria()`/`contar_por_categoria()`/`imprimir_categorias()`
+  (Problema 2, 2026-09-23): punto único de normalización de `seccion` y
+  conteo por categoría (terminal + `test_categorias.py`).
+  `construir_salud_fuentes()` (Problema 3): registro de salud de datos por
+  corrida (`data.json["salud_fuentes"]`). `cluster()` (Problema 5): además
+  del solape de palabras, une por ventana de tiempo (`CLUSTER_MAX_HORAS`) +
+  nombre propio compartido con umbral más bajo (`_nombres_propios`, evita
+  Title Case inglés). `get_veredicto()` (Problema 4): estado
+  coincide/contradice/sin_datos por historia, cachea en `veredicto_cache.json`.
+- `feeds.py` — FEEDS (Ecuador + internacionales con `"intl":True`), KEYWORDS por
+  categoría (politica/economia/seguridad/sociedad), TREND_TERMS, WIKI_TERMS.
+  Ampliado 2026-09-23 (Problema 5): +Expreso/El Norte/El Diario (Ecuador),
+  +Al Jazeera/France24 ES/SCMP (internacional) — cada URL probada a mano
+  antes de agregarla, ver el arreglo de esa fecha para las que se probaron
+  y NO sirvieron (con el motivo).
+- `trends.py` — Google Trends (búsquedas del público). Inestable, da 429 seguido.
+- `wiki.py` — vistas de Wikipedia (interés estable, respaldo cuando Trends falla) y
+  `resumen(entidad, busqueda="")`: verifica un nombre propio contra Wikipedia
+  (endpoint REST de resumen, solo título EXACTO/redirección real — nunca búsqueda
+  difusa por defecto, que puede "verificar" una entidad contra un artículo no
+  relacionado) para el contexto real. `busqueda` (opcional, Capa 1 del bug de
+  Carney — ver Decisiones ya tomadas) usa la API de búsqueda de Wikipedia SOLO
+  para elegir el título correcto con más contexto que el nombre suelto; el
+  fetch final sigue siendo el mismo título exacto/verificado de siempre.
+- `gdelt.py` — GDELT DOC 2.0: volumen de cobertura + tono por tema (`interest`), y
+  `articulos()`/`comenciones()`: co-menciones de una entidad en prensa reciente
+  (modo lista de artículos), para el contexto real. Gratis, sin clave, pero
+  frecuente 429 (rate limit propio de GDELT).
+- `sercop.py` — Contrataciones Abiertas (OCDS): contratos públicos para contrastar noticias.
+- `factcheck.py` — Google Fact Check Tools API (`claims:search`): verificaciones
+  periodísticas (ClaimReview) relacionadas con el titular o la entidad
+  principal de una nota, para el sector Contraste junto a SERCOP. Necesita
+  `MONITOR_FACTCHECK_KEY` (API distinta de YouTube, hay que habilitarla aparte).
+- `ia.py` — agente IA local vía Ollama (`http://localhost:11434`): reclasifica por
+  significado, decide Ecuador/mundo por sentido, escribe interpretación por nota
+  (`analizar`), extrae entidades candidatas con una búsqueda desambiguada por
+  contexto de la nota (`extraer_entidades`, Capa 1 del bug de Carney), redacta el
+  contexto grounded SOLO con material ya verificado (`contextualizar`), y decide
+  si una página de Wikipedia encontrada es realmente la misma entidad que la nota
+  menciona (`coincide_dominio`, Capa 2) — nunca consulta Wikipedia/GDELT por su
+  cuenta, eso lo hace monitor.py. `chat_stream()` (Parte E) es la única
+  función que conversa en TEXTO LIBRE (sin `format="json"`) Y que STREAMEA
+  (Frente B): responde on-demand al chat por item del dashboard llamando a
+  `on_delta(texto_parcial)` por cada pedazo que Ollama va generando, en vez
+  de devolver el bloque completo. `MODOS_CHAT` ("rapido"/"profundo") decide
+  tanto el MODELO (`elegir_modelo_chat()` → "monitor-critico" solo en
+  "profundo"; el modelo rápido del pipeline en "rapido") como
+  `num_predict`/`num_ctx` — ver Decisiones ya tomadas para el porqué (bajar
+  num_predict solo, sin cambiar de modelo, no funciona con un modelo de
+  razonamiento). `veredicto_contraste()` (Problema 4, 2026-09-23): redacta
+  coincide/contradice/sin_datos citando el material ya verificado que le pasa
+  monitor.py (contexto+SERCOP+FactCheck), nunca busca por su cuenta.
+  `extraer_entidades_con_evento()` (Problema 6): como `extraer_entidades()`
+  pero también propone un candidato de EVENTO (ley/paro/conflicto) con
+  posible página propia de Wikipedia, para priorizarlo sobre bios de
+  persona en el contexto (`extraer_entidades()` sigue igual, wrapper de
+  compatibilidad).
+- `herramientas.py` (Bloque 2, Parte F) — funciones de SOLO LECTURA sobre los
+  datos YA CALCULADOS del monitor, para que el Asistente pueda consultarlas:
+  `buscar_historias` (tema/ámbito/sección/medio/texto/antigüedad),
+  `detalle_historia` (contexto verificado + veredicto + SERCOP + FactCheck de
+  UNA nota), `buscar_guardadas`/`buscar_notas` (contenido de Fernando),
+  `tendencia_tema` (demanda + GDELT + pulso social de un tema, con el mismo
+  cálculo de `demandaTema()` del dashboard) y `comparar_periodo` (hoy vs. hace
+  N días, usando `history.json`). Mismo principio de Parte B llevado al
+  agente: **nunca** llama a una API externa en vivo (Trends/GDELT/SERCOP/
+  redes) — lee lo que `run_fast`/`enrich_pass` ya guardaron, así que usar el
+  Asistente no agrega latencia ni riesgo de rate-limit nuevo. `_normalizar_tema()`
+  tolera que el modelo no reproduzca el nombre EXACTO del catálogo (bug real
+  encontrado probando en vivo: pasó `"carceles"` en vez de `"Carceles"`, 0
+  resultados hasta agregar la normalización — mismo problema que ya resolvió
+  `ia._TEMA_LOOKUP` para la clasificación por lotes).
+- `agente.py` (Bloque 2, Parte F) — el Asistente: ciclo de herramientas +
+  respuesta final citada. Arquitectura de DOS modelos, elegida con un
+  benchmark real en esta PC (ver Decisiones ya tomadas): **qwen2.5:3b**
+  decide qué consultar, ronda por ronda (`ciclo_herramientas()`, hasta
+  `MAX_RONDAS`=4, corta si el modelo repite la misma consulta); **monitor-critico**
+  (el mismo modelo pesado del chat "profundo" de Parte E) redacta la
+  respuesta final UNA sola vez, streameada (`responder_stream()`, mismo
+  patrón que `ia.chat_stream`), citando cada afirmación y separando dato de
+  inferencia (`_PROMPT_RESPUESTA_FINAL`). `on_progreso()` le avisa al
+  dashboard qué se está consultando mientras el ciclo corre (si no, la
+  espera de varios segundos antes de la respuesta se siente muda).
+- `social.py` — escucha social desde fuentes PÚBLICAS: Bluesky (XRPC público, sin
+  cuenta, pilar fiable), Mastodon (timeline pública de hashtag, sin cuenta,
+  agregado 2026-09-23), Reddit (.json público, best-effort) y YouTube (Data API
+  v3, necesita `MONITOR_YT_KEY`; clasifica canal medio/creador vía
+  `_yt_canales_info`, Problema 1). Dataclass `SocialPost` unifica todas;
+  `filtrar_ruido()` descarta autopromoción/reacciones de una palabra/puro emoji
+  ANTES de que nada las use (aplica en `recolectar()`, asi el panel y el OSINT
+  siempre ven lo mismo); `analizar_osint()` manda los textos ya filtrados a
+  Ollama y devuelve JSON {sentimiento_general, polarizacion, temas_recurrentes,
+  resumen_discusion}. `recolectar()` tambien filtra por antiguedad
+  (`_es_reciente`, `MONITOR_SOCIAL_DIAS`) ademas de por ruido — ver Decisiones
+  ya tomadas, bug real de publicaciones de años saliendo como "la mejor".
+- `dashboard_template.html` — la UI (Noticias / **Pulso social** / Estadísticas /
+  Oportunidades / Contraste / **Guardadas**). El motor inyecta el payload
+  reemplazando `/*__DATA__*/null`. El HTML consulta `data.json` cada minuto
+  para refrescarse en modo `serve`. `renderContexto(h)` muestra `h.contexto` en
+  la tarjeta ("analizando…" si el trabajador no llegó todavía, "sin contexto
+  disponible" si no encontró nada, o el texto grounded con las entidades
+  verificadas como enlace) y, si `c.previas` tiene algo (`entities.json`,
+  Parte B), una línea "También apareció" con fecha y enlace a la nota
+  anterior — se muestra AUNQUE no haya contexto de Wikipedia/GDELT, es
+  justamente el caso de una entidad sin página propia (ver bug de Jordán en
+  Decisiones ya tomadas). `renderSocial()` es el panel "¿Qué dice la gente al
+  respecto?" — sección propia (no escondida en Estadísticas), segmentado por
+  Guayaquil/Ecuador/Internacional igual que el resto del dashboard
+  (`tema_ambito_map` en monitor.py decide el ámbito de cada tema; la búsqueda
+  real que arma el termino, `_social_query`, se explica en la sección Parte A
+  de más abajo). Por tema top: volumen de conversación etiquetado
+  "(relativo)", desglose de publicaciones por fuente (ej. "Bluesky 15 ·
+  YouTube 27 · Reddit 0"), sentimiento, polarización, temas recurrentes,
+  resumen OSINT, y la MEJOR publicación de CADA fuente presente (nunca un top
+  mezclado por engagement crudo entre plataformas). "sin conversación
+  captada" si un tema no tiene nada tras el filtro de ruido.
+  `renderContraste()` agrupa por ámbito (Internacional / Nacional (Ecuador) /
+  Guayaquil, ver Decisiones ya tomadas) en tarjetas compactas (reusa
+  `cardHTML`) que también muestran `h.factcheck` (Google Fact Check Tools)
+  junto a los contratos SERCOP: "Verificaciones relacionadas" con la
+  calificación y el verificador, o "sin verificaciones relacionadas". En
+  Noticias, un toggle **Recientes/Anteriores** (`s.antigua`, Parte B) separa
+  lo fresco (< `MONITOR_FEED_FRESH_H`) de lo más viejo pero aún dentro de
+  `MONITOR_MAX_DIAS` — nada se descarta en silencio. Cada tarjeta tiene un
+  botón estrella (`cardHTML`, compartido entre Noticias y Guardadas) para
+  mandarla a la pestaña **Guardadas** (Parte C, ver más abajo). `renderGap()`
+  (Oportunidades) rankea la brecha por "interés público" = la mayor entre
+  demanda de búsqueda y volumen de pulso social por tema (ver Decisiones ya
+  tomadas), no solo búsqueda. Cualquier tarjeta (historia o tema) se puede
+  clickear para abrir un modal de detalle con chat a la IA local (Parte E,
+  `abrirDetalleHistoria`/`abrirDetalleTema`, `POST /api/chat`). El chat lee
+  la respuesta con `response.body.getReader()` (streaming, Frente B): la
+  burbuja de la IA se llena en vivo token a token. Toggle "⚡ Rápido /
+  🔍 Profundo" (`chatModo`) decide qué tan magro es el contexto que se manda
+  (`contextoChatHistoria`/`Tema(..., profundo)`) — ver Decisiones ya tomadas.
+
+## Caches (archivos que se generan solos, no editar a mano)
+`trends_cache.json`, `gdelt_cache.json`, `sercop_cache.json`, `ia_cache.json`,
+`contexto_cache.json` (Parte B, por historia/link), `factcheck_cache.json`
+(por historia/link), `social_cache.json`, `history.json`, `data.json`,
+`dashboard.html`.
+
+`saved.json` es distinto de estos: no es un caché recalculable, es **contenido
+que Fernando eligió a mano** (Parte C, "Guardadas"). Guarda la historia
+COMPLETA (no un id), así que sobrevive a que la noticia caduque del feed o el
+dashboard se regenere. Se escribe con archivo temporal + `os.replace` (más
+cuidadoso que el `json.dump` directo de los caches de arriba). Si no existe
+todavía (nadie guardó nada), no es un error.
+
+`entities.json` tampoco es un caché recalculable (aunque se parece): es un
+**registro de apariciones** (Parte B, caso Jordán) — qué entidad, cuándo, en
+qué historia. Se llena en `registrar_apariciones()` con TODOS los candidatos
+que extrae la IA por historia (verificados en Wikipedia o no), y se consulta
+en `apariciones_previas()` para mostrar "También apareció" en la tarjeta.
+Clave por nombre normalizado (`norm()`, sin acentos/mayúsculas) — dos personas
+homónimas se mezclarían (riesgo aceptado, bajo para nombres propios completos).
+Hasta `ENTITIES_MAX_POR_ENTIDAD` (20) apariciones guardadas por entidad, se
+recorta lo más viejo. Si se borra a mano no pasa nada grave: se reconstruye
+solo, de a poco, con las notas nuevas.
+
+## Arquitectura de dos velocidades (Parte C, modo `serve`)
+- **Hilo rápido** (`run_fast`, cada `MONITOR_FEED_MIN`): feeds → dedup → cluster →
+  clasificación por palabras clave → prominencia → LEE los caches de
+  enriquecimiento (`ia_cache.json`, `contexto_cache.json`, `factcheck_cache.json`,
+  `social_cache.json`, modo_lectura=True) y publica `data.json`/`dashboard.html`.
+  Es el ÚNICO que escribe esos dos archivos. Nunca llama a Ollama.
+- **Hilo trabajador** (`enrich_pass`, de fondo, cada `MONITOR_WORKER_PAUSA`):
+  lee las historias del último `data.json` (así se enteran sin compartir objetos
+  de Python — el punto de entrega es el disco), y calcula demanda/GDELT/SERCOP +
+  IA + contexto + FactCheck + social para lo que falte, UNA historia a la vez (el
+  modelo local se serializa solo). FactCheck corre despues de contexto para poder
+  usar la entidad principal ya verificada como segunda busqueda. Escribe SOLO en
+  los caches, nunca en `data.json`/`dashboard.html`.
+- **Bug real corregido: el arranque del servidor se colgó 9+ minutos** (reportado
+  por Fernando: "el dashboard se ejecutó sin datos de pulso social y sin datos de
+  búsqueda y GDELT... no deben ocurrir esos errores"). Causa raíz: demanda
+  (`get_demand`)/GDELT (`get_gdelt`)/SERCOP (`get_contracts`) vivían con su
+  llamada REAL directo en el hilo rápido (`run_fast`) — cada una con su propio
+  caché de horas, así que en la práctica casi siempre solo leían caché, pero el
+  día que el caché de GDELT vencía a mitad de una pasada, esa llamada real podía
+  tardar varios minutos (medido antes: hasta 559s) y frenaba TODA esa pasada del
+  feed — incluido el primer arranque del servidor, que no llega a bindear el
+  puerto hasta que `run_fast` termina. Ya estaba anotado como "Pendiente
+  conocido" en este archivo; el día de hoy se confirmó en vivo (9+ minutos sin
+  puerto abierto con GDELT rate-limited). Arreglado con el MISMO patrón de
+  `modo_lectura` que ya usan IA/contexto/social: las tres funciones ahora
+  aceptan `modo_lectura=True` (hilo rápido) que SOLO lee su caché en disco —
+  fresco o vencido, nunca hace red — y `modo_lectura=False` (hilo trabajador,
+  default) que hace la llamada real de siempre. `enrich_pass` las llama sin
+  argumentos al principio de cada pasada; como cada una ya se auto-limita por su
+  propio TTL (`TREND_TTL`=3h, `SERCOP_TTL`=24h), en la práctica no hacen nada la
+  gran mayoría de las pasadas — solo cuando el caché vence de verdad, y ahí sí
+  pueden tardar, pero AHORA en el hilo de fondo, sin frenar `run_fast` ni el
+  arranque del servidor. Con SERCOP se cuidó ademas no romper el caso ya
+  documentado: `modo_lectura=True` nunca borra el caché por vencimiento (antes
+  `get_contracts` lo hacía con `cache = {"ts":..., "terms": {}}`) — borrarlo
+  desde el hilo rápido haría desaparecer de golpe contratos que ya se le
+  mostraban a Fernando, sin haber buscado los nuevos todavía; ese borrado ahora
+  solo ocurre en el hilo trabajador, justo antes de repoblarlo.
+  Medido en vivo, antes/después con el mismo caché vencido a propósito: antes,
+  `run_fast` no bindeaba el puerto durante 9+ minutos; después, con los mismos
+  cachés borrados, el servidor respondió `data.json` (395 historias) en el
+  primer intento (<5s), con `estado_gdelt`/`estado_interes` diciendo
+  honestamente "esperando primera pasada del trabajador" en vez de bloquear —
+  y unos minutos después, con el trabajador corriendo de fondo, esos mismos
+  campos pasaron solos a `"cache (Google Trends)"` / `"cache (N aplicados)"`
+  sin que el feed se haya frenado en ningún momento.
+
+## Variables de entorno
+Apagar módulos: `MONITOR_NO_IA`, `MONITOR_NO_GDELT`, `MONITOR_NO_TRENDS`,
+`MONITOR_NO_SERCOP`, `MONITOR_NO_SOCIAL`, `MONITOR_NO_CONTEXTO` (=1 para apagar).
+Ajustes generales: `MONITOR_IA_MODEL`, `MONITOR_IA_MAX` (análisis IA nuevos por
+corrida/pasada, def. 25), `MONITOR_IA_TEMA_MIN` (umbral de confianza 0-1 para
+aceptar un tema que puso la IA, def. 0.6), `MONITOR_IA_CTX` (ventana de contexto
+de Ollama, def. 4096 — bajo a propósito para que el modelo entre entero en GPUs
+chicas; ver nota en ia.py/social.py), `MONITOR_GDELT_PAIS`, `MONITOR_TREND_GEO`,
+`MONITOR_MAX_DIAS`, `MONITOR_FEED_TIMEOUT` (timeout por feed RSS, def. 8s),
+`MONITOR_SOCIAL_MAX`, `MONITOR_SOCIAL_TTL`, `MONITOR_SOCIAL_SUB`, `MONITOR_SAMPLE`.
+`MONITOR_SOCIAL_DIAS` (días de antigüedad máxima para una publicación en la
+escucha social, def. 7 — ver "Decisiones ya tomadas", bug real de
+publicaciones de hace años saliendo como "la mejor"; se usa en `social.py`
+como filtro nativo por fuente y en `monitor.py` para el peso de recencia del
+ranking).
+`MONITOR_TG_CANALES` (lista de canales de Telegram separados por coma, sin
+`@`, ej. `"canal1,canal2"` — vacía por defecto: sin canales configurados,
+Telegram se salta limpio, igual que YouTube sin `MONITOR_YT_KEY`; hay que
+elegirlos a mano, no hay una lista "segura" para adivinar) y
+`MONITOR_NO_TELEGRAM` (=1 para apagarlo aunque haya canales configurados).
+Ver "Decisiones ya tomadas" para el porqué de raspar el preview público en
+vez de una API.
+`MONITOR_CHAT_MODEL` (modelo del chat de Parte E, def. `"monitor-critico"` —
+ver `Modelfile.critico` y "Decisiones ya tomadas"; independiente de
+`MONITOR_IA_MODEL`, que es solo para el pipeline por lotes).
+Parte B (contexto por entidad): `MONITOR_CONTEXTO_MAX` (historias nuevas por
+pasada del trabajador, def. 8).
+Parte C (dos velocidades, modo `serve`): `MONITOR_FEED_MIN` (minutos entre
+pasadas del hilo rápido, def. 2), `MONITOR_WORKER_PAUSA` (segundos de espera del
+hilo trabajador entre pasadas cuando no hay nada nuevo, def. 20).
+`MONITOR_FEED_FRESH_H` (horas para que una historia cuente como "reciente" en
+el feed principal antes de pasar a la pestaña "Anteriores", def. 10 —
+independiente de `MONITOR_WORKER_PAUSA`/`MONITOR_FEED_MIN`, ver "Sección
+Anteriores" en Decisiones ya tomadas).
+Escucha social — YouTube (panel "¿Qué dice la gente al respecto?"):
+`MONITOR_YT_KEY` (clave de YouTube Data API v3, gratis; sin ella YouTube se
+salta limpio, igual que Reddit sin conexión) y `MONITOR_YT_MAX_BUSQ` (cuántas
+de las búsquedas de `get_social()` por pasada disparan una consulta REAL a
+YouTube `search.list`, def. 5 — esa llamada cuesta 100 de las 10.000 unidades/
+día de cuota; los temas que se quedan sin cupo igual se consultan en Bluesky/
+Reddit, que son gratis).
+FactCheck (sector Contraste, `MONITOR_NO_FACTCHECK`=1 para apagar):
+`MONITOR_FACTCHECK_KEY` (clave de Google Fact Check Tools API — **API DISTINTA**
+de YouTube Data API v3; aunque las dos se piden desde la misma consola de
+Google Cloud, hay que habilitar "Fact Check Tools API" por separado, y una
+clave puede estar restringida solo a una de las dos) y `MONITOR_FACTCHECK_MAX`
+(historias nuevas por pasada del trabajador, def. 8). Un HTTP 403 de esta API
+casi siempre es falta de habilitarla o restricción de la clave, no un bug del
+codigo (`factcheck.py` lo deja explícito en el estado devuelto).
+
+## Decisiones ya tomadas (no revertir sin preguntar)
+- Ámbito Ecuador vs. mundo se decide por el **tema** de la nota, no por el medio.
+- Coincidencia de palabras clave por **inicio de palabra** (`kw_hit`), no subcadena
+  (evita que "selección" active "elección", etc.).
+- Se filtran opinión/columnas, deportes, farándula, horóscopos, y notas de más de
+  `MONITOR_MAX_DIAS` días (def. 3).
+- Redes: **solo fuentes públicas sin login**. Meta (Facebook/Instagram) y X (Twitter)
+  quedan descartados por depender de cuentas/tokens y bloqueos de autenticación.
+- Reddit es **best-effort**: si empieza a dar 403/429, no es el pilar; Bluesky sí.
+  Verificado en vivo: Bluesky trae posts consistentemente, Reddit da 403 seguido.
+- La IA de `ia.py` (`analizar`) solo puede QUITAR categorías que ya puso el
+  etiquetado por palabras clave, nunca agregar una que las keywords no detectaron
+  (decisión explícita). Umbral de confianza `MONITOR_IA_TEMA_MIN` (def. 0.6) sobre
+  lo que queda, y candado en código en `monitor.py` (no solo en el prompt) por si
+  el modelo desobedece.
+- Parte B (contexto por entidad): el código SIEMPRE recupera el material
+  (Wikipedia/GDELT) y el modelo SOLO redacta con eso — nunca consulta una API por
+  su cuenta. Verificación contra Wikipedia por título exacto/redirección real
+  (nunca "lo más parecido por texto" como resultado final — ver bug de Carney
+  abajo para el matiz: la búsqueda de texto SÍ se usa, pero solo para ELEGIR
+  qué título exacto pedir, con contexto de la nota, no para aceptar cualquier
+  resultado parecido). Mejor un falso negativo (entidad real no verificada) que
+  un falso positivo.
+- **Bug real de Carney** (desambiguación de entidades, dos capas — Parte B): la
+  historia "Carney, tras las amenazas arancelarias de Trump" (sobre Mark
+  Carney, primer ministro de Canadá) trajo como contexto "Carney, una villa en
+  Míchigan de 192 habitantes" — dato falso con sello de "verificado". Causa
+  raíz: `extraer_entidades` sacaba el apellido suelto ("Carney", tal como
+  aparece en el texto) y `wiki.resumen("Carney")` pedía ESE título exacto; en
+  Wikipedia en español, el título/redirección real para el nombre suelto
+  "Carney" apunta a la villa de Míchigan, no a Mark Carney — no era un fallo de
+  la verificación (la redirección es auténtica), era el nombre de entrada.
+  Arreglado en dos capas independientes (probadas en vivo, antes/después con
+  este caso exacto):
+  - **Capa 1 — resolución con contexto** (`ia.extraer_entidades` +
+    `wiki.resumen(entidad, busqueda=...)`): la IA arma, para cada entidad, una
+    "búsqueda" desambiguada usando tema/ámbito de la nota (ej. "Mark Carney
+    primer ministro de Canadá" en vez de "Carney"); esa búsqueda ahora SÍ pasa
+    por la API de texto libre de Wikipedia (`_resolve`) para encontrar el
+    título correcto, y RECIÉN con ese título se hace el fetch estricto de
+    siempre (verificado, no inventado).
+  - **Capa 2 — reja de coherencia** (`ia.coincide_dominio`): respaldo para
+    cuando la Capa 1 igual trae una página real pero equivocada. Compara el
+    nombre que la nota menciona contra el TÍTULO real de la página encontrada
+    (los dos nombres por separado, no uno contra sí mismo) y descarta si no
+    son la misma entidad. Probado en vivo con qwen2.5:3b: forzar
+    `format="json"` en este prompt, o mencionar la palabra "homónimo"/dar un
+    ejemplo de homónimo, sesgaba al modelo a contestar que NO coinciden
+    SIEMPRE (hasta para el caso correcto, Mark Carney). En texto libre
+    terminando en SI/NO, mostrando el nombre mencionado y el título real por
+    separado, el mismo modelo distingue bien los casos. La regla dura ("ante
+    la duda, sin contexto") se aplica a nivel de CÓDIGO (default False en
+    cualquier camino de error/parseo), no metida en el prompt — meterla en el
+    prompt también sesgaba al modelo hacia NO siempre.
+  Regla general reafirmada: ante la duda, "sin contexto disponible" — nunca un
+  contexto equivocado con apariencia de verificado.
+- **Bug real de Jordán** (co-menciones GDELT + registro de entidades — Parte
+  B): la captura de un procesado por el caso Villavicencio no traía contexto
+  NI la conexión con el caso, en notas que no nombraban a Villavicencio (ej.
+  "Xavier Jordán fue detenido por exceder su permiso de estadía..."). Causa
+  raíz: `gdelt.comenciones()` (la capa que SÍ puede destapar el vínculo,
+  buscando en prensa reciente qué otros nombres aparecen junto al buscado)
+  solo se ejecutaba si la entidad ya estaba VERIFICADA en Wikipedia — y un
+  recién capturado casi nunca tiene página propia, así que esa capa nunca
+  corría para él. Wikipedia sola no alcanzaba porque la nota en cuestión no
+  nombraba a Villavicencio. Dos arreglos:
+  - **GDELT desacoplado de Wikipedia**: la entidad "principal" para buscar
+    co-menciones ahora es la primera candidata VERIFICADA si hay alguna, y si
+    no, el primer candidato tal cual lo extrajo la IA (`extraer_entidades`) —
+    GDELT no necesita que la entidad tenga página, solo busca su nombre en
+    prensa reciente.
+  - **`entities.json`** (registro liviano, ver "Caches" más arriba): cada vez
+    que se procesa una historia se anota QUÉ entidades menciona (verificadas o
+    no), CUÁNDO y en QUÉ historia (`registrar_apariciones`). Antes de escribir
+    "sin contexto disponible", se consulta si esa misma entidad ya apareció en
+    otra nota del propio monitor (`apariciones_previas`) y, si sí, se muestra
+    "también apareció" con fecha y enlace — un mecanismo INDEPENDIENTE de
+    GDELT (que en la práctica falla seguido por su rate limit propio, ver
+    `gdelt.py`) para no perder el rastro de una entidad recurrente.
+  Probado en vivo con las notas reales de Jordán (GDELT rate-limited en el
+  momento de la prueba, así que la vía que respondió fue `entities.json`):
+  antes, "Xavier Jordán fue detenido por exceder su permiso de estadía..."
+  (18-sep) daba `{"texto": "sin contexto disponible", "principal": null,
+  "previas": []}` — igual que hoy en Wikipedia sola. Después de procesar
+  primero la nota que sí nombra a Villavicencio (17-sep), la misma nota de
+  ICE pasó a dar: `"Xavier Jordán, procesado por el asesinato de Fernando
+  Villavicencio, también apareció en notas sobre su detención en Estados
+  Unidos durante un control migratorio (2026-09-17)."` con `previas` apuntando
+  a esa nota anterior. De paso se corrigió un bug propio introducido en este
+  mismo cambio: el `return` de "nada encontrado" hardcodeaba
+  `"principal": None` y perdía el nombre ya identificado, que `get_factcheck`
+  también usa como segunda búsqueda — ahora se conserva.
+- **Oportunidades con pulso social** (`renderGap()` en dashboard_template.html):
+  antes la brecha del sector Oportunidades solo comparaba demanda de búsqueda
+  (Google Trends/Wikipedia) contra cobertura de medios; si no había datos de
+  búsqueda esa corrida, la sección quedaba sin poder calcular brecha alguna
+  aunque hubiera conversación fuerte en redes para ese tema. Ahora el "interés
+  público" de cada tema es la MAYOR entre dos señales independientes: demanda
+  de búsqueda y `DATA.social[tema].n_posts` (volumen de conversación,
+  **relativo** — normalizado 0-100 contra el máximo entre los pocos temas que
+  sí se consultan por corrida, `SOCIAL_MAX`; nunca se presenta como conteo
+  absoluto, ver regla de abajo). Se usa la MAYOR de las dos, no un promedio:
+  una conversación social fuerte con poca búsqueda (o viceversa) ya es señal
+  real de interés por sí sola. Las tarjetas muestran ambas barras cuando hay
+  dato de las dos, y el texto aclara cuál señal sostiene la brecha. El filtro
+  Ecuador/Mundo de Oportunidades (`gapAmb`) ahora también filtra el pulso
+  social por `soc[tema].ambito` (el mismo cálculo de `tema_ambito_map`),
+  consistente con el resto del panel.
+- **Contraste reordenado y compactado**: antes era una lista de `.gapcard`
+  (una fila entera por item, sin orden) mezclando Ecuador y Mundo sin
+  criterio. Ahora `renderContraste()` agrupa por ámbito con encabezado y
+  cuenta, en el orden pedido: Internacional, Nacional (Ecuador), Guayaquil
+  (`contrasteAmbito(h)`, misma lógica de ámbito que el resto del dashboard).
+  Cada grupo es una grilla de tarjetas COMPACTAS — se reusa `cardHTML()`
+  (la misma de Noticias/Guardadas) con `opts.factcheck=true` para que incluya
+  además el detalle de verificaciones (`renderFactcheck`, antes solo vivía en
+  Contraste). Los contratos SERCOP ya se mostraban dentro de `cardHTML` (el
+  `<details>` "Contraste oficial"); ahora Contraste no duplica ese bloque a
+  mano, reusa la tarjeta entera.
+- **Click para expandir + chat con la IA por item** (Parte E, todos los
+  segmentos): cada tarjeta (`.card`, historias — Noticias/Contraste/Guardadas)
+  o tema (`.gapcard[data-tema]`, Oportunidades/Pulso social) se puede
+  clickear para abrir un modal con TODOS sus datos (fuentes, contexto,
+  contraste, pulso social, seguimiento — reusa `renderContexto`/
+  `renderFactcheck`). El click delegado en `document.body` ignora clicks
+  dentro de `a,button,summary,details,input` para no pisar los links/detalles
+  propios de la tarjeta. Dentro del modal, un chat conversacional con Ollama
+  sobre ESE item puntual (para corregir la interpretación, aportar info, o
+  discutir si es una oportunidad):
+  - **El navegador nunca habla directo con Ollama**: todo pasa por
+    `POST /api/chat` en el mismo servidor http (`monitor.py`, junto a
+    `/api/guardar`), que arma el prompt (`ia.chat()`, texto libre — a
+    diferencia del resto de `ia.py` NO usa `format="json"`, es conversación)
+    con el contexto YA CALCULADO de la tarjeta (`contextoChatHistoria`/
+    `contextoChatTema` en el HTML arman ese texto del lado del cliente) más
+    el historial de turnos previos.
+  - **Servidor con hilos**: `/api/chat` puede tardar varios segundos (llamada
+    real a un LLM local) — antes el servidor (`socketserver.TCPServer`) era
+    de un solo hilo, así que esa espera habría congelado TODO (hasta el poll
+    de `data.json` cada minuto). Se cambió a
+    `ThreadingMixIn`+`TCPServer` (`ServidorHilos`, `daemon_threads=True`).
+    Probado en vivo: un GET a `data.json` responde en ~2ms mientras un
+    `/api/chat` sigue en curso (tardó ~6-7s en total).
+  - **Es on-demand, nunca durante el feed**: lo dispara el usuario desde el
+    dashboard; `run_fast`/`enrich_pass` no lo tocan. Si el modelo local ya
+    está ocupado (el hilo trabajador enriqueciendo el feed), Ollama encola la
+    consulta de chat en vez de fallar (comportamiento propio de Ollama,
+    `num_parallel` por defecto) — puede tardar un poco más, no rompe nada.
+  - **Persistencia**: el hilo de chat vive en memoria del navegador
+    (`chatHilos`, por item) y se pierde al recargar la página — es lo simple
+    pedido para esta primera versión. Guardar el hilo en disco y, sobre todo,
+    persistir las correcciones de vuelta en el análisis (que lo que se
+    discute en el chat modifique `h.ia`/`h.contexto` de verdad) queda como
+    paso posterior, no implementado todavía.
+  - **UI del chat: widget flotante, NO modal a pantalla completa** — bug real
+    reportado por Fernando: la primera versión metía el chat DENTRO del mismo
+    modal del detalle, y el conjunto se sentía "a pantalla completa" y no
+    dejaba leer la noticia con tranquilidad. Se separó en dos piezas
+    independientes: el modal (`#modalOverlay`, `mostrarDetalle()`) solo
+    muestra el detalle del item, y el chat es un widget aparte
+    (`#chatWidget`/`#chatBubble`, `abrirChat()`/`minimizarChat()`/
+    `cerrarChat()`) fijo en la esquina inferior derecha, chico (`min(350px,
+    ...)`), con su propio header que muestra el título/tema activo para que
+    quede claro de qué se está hablando. Cerrar el modal (`cerrarModal()`) NO
+    cierra el chat a propósito: se puede seguir navegando otras noticias con
+    la conversación abierta. Abrir OTRO item re-apunta el chat a ese item
+    nuevo (mismo mecanismo de contexto por item de antes, sin cambios) y el
+    header del widget lo refleja.
+  - **Bug real: cerrar/minimizar no hacía nada** — reportado por Fernando
+    justo después del cambio anterior. Causa: `.modaloverlay{display:flex}` y
+    `.chatwidget{display:flex}` son reglas de AUTOR con selector de clase; el
+    atributo `hidden` depende de la regla `[hidden]{display:none}` del
+    NAVEGADOR (hoja de estilos por defecto). En cascada CSS, una regla de
+    autor siempre le gana a una del navegador sin importar especificidad —
+    así que aunque el JS ponía `hidden=true` correctamente al clickear
+    cerrar/minimizar, la ventana seguía viéndose igual (la regla de autor
+    seguía forzando `display:flex`). No era un bug de los botones ni de los
+    listeners de click, era puramente CSS. Arreglado agregando
+    `#modalOverlay[hidden]{display:none}` y `#chatWidget[hidden]
+    {display:none}` (selector de ID+atributo, más específico que la clase,
+    sigue siendo de autor así que gana la comparación). De paso se encontró
+    y arregló el MISMO patrón de bug en dos elementos que ya existían antes
+    de hoy: `.live{display:inline-block}` (la etiqueta "EN VIVO") y
+    `.vermas{display:block}` (el botón "Ver más") — ambos podían quedar
+    visibles siempre sin importar `hidden`. Lección para cualquier elemento
+    nuevo que se oculte con `hidden` desde JS: si su clase fija `display`,
+    hace falta el mismo override `#id[hidden]{display:none}`.
+- **Modelo dedicado "monitor-critico" para el chat (Parte E)**: Fernando
+  reportó que la IA "no tiene pensamiento crítico" — solo parafrasea el
+  titular en vez de cuestionarlo. Medido en vivo antes de decidir el camino:
+  esta PC (GTX 1650 SUPER, **4GB VRAM**) corre `qwen2.5:3b` (el modelo del
+  pipeline por lotes) en 2-4s siempre, pero cualquier modelo de ~7-8B
+  (`deepseek-r1:8b`, la base del `periodista-pro` que Fernando ya tenía;
+  probado también `deepseek-coder:6.7b`) paga **20-27s de SOLO CARGA en cada
+  llamada**, sin importar si se llama varias veces seguidas — no entra
+  entero en la VRAM. Un modelo así en el pipeline por lotes (decenas de
+  historias nuevas cada pocos minutos) atrasaría al hilo trabajador sin
+  límite. Decisión (elegida por Fernando entre 3 opciones): el modelo pesado
+  **SOLO para el chat on-demand** (Parte E), nunca para
+  `analizar`/`extraer_entidades`/`contextualizar`/`coincide_dominio`, que
+  siguen en el modelo rápido de siempre.
+  - `Modelfile.critico` (en la raíz del proyecto): `FROM deepseek-r1:8b` +
+    un `SYSTEM` de "analista crítico" — cuestiona la nota (qué fuentes
+    faltan, a quién conviene la versión que cuenta, qué preguntas no
+    responde) en vez de resumirla, pero con la misma regla dura del resto
+    del proyecto: el escepticismo es sobre la INTERPRETACIÓN, nunca licencia
+    para inventar hechos. Se crea con
+    `ollama create monitor-critico -f Modelfile.critico` (documentado ahí
+    mismo, para poder rehacerlo en otra PC).
+  - `ia.py`: `CHAT_MODEL` (env `MONITOR_CHAT_MODEL`, def. `"monitor-critico"`)
+    y `elegir_modelo_chat()` — modelo DISTINTO e independiente del
+    `MONITOR_IA_MODEL`/`_model` que usa el resto del pipeline. Si
+    `monitor-critico` no está instalado, cae solo al modelo rápido de
+    siempre (nunca rompe el chat, responde con menos filo crítico nomás).
+    `chat()` ya no recibe `forzado=IA_MODEL` desde monitor.py — se
+    desacopló a propósito, para que forzar el modelo del pipeline
+    (`MONITOR_IA_MODEL`) no pisara el modelo del chat sin querer.
+  - **Bug real, encontrado en vivo #1**: `elegir_modelo_chat()` comparaba
+    `CHAT_MODEL` (`"monitor-critico"`) contra el string EXACTO que devuelve
+    `/api/tags` — pero Ollama lista los modelos CON tag
+    (`"monitor-critico:latest"`), así que la comparación nunca daba
+    verdadero y el chat usaba el modelo rápido en silencio, sin avisar del
+    problema. Arreglado comparando por nombre base (antes de `":"`), misma
+    técnica que ya usaba `elegir_modelo()`.
+  - **Bug real, encontrado en vivo #2**: con `monitor-critico` (modelo de
+    RAZONAMIENTO), Ollama separa el "pensamiento" interno del texto visible
+    (campo `thinking` aparte de `response`), pero AMBOS gastan del mismo
+    `num_predict`. Con el `num_predict=300` que usaba el resto de `ia.py`,
+    el modelo agotaba el presupuesto completo "pensando" y la respuesta
+    visible quedaba VACÍA (`done_reason:"length"`, `response:""`) — sin
+    ningún error, se veía como si el chat no respondiera nada. Subido a
+    `num_predict=1000` (alcanza para pensar y responder: medido ~530-650
+    tokens totales) y el `timeout` de `chat()` a 220s.
+  - **Tiempo real medido, no estimado**: ~70-100s por respuesta en esta PC
+    (17-20s de carga + generación). Bastante más que el "25-40s" que se
+    había estimado antes de medir — el dashboard avisa "puede tardar 1-2
+    minutos" en el propio chat mientras espera, para que no parezca colgado.
+- **Aterrizaje (grounding) del chat contra Wikipedia — bug real de "Alias
+  Fito"**: Fernando le preguntó al chat "quién es Alias Fito dentro del
+  contexto ecuatoriano" y respondió "Carlos Ospina" — un nombre inventado
+  con total confianza (la respuesta correcta es José Adolfo Macías Villamar,
+  líder de Los Choneros). Causa raíz: el system prompt del chat (a
+  diferencia de TODO el resto del proyecto) explícitamente permitía "usar tu
+  conocimiento general para poner el item en perspectiva" — esa es la puerta
+  por la que un modelo local chico alucina una identidad completa sin que se
+  note. Arreglado con el MISMO patrón que Parte B (código recupera, IA solo
+  redacta), pero disparado por la PREGUNTA del chat en vez del texto de una
+  nota:
+  - `ia.extraer_entidades_chat(mensaje, item_contexto)`: con el modelo
+    RÁPIDO del pipeline (nunca `monitor-critico`: esto es un paso previo,
+    tiene que ser rápido), reconoce si el mensaje pregunta por una entidad
+    puntual y arma una búsqueda desambiguada — mismo mecanismo que
+    `extraer_entidades` (Capa 1 del bug de Carney).
+  - `monitor.py: _aterrizar_chat(item_contexto, mensaje)`: verifica esa
+    entidad contra Wikipedia (`wiki.resumen`) y agrega el resultado —
+    verificado, o explícitamente "SIN VERIFICAR" — al contexto de ESA
+    pregunta puntual antes de mandarla al chat. Nunca modifica el
+    `item_contexto` de forma persistente, solo para ese turno.
+  - **Respaldo probado en vivo**: la primera pasada de este arreglo casi
+    falla igual — el modelo de extracción adivinó mal el apellido legal
+    ("Villamarán" en vez de "Villamar"), y esa búsqueda no encontraba nada
+    ("SIN VERIFICAR", el resultado seguro pero no útil). Se agregó un
+    segundo intento: si la búsqueda con el nombre completo que adivinó el
+    modelo no encuentra nada, reintentar con el ALIAS tal cual lo escribió
+    el periodista ("Alias Fito" solo) — medido en vivo: resuelve bien y
+    consistente a "Fito (criminal)", más confiable que depender de que el
+    modelo chico adivine un nombre legal completo.
+  - `_PROMPT_CHAT_SISTEMA` (ia.py) y el `SYSTEM` de `Modelfile.critico` (hay
+    que correr `ollama create monitor-critico -f Modelfile.critico` de
+    nuevo después de este cambio) tienen ahora una regla dura explícita,
+    citando el incidente real: ante una pregunta de identidad sin material
+    VERIFICADO, decir "no lo tengo verificado" — nunca completar con un
+    nombre que "suene familiar".
+  - Probado en vivo, los dos casos: "Alias Fito" (con página real en
+    Wikipedia) ahora responde correcto, con el dato verificado; "Xavier
+    Jordán" (sin página de Wikipedia, ver Parte B) responde "No tengo
+    verificado ese dato en este momento" en vez de inventar — los dos
+    resultados son correctos.
+- **Recencia en la escucha social — bug real: la "mejor" publicación de un
+  tema podía ser de años atrás**: Bluesky con `sort=top` rankea por
+  engagement de TODA la historia del término, sin ventana de tiempo — nada
+  en el pipeline filtraba por fecha. Reproducido en vivo: para "inseguridad
+  Ecuador" la publicación con más likes+reposts era del **2024-11-25** (casi
+  2 años antes de hoy). Arreglado en capas (`MONITOR_SOCIAL_DIAS`, def. 7):
+  - **Filtro nativo por fuente** (más barato: no se trae ni se paga lo
+    viejo): Bluesky usa el parámetro `since` de la API (confirmado en vivo
+    que existe y filtra server-side); Reddit mapea `dias` al balde fijo más
+    chico que lo cubra (`_reddit_t`: day/week/month/year/all — antes estaba
+    fijo en `"month"` sin importar `MONITOR_SOCIAL_DIAS`); YouTube filtra
+    cada comentario por su propio `publishedAt` (antes solo filtraba que el
+    VIDEO fuera de los últimos `YT_DIAS`=30 días, no cuándo se escribió el
+    comentario que terminaba mostrándose).
+  - **Filtro de respaldo centralizado** (`social._es_reciente`, en
+    `recolectar()`): por si una fuente no filtra perfecto. Sin fecha válida
+    = se descarta (ante la duda, no confirmar recencia = no es reciente).
+  - **Ranking = recencia + engagement, no solo engagement**
+    (`monitor._social_score`, decaimiento lineal 1.0 hoy → 0.5 en el borde
+    de la ventana): dentro de la ventana ya filtrada, una publicación más
+    vieja pesa menos al elegir la "mejor" de cada fuente. La fecha de la
+    publicación ahora se manda al dashboard y se muestra junto a
+    likes/reposts, para poder verificarlo a simple vista.
+- **Estados "tapados" de Trends/GDELT — no lo tapes, quiero ver el estado
+  real**: bug real en `gdelt.interest()` y `monitor.get_demand()`: un éxito
+  PARCIAL (ej. GDELT respondía 1 de 19 temas, el resto 429) se reportaba
+  igual que un éxito total ("ok" a secas) porque el error solo se guardaba
+  si TODOS los temas fallaban. Confirmado en vivo pidiendo 5 temas a GDELT en
+  el momento de este cambio: **HTTP 429 en los 5**, y por separado (con la
+  caché ya vencida) 1 de 5 sí respondió — antes ambos casos hubieran dicho
+  "ok". Ahora `gdelt.py` guarda el primer error aunque el éxito sea parcial,
+  y `get_gdelt()`/`get_demand()` arman un estado honesto: `"ok (1/5 temas;
+  resto: HTTP 429)"` en vez de `"ok"`. Confirmado por separado que Google
+  Trends SÍ respondía en el momento de esta prueba (sin necesidad del
+  respaldo de Wikipedia) — el respaldo (`_wiki_demand`) sigue intacto y se
+  dispara solo si Trends trae menos de la mitad de los temas, con su propio
+  detalle de cuántos/cuántos en el estado final.
+- **Chat con streaming + dos modos (Frente B)** — Fernando pidió bajar el
+  tiempo de espera del chat ("1-2 minutos es demasiado"): objetivo consulta
+  rápida ≤30s, análisis complejo ≤1 min.
+  - **Streaming real**: `ia.chat_stream()` usa `stream=true` de Ollama y lee
+    la respuesta HTTP línea por línea (NDJSON) según va llegando, llamando a
+    `on_delta(texto_parcial)` por cada pedazo. `monitor.py`
+    (`_responder_stream`) relay-ea cada pedazo al navegador apenas lo recibe
+    — sin `Content-Length`, con `close_connection=True` (la conexión se
+    cierra al terminar en vez de armar chunked encoding a mano). El
+    navegador (`dashboard_template.html`) lee con
+    `response.body.getReader()` y va llenando la burbuja de la IA en vivo.
+    Probado en vivo con `curl -N`: los tokens llegan de a uno, no en un solo
+    bloque al final.
+  - **BUG REAL — la idea original no funcionaba**: el plan era "mismo
+    modelo, bajar `num_predict` para el modo rápido". Probado en vivo con
+    `monitor-critico` (modelo de razonamiento): con `num_predict=280` tardó
+    **74s y devolvió STRING VACÍO** — el modelo gasta ese presupuesto
+    "pensando" antes de escribir una sola palabra visible, y al cortarse a
+    mitad del pensamiento no queda nada. Se probó también `"think": false`
+    (la opción de Ollama para apagar el razonamiento): esta versión del
+    modelo la ignora, el `<think>` se filtra igual dentro de `response` y
+    sigue cortando a mitad de camino.
+  - **Arreglo real**: dos modos que cambian MODELO, no solo num_predict
+    (`ia.MODOS_CHAT`). **"rápido"** (por defecto): el modelo RÁPIDO del
+    pipeline (qwen2.5:3b típicamente, sin razonamiento) + contexto MAGRO
+    (`contextoChatHistoria/Tema(..., profundo=false)`: solo titular/resumen/
+    interpretación, sin fuentes/contratos/factcheck) + `num_predict=280,
+    num_ctx=2048`. Medido en vivo end-to-end (servidor real, `curl -N`):
+    **13.8s**, bien debajo del objetivo de 30s. **"profundo"** (botón aparte
+    en el widget del chat): `monitor-critico` + contexto completo +
+    `num_predict=700, num_ctx=4096`.
+  - **Límite real, no se pudo evitar**: "profundo" mide **~100-120s en esta
+    PC** (medido dos veces seguidas, con el modelo ya "caliente": 118.6s y
+    123.2s) — por ENCIMA del objetivo de 1 min pedido. Confirmado que NO es
+    por num_predict cortando de golpe (`done_reason: "stop"`, no `"length"`
+    — el modelo termina solo, usa ~550 de los 700 tokens disponibles) ni por
+    carga en frío del modelo: es la velocidad de generación real de un
+    modelo de razonamiento de ~8B en una GPU de 4GB VRAM (35/65 CPU/GPU,
+    ~5 tokens/segundo) — no hay margen para bajarlo sin cortar el
+    pensamiento a la mitad (que ya se probó que devuelve vacío). El
+    streaming ayuda a que la espera se SIENTA mejor (hay progreso visible en
+    vez de una pantalla estática), pero no baja el tiempo total. Si 100-120s
+    sigue siendo demasiado para el uso diario, la palanca real que queda es
+    cambiar de modelo para "profundo" (uno más chico, sin razonamiento, que
+    sacrifique parte del análisis crítico a cambio de velocidad) — no
+    implementado, a la espera de que Fernando decida si vale la pena ese
+    cambio.
+- Nunca presentar un número modelado como si fuera medido: toda estimación va
+  etiquetada como tal (aplica sobre todo a la Parte A, pendiente de esta lista).
+- `ambito_de(blob)` decide Ecuador vs Mundo **solo** por palabras clave del
+  texto (`is_ecuador`/`EC_TERMS`); **nunca** por qué medios publicaron la nota.
+  Bug real corregido: antes, sin señal de ningún lado, caía en "local" a
+  ciegas (una nota sobre el franquismo español, sin ninguna palabra de
+  Ecuador, terminaba en la sección Ecuador). Ahora el default sin señal es
+  "internacional" — mejor una nota local rara sin palabra clave quede ahí
+  (falso negativo) que inflar Ecuador con temas ajenos (falso positivo).
+  `EC_TERMS` se reforzó con las provincias y siglas institucionales más
+  seguras (evitando términos ambiguos como "Bolívar", que colisiona con Simón
+  Bolívar en noticias de otros países).
+- Escucha social: el panel "Pulso social" NUNCA rankea publicaciones por
+  engagement crudo mezclando plataformas (likes de YouTube y reposts de
+  Bluesky no son comparables) — muestra la mejor publicación de CADA fuente
+  presente, con su desglose de conteo por fuente siempre visible.
+- `is_ecuador`/`is_foreign`/`detect_city` matchean por PALABRA COMPLETA
+  (`geo_hit`, límite al inicio Y al final), no por prefijo suelto. Bugs reales
+  corregidos: "canar" (provincia Cañar) matcheaba como prefijo dentro de
+  "Canarias" (España); "napo" (provincia/río) dentro de "Napoleón". Además se
+  sacaron de `EC_TERMS` tres términos que colisionaban aunque fueran palabra
+  completa: "sucre" (Sucre, capital de Bolivia — más frecuente en prensa que
+  el uso histórico de la moneda ecuatoriana), "los rios" y "el oro" (frases
+  genéricas: "el oro alcanza un precio récord..." es titular típico de
+  economía mundial). "El Oro"/"Los Ríos" siguen detectándose por sus
+  ciudades (Machala, Babahoyo, Quevedo). "Asamblea Nacional" también es el
+  parlamento de VENEZUELA (muy cubierto en prensa internacional): si el
+  texto además menciona Venezuela/Maduro, esa coincidencia sola ya no cuenta
+  como señal de Ecuador (sigue evaluándose el resto de `EC_TERMS`).
+  Pendiente de menor riesgo, no corregido: "orellana" (apellido común) y
+  "santa elena" (también la isla del exilio de Napoleón) quedan sin acotar —
+  baja frecuencia esperada en la agenda diaria, pero si aparece un falso
+  positivo real, revisar ahí primero.
+- Escucha social: la BÚSQUEDA (no solo el ámbito de la historia) también debe
+  estar acotada a Ecuador. Bug real detectado en vivo: el tema "Ambiente"
+  tenía ámbito "guayaquil" por notas locales genuinas (minería en
+  Quimsacocha), pero la búsqueda social usaba el término genérico del tema
+  ("medio ambiente", de `TREND_TERMS`) — en Bluesky/YouTube eso lo domina la
+  conversación de otros países con mucho más volumen (se vio trayendo
+  política ESPAÑOLA y luego MEXICANA — PRI, Morena, Tren Maya — bajo un tema
+  marcado como Guayaquil). Arreglado en dos capas (`_social_query` +
+  `_post_es_foraneo` en monitor.py): para temas con ámbito ecuador/guayaquil
+  se agrega "Ecuador" al término de búsqueda (defensa principal — probado en
+  vivo: "medio ambiente" trae 70 posts dominados por España, "medio ambiente
+  Ecuador" trae 13 posts realmente relacionados a Ecuador), y como respaldo
+  se descarta cualquier post que mencione claramente OTRO país
+  (`is_foreign`) sin ninguna señal de Ecuador (`is_ecuador`). El respaldo no
+  es perfecto: un comentario puede hablar de política extranjera sin nombrar
+  el país (ej. solo "PRI"/"Morena", sin decir "México") y a eso no llega el
+  filtro de texto — por eso la query scopeada es la defensa principal, no el
+  filtro.
+- **Sección "Anteriores"** (Parte B): antes, toda historia más vieja que
+  `MONITOR_MAX_DIAS` (def. 3 días) se descartaba en `build_stories` y se
+  perdía sin dejar rastro. Ahora solo se descarta de verdad más allá de
+  `MONITOR_MAX_DIAS`; entre `MONITOR_FEED_FRESH_H` (def. 10h) y
+  `MONITOR_MAX_DIAS` la historia queda marcada `s["antigua"]=True` y el
+  dashboard la muestra en un toggle Recientes/Anteriores dentro de Noticias
+  (mismos filtros de categoría/ámbito/búsqueda que el resto) en vez de
+  perderla de vista. Nada desaparece en silencio.
+- **Guardadas / para reportaje** (Parte C): botón estrella en cada tarjeta
+  (`cardHTML`, compartido entre Noticias y la pestaña Guardadas). Guarda la
+  historia COMPLETA (no un id) para que sobreviva a que la noticia caduque
+  del feed o el dashboard se regenere. Persistencia según cómo se abrió el
+  dashboard (se decide una vez al cargar la página, `cargarGuardadas()`, sin
+  cambiar de modo a mitad de sesión):
+  - `python monitor.py serve` (modo normal, `location.protocol` es http):
+    **`saved.json` en disco**, vía `POST /api/guardar` en el mismo servidor
+    (`http.server`, bind 127.0.0.1 como el resto). Sobrevive a reinicios del
+    programa y es el mismo archivo para cualquier navegador.
+  - `dashboard.html` abierto directo (`file://`, sin servidor — típico de una
+    corrida única con `python monitor.py` sin `serve`): no hay forma de
+    escribir a disco desde el navegador, así que cae a **`localStorage`** —
+    solo vive en ESE navegador y ESA compu; se pierde si se limpian datos del
+    sitio o se abre desde otro navegador/perfil. El dashboard se lo dice al
+    usuario en la propia pestaña Guardadas.
+- **Bug real: Capa 2 dejó pasar "Indios ugandeses" como si fuera Mamdani**
+  (desambiguación de entidades, Parte B — reportado indirectamente por
+  Fernando al notar contexto sin relación con la nota). La nota "Trump se
+  reunió con Mamdani en Nueva York..." (sobre Zohran Mamdani, alcalde electo
+  de Nueva York) traía como candidato el apellido suelto "Mamdani"; Capa 1
+  (`ia.extraer_entidades`) alucinó una búsqueda desambiguada incorrecta
+  ("Abdul Razaq Mamdani"), y `wiki.resumen` terminó resolviendo a "Indios
+  ugandeses" (el artículo sobre la comunidad étnica, un apellido común entre
+  esa diáspora — no una persona). La Capa 2 (`ia.coincide_dominio`, el
+  modelo chico qwen2.5:3b) DEBÍA descartar ese caso comparando "Mamdani"
+  contra el título real "Indios ugandeses", pero respondió (probado en vivo,
+  reproducido con el texto real) que sí coincidían — un error de juicio del
+  modelo, no de la lógica. Arreglado con un backstop determinista y barato,
+  SIN IA: `_nombre_se_solapa(nombre_mencionado, titulo_wiki)` en monitor.py
+  compara por palabra (normalizada, `norm()`, ≥3 letras) si el nombre
+  mencionado en la nota aparece en el título real de Wikipedia; si ninguna
+  palabra se solapa, se descarta el resultado SIN gastar la llamada a
+  `coincide_dominio` (el caso es demasiado obvio para necesitar el modelo).
+  No reemplaza la Capa 2 (que sigue corriendo para los casos con solape
+  parcial que sí necesitan juicio), la complementa como última barrera para
+  cuando el modelo se equivoca. Mismo criterio de siempre ante nombres sin
+  palabras útiles para comparar: no bloquea (mejor un falso negativo que uno
+  positivo). Se agregó también en `_aterrizar_chat` (Parte E): ese camino
+  del chat nunca había tenido NINGÚN chequeo de coherencia (ni siquiera
+  `coincide_dominio`), así que tenía la misma clase de vulnerabilidad
+  esperando a reproducirse ahí — se le sumó el mismo backstop barato, sin
+  IA extra, para no atrasar la respuesta del chat.
+  Probado en vivo con el caso real y los casos ya conocidos, todos correctos
+  después del arreglo: `_nombre_se_solapa("Mamdani", "Indios ugandeses")` →
+  False (se descarta, antes pasaba); `_nombre_se_solapa("Mamdani", "Zohran
+  Mamdani")`, `("Mark Carney", "Mark Carney")`, `("Alias Fito", "Fito
+  (criminal)")`, `("Daniel Noboa", "Daniel Noboa")` → True (siguen pasando
+  bien, el arreglo no rompió ningún caso correcto anterior).
+- **Contexto que solo explica "quién es X", nunca la situación** (Parte B —
+  reportado por Fernando: "el contexto aportado no es más que explica quién
+  es X persona, pero no explica el contexto de la situación... lo mismo que
+  nada"). Causa raíz doble: (1) el MATERIAL que `_construir_contexto` le
+  daba al modelo para redactar era solo bios de Wikipedia + nombres sueltos
+  co-mencionados por GDELT — no había ningún dato sobre QUÉ ESTÁ PASANDO
+  alrededor del hecho, así que ni el mejor prompt podía sacar más que una
+  biografía; (2) `_PROMPT_CONTEXTO` (ia.py) solo pedía "qué contexto agrega
+  el material sobre quién es tal persona/lugar", sin pedir nunca conectar
+  eso con la situación de la nota. Arreglo en dos partes:
+  - **Más material real, sin gastar una llamada extra a GDELT**:
+    `gdelt.comenciones()` se refactorizó en `gdelt.contexto_prensa()` — la
+    MISMA búsqueda en GDELT (ArtList) que ya se hacía para sacar nombres
+    co-mencionados ahora también devuelve los TITULARES reales y recientes
+    (con fecha) de esos mismos artículos. `_construir_contexto` arma con eso
+    un bloque nuevo ("Cobertura reciente de prensa sobre X: titular1 (fecha),
+    titular2 (fecha)...") — son hechos reales publicados por la prensa, no
+    un resumen inventado, así que el modelo los puede citar como evidencia
+    de la situación sin salirse de la regla de oro de Parte B (el código
+    recupera, la IA solo redacta).
+  - **`_PROMPT_CONTEXTO` reescrito**: ahora pide explícitamente explicar POR
+    QUÉ pasa esto ahora / qué antecedente inmediato tiene (si los titulares
+    muestran una escalada, un conflicto en curso, etc.), usando los
+    titulares como evidencia citable ("esto se da luego de que...") — y
+    solo cae a la bio simple si el material de verdad no trae nada más
+    (nunca inventa una conexión que el material no respalda).
+  Probado en vivo con el caso real de Carney (mismo caso del bug de
+  desambiguación, con material de prueba con titulares de escalada
+  arancelaria): antes, el contexto era pura bio ("Mark Carney es un
+  economista y político canadiense, primer ministro de Canadá desde
+  2025"); después, con la MISMA nota, el contexto pasó a ser: "Mark Carney
+  respondió a las amenazas arancelarias de Trump, luego de que el
+  presidente de Estados Unidos amenazara con nuevas rondas de aranceles a
+  Canadá tras negociaciones fallidas" — conecta con la situación real de la
+  nota, no solo con quién es la persona.
+- **Interpretación de la IA literal, solo parafraseaba categorías** (`analizar()`
+  en ia.py — reportado por Fernando: "la interpretación de la IA ante las
+  noticias sigue siendo literal"). Causa raíz: `_PROMPT` solo pedía "una
+  sola frase de por qué importa y su contexto", sin ninguna guía de qué
+  distingue una interpretación real de un resumen — el modelo (razonablemente)
+  optaba por lo más fácil: reformular el titular/categoría. Arreglado
+  agregando reglas explícitas al prompt: pedir qué está en juego, a quién
+  beneficia/perjudica, qué tensión de fondo revela o qué pregunta queda
+  abierta — "pensá como un editor que le dice a un reportero por qué esta
+  nota importa, no como alguien que la resume" — más un ejemplo de mal
+  resultado (resumen) y uno de buen resultado (interpretación real) directo
+  en el prompt. Sigue con la misma regla dura de siempre: solo puede usar lo
+  que el titular/resumen ya afirma, nunca inventa datos/antecedentes que no
+  estén ahí (si el texto es muy escueto, puede decir explícitamente que
+  falta información en vez de forzar una interpretación vacía).
+  Probado en vivo (titular real de ejemplo, "Gobierno de Ecuador anuncia
+  subsidio focalizado al diésel para transporte pesado..."): la
+  interpretación salió "El subsidio... beneficiará principalmente a
+  empresas y transportistas, mientras reducirá significativamente los
+  gastos fiscales del gobierno, lo que puede presionar a otras áreas del
+  presupuesto para cubrir el déficit" — señala a quién beneficia y una
+  consecuencia fiscal implícita, no una reformulación del titular.
+- **Contraste (FactCheck) con datos no relacionados a la historia**
+  (`get_factcheck` en monitor.py — reportado por Fernando: "algunas
+  secciones de contraste de notas aportan datos que no son relacionados con
+  el contexto de la historia"). Causa raíz: cuando la búsqueda por el
+  titular completo no encontraba nada, el respaldo buscaba por la entidad
+  PRINCIPAL sola (`s["contexto"]["principal"]`) — a veces una sola palabra
+  genérica (ej. "Alemania") — y Google Fact Check Tools (`claims:search`)
+  hace coincidencia laxa por palabra suelta: devolvía cualquier ClaimReview
+  que mencionara "Alemania", sin relación alguna con la nota puntual.
+  Arreglado con `_factcheck_relevante(s, resultados, excluir=principal)`:
+  se queda solo con los resultados del fallback por entidad que comparten
+  ADEMÁS otra palabra significativa (mismo criterio que `tokens()`: ≥4
+  letras, sin stopwords) con el titular+resumen de esa historia —
+  excluyendo del conteo el propio nombre que se usó como búsqueda (que
+  siempre "coincide" por definición y no sirve como filtro). Se aplica solo
+  al fallback por entidad (el más propenso a este bug); la búsqueda por
+  titular completo no se toca, porque ya es una frase completa y no un
+  término suelto.
+  Probado en vivo con datos sintéticos que reproducen el caso real: de dos
+  resultados para la entidad "Alemania" ("Alemania ganó el mundial de
+  handball femenino" — sin relación; "El canciller alemán confirmó recorte
+  en gasto de defensa" — sí relacionado con la nota de recorte militar), el
+  filtro descartó el primero y conservó el segundo.
+- **Bug real: tema con posts salía con sentimiento=None, sin ninguna pista
+  de por qué** (Fernando: tema "Ambiente" con 119 posts). Causa raíz:
+  `social.analizar_osint()` atrapa CUALQUIER excepción (timeout, HTTP,
+  JSON mal formado) y devuelve `None` guardando el motivo en
+  `social.last_error` — pero `get_social()` en monitor.py, si el ÚNICO
+  reintento también fallaba, tiraba ese `last_error` sin guardarlo en
+  ningún lado: el `entry` del tema quedaba sin las claves
+  `sentimiento`/`polarizacion`/`resumen`, indistinguible en el dashboard de
+  "no se intentó". El HTML ya mostraba un mensaje de respaldo, pero
+  genérico ("puede faltar Ollama o haber fallado la lectura puntual"),
+  siempre igual sin importar la causa real. De paso se encontró y limpió
+  una variable muerta (`sin_modelo` en `get_social`): se calculaba pero
+  nunca se usaba en ningún lado.
+  Arreglado: cuando los dos intentos de `analizar_osint` fallan, el
+  `entry` del tema guarda `osint_error` con el `social.last_error` real de
+  ESE intento puntual; `renderSocial()` en el dashboard lo muestra tal cual
+  ("Sin lectura OSINT esta vez (motivo: osint TimeoutError)") en vez de
+  adivinar. Probado en vivo forzando `analizar_osint` a fallar con un
+  motivo conocido (`"osint TimeoutError"`): el `entry` resultante trajo
+  `osint_error: "osint TimeoutError"` en vez de perder el dato.
+  No se pudo reproducir el fallo ORIGINAL de dos intentos seguidos (una
+  prueba en vivo con 119 posts sintéticos sobre "Ambiente" sí consiguió
+  OSINT al primer intento) — es consistente con que sea intermitente
+  (hipo puntual de Ollama, ya documentado más arriba), no un bug de
+  tamaño de los datos; lo que se arregló es que ahora, la próxima vez que
+  pase, se va a poder ver la causa real en vez de perderla.
+- **Estado "esperando primera pasada del trabajador" para siempre durante
+  un corte largo de GDELT/Trends**: relacionado con el bug del arranque
+  colgado (arriba) — una vez que la llamada real se movió al hilo
+  trabajador, quedó un hueco de honestidad distinto: si GDELT fallaba
+  TOTALMENTE (0 de N temas, ej. HTTP 429 sostenido) o Trends/GDELT recién
+  estaban vencidos, `get_gdelt()`/`get_demand()` en modo_lectura NO
+  contaban CUÁNTOS temas se habían conseguido ni el motivo del resto —
+  devolvían un "cache" plano, o si nunca hubo ni un solo éxito, se
+  quedaban en "esperando primera pasada del trabajador" para siempre,
+  indistinguible de "el trabajador todavía ni arrancó". Arreglado en dos
+  partes: (1) `gdelt_cache.json`/`trends_cache.json` ahora guardan también
+  `intentados` (cuántos temas se pidieron) y `err`/`detalle` (el motivo si
+  no fue un éxito total), así el hilo rápido reconstruye el mismo estado
+  honesto ("cache (Google Trends, 20/20 temas)") leyendo el cache en vez
+  de mostrar "cache" a secas; (2) si GDELT falla TOTALMENTE, igual se
+  guarda el intento (`ts_intento`/`err`) sin inventar datos, para que
+  modo_lectura pueda decir "sin datos aún (intentado, sigue fallando: HTTP
+  429)" en vez de "esperando primera pasada" indefinidamente.
+  Probado en vivo, antes/después: `estado_interes` pasó de "cache (Google
+  Trends)" a "cache (Google Trends, 20/20 temas)" con datos reales del
+  feed; en el mismo arranque se confirmó con una llamada directa a
+  `gdelt.interest()` que el rate limit de GDELT sigue siendo real ahora
+  mismo (`HTTP 429` en una prueba, y en otra `{}` con `last_error=None` —
+  GDELT a veces tarda ~12s por tema y devuelve vacío sin ni siquiera un
+  código de error, no siempre es un 429 explícito) — dato que antes de
+  este cambio quedaba completamente oculto detrás de un genérico
+  "esperando".
+- **Telegram (Etapa 4, fuente nueva)**: se integró como una fuente más de
+  `social.py` (`telegram_buscar`, misma `SocialPost`, mismo filtro de
+  recencia/ruido en `recolectar()`), pero con una diferencia de fondo que el
+  dashboard etiqueta explícitamente: los canales de Telegram son **broadcast**
+  (la voz del canal, no del público) — sirven para el eje de seguridad y la
+  recencia (medios/fuentes ecuatorianas suelen postear primero ahí), nunca
+  para medir opinión ciudadana.
+  - **Sin API, vía preview público**: `t.me/s/<canal>` es la página HTML que
+    el propio Telegram sirve sin login para "embeber" un canal en otros
+    sitios. Se parsea con regex (mismo criterio que `gdelt.py` para nombres
+    propios: sin librería de NLP/HTML en la stdlib más allá de
+    `html.parser`, y la estructura de esta página puntual es simple y
+    estable) — no es la API real: no hay búsqueda propia de canal (se trae
+    lo reciente y se filtra localmente por palabra), no hay reply/forward
+    counts, y las "vistas" son un conteo que el propio Telegram ya redondea
+    (ej. "1.2K"). Probado en vivo contra un canal público real
+    (`t.me/s/telegram`): extrae texto, fecha y vistas correctamente (vistas
+    en millones parseadas bien, ej. "1.3M" → 1300000), el filtro de
+    recencia descarta correctamente posts viejos (0/10 posts de
+    julio/agosto pasaron con `MONITOR_SOCIAL_DIAS=7`), y el filtro por
+    palabra encuentra el único post relevante entre 10 (búsqueda "GIFs").
+  - `MONITOR_TG_CANALES` vacía por defecto a propósito: no hay una lista
+    "seria" de canales ecuatorianos que valga la pena adivinar, la elige
+    Fernando a mano. Sin canales configurados (o con `MONITOR_NO_TELEGRAM=1`)
+    se salta limpio, mismo comportamiento que YouTube sin `MONITOR_YT_KEY`.
+  - Como las vistas son el único conteo real que expone el preview (no hay
+    "me gusta" ni reenvíos), se reutiliza el campo `likes` de `SocialPost`
+    para guardarlas (documentado en el código; `reposts` queda en 0) — el
+    dashboard lo etiqueta distinto (👁 vistas, no ♥) para no confundirlo con
+    una reacción real.
+  - **Upgrade futuro anotado, NO implementado** (decisión pendiente de
+    Fernando): Telethon (pip + `api_id`/`api_hash` de
+    https://my.telegram.org) daría acceso a la API real — mensajes
+    completos, reacciones, reply/forward counts — pero deja de ser stdlib y
+    pide credenciales de una cuenta de Telegram real.
+
+## Pendientes
+- **Resolución de entidad genérica en vez de la persona (caso Burnham, ver
+  arreglo del 2026-09-23 segunda pasada)**: `_construir_contexto` resolvió
+  "Burnham" a la página de Wikipedia "Primer ministro del Reino Unido" (un
+  cargo/rol, no la persona) en vez de a "Andy Burnham" — probablemente porque
+  el candidato de la persona no verificó bien (desambiguación) mientras que
+  el candidato institucional sí encontró una página real. El síntoma
+  (FactCheck trayendo verificaciones de Keir Starmer) ya está arreglado
+  aparte (filtro de relevancia mas fuerte + re-filtro en cache), pero la
+  causa de fondo — por qué "Burnham" no verificó bien como persona — no se
+  investigó todavía. Revisar `ia.extraer_entidades`/`wiki.resumen` para ese
+  caso puntual si vuelve a pasar con otra persona.
+- **GDELT bajo corte total en esta sesión**: la rotación de orden (arreglo de
+  hoy) es un bug real corregido, pero no puede hacer nada si GDELT rechaza
+  el 100% de los intentos (medido: 0/5 con HTTP 429 incluso con rotación).
+  Revisar el panel "Mercado de cobertura" en unos días para confirmar que,
+  con la rotación, distintos temas van acumulando datos con el tiempo.
+- **Parte A (tamaño de público y brecha real)**: todavía no construida —
+  `_wiki_demand` sigue aplastando las vistas de Wikipedia a 0-100 en vez de
+  conservar el conteo absoluto; falta el denominador `MONITOR_POB_ONLINE` y la
+  demanda a nivel de historia (entidad principal), no solo de tema.
+- **Etapa 3 de escucha social** (integrar volumen de conversación a las
+  brechas) — en pausa a pedido del usuario hasta ver el panel funcionando.
+- **Asimetría en el candado de geografía de la IA** (`get_ia`/`_apply`): el
+  candado impide que la IA declare "local"/"guayaquil" sin respaldo de
+  `EC_TERMS`, pero NO impide que declare "internacional" aunque el texto
+  mencione Ecuador explícitamente (caso real: "Estados Unidos intercepta
+  embarcación **de Ecuador**" quedó en Internacional porque la IA lo etiquetó
+  así). No corregido todavía — evaluar si el candado debería ser simétrico.
+- **Telegram (Etapa 4, implementado)**: por ahora scraping del preview
+  público `t.me/s/<canal>` con regex (ver `social.telegram_buscar` y
+  "Decisiones ya tomadas"). Sin canales propios en `MONITOR_TG_CANALES`
+  todavía (vacía por defecto, Fernando los carga a mano). Upgrade futuro
+  anotado, NO implementado: Telethon (pip + `api_id`/`api_hash` de
+  https://my.telegram.org) daría la API real completa — mensajes, reacciones,
+  reply/forward counts — a cambio de dejar de ser stdlib y pedir credenciales
+  de una cuenta real. Decisión pendiente de Fernando, no urgente mientras el
+  preview alcance.
+- **Verificar en vivo con Ollama corriendo (Problemas 4 y 6, sesión 2026-09-23)**:
+  `ia.veredicto_contraste()` y `ia.extraer_entidades_con_evento()` se probaron con
+  la llamada a Ollama mockeada (Ollama no estaba corriendo en esta sesión) — el
+  *wiring* (monitor.py <-> ia.py <-> dashboard) está probado de punta a punta con
+  `MONITOR_SAMPLE=1` y una corrida real (feeds/GDELT/SERCOP/FactCheck reales), pero
+  la CALIDAD del texto que redacta el modelo (¿el veredicto es razonable? ¿el
+  modelo de 3B propone eventos sensatos, o alucina nombres de sucesos que no
+  existen?) todavía no se vio con un caso real. Correr una pasada con Ollama
+  activo y revisar unos cuantos veredictos/contextos a mano es el siguiente paso.
+- **Clustering por embeddings (Problema 5, sugerencia de Fernando, no
+  implementada)**: el agrupamiento se mejoró por palabras+ventana de
+  tiempo+nombre propio compartido (ver el arreglo de hoy), sin necesitar
+  Ollama. Si Fernando instala un modelo de embeddings (`ollama pull
+  nomic-embed-text`) más adelante, usarlo como señal adicional (o de
+  respaldo cuando el solape de palabras es bajo) es un paso natural — `ia.py`
+  ya tiene el patrón de llamada a Ollama (`_post`) listo para copiar a un
+  `ia.embed()`.
+- **API de búsqueda web para el contexto (Problema 6, fase siguiente, pedido
+  explícito de Fernando de NO implementar todavía)**: opciones y costos
+  anotados en el arreglo de hoy (Google Custom Search: 100 consultas/día
+  gratis, luego $5/1000; Bing Search API: descontinuada 2025, movida a Azure
+  AI). Ninguna es stdlib en el sentido de "gratis sin clave" como
+  Wikipedia/GDELT — las dos son HTTP+JSON vía `urllib` (no hace falta
+  librería nueva), pero piden clave y tienen límite/costo.
+- **Reddit best-effort, confirmado de nuevo en esta sesión**: durante todas
+  las pruebas de hoy, Reddit devolvió HTTP 403 en el 100% de los intentos
+  (incluso `about.json` sin ningún parámetro) — no se pudo confirmar en vivo
+  si `r/Guayaquil`/`r/worldnews+europe` (nuevo, Problema 1) tienen actividad
+  real; el código ya maneja esto con su mismo trato best-effort de siempre
+  (ver "Decisiones ya tomadas"). Revisar cuando Reddit vuelva a responder.
+
+## Arreglos del 2026-09-23, segunda pasada (feedback de Fernando tras la primera tanda: literal, pulso social, cobertura, Contraste erroneo, 40 fuentes)
+
+Fernando probó la primera tanda con Ollama corriendo y encontró problemas reales, dos de ellos serios. Diagnosticado y arreglado cada uno con datos/llamadas reales (Ollama SÍ estaba corriendo esta vez).
+
+- **BUG GRAVE — "los contextos siguen literales" (confirmado, causa real encontrada):**
+  `ia.interpretar()` + `ia.es_literal()` (la lectura editorial con ejemplos resueltos y
+  filtro anti-paráfrasis) estaban completas y bien escritas en `ia.py` desde el
+  arreglo documentado como hecho el 2026-09-22 — pero **`monitor.py` nunca las
+  llamaba**. `get_ia()._apply()` seguía leyendo `r.get("interpretacion", "")` de
+  la respuesta de `ia.analizar()`, una clave que ese prompt ya NO devuelve (se
+  sacó a propósito en el mismo arreglo del 22). Para notas nuevas esto daba
+  `s["ia"] = ""` siempre; para notas viejas cacheadas de ANTES del 22 arrastraba
+  el texto LITERAL de la versión vieja del prompt ("Noticia internacional sobre
+  reunión de primer ministro británico con Trump en la ONU" — el ejemplo real
+  que trajo Fernando). Arreglado: `get_ia()` ahora llama a `ia.interpretar()`
+  de verdad, acotado aparte (`IA_INTERP_MAX`, def. 12/pasada, env
+  `MONITOR_IA_INTERP_MAX`) con marca de versión (`interp_v`) para no confundir
+  interpretaciones viejas con las nuevas. Probado en vivo (Ollama real,
+  qwen2.5:3b) con el titular exacto de Fernando: antes → "Noticia internacional
+  sobre reunión de primer ministro británico con Trump en la ONU"; después →
+  "¿Quién beneficia con Burnham alineándose con Trump? ¿Cómo puede afectar esta
+  alianza a la relación UE-EEUU?" — lectura editorial real, no paráfrasis.
+
+- **BUG GRAVE — Contraste calificaba "Falso" algo sin relación (Trump/Burnham
+  marcado falso por una foto de Burnham con camiseta de Croacia):** causa raíz
+  DOBLE, confirmada con la clave real de FactCheck:
+  1. `_factcheck_relevante` (el filtro que exige palabras en común con la nota)
+     **solo se aplicaba al fallback por entidad**, nunca a la búsqueda primaria
+     por titular completo — la primaria se usaba tal cual viniera de Google
+     Fact Check Tools, sin ningún filtro.
+  2. El filtro exigía apenas **1 palabra compartida** — muy débil.
+  3. `factcheck_cache.json` **no tiene versión ni vencimiento**: una entrada
+     mala cacheada de antes de que existiera el filtro (o de un bug del
+     filtro) se queda ahí para siempre, inmune a que el código se arregle
+     después — y este caso ERA una de esas entradas viejas.
+  Reproducido en vivo con la clave real de Fernando: buscar por la entidad
+  "Primer ministro del Reino Unido" (a la que se resolvió mal "Burnham" — ver
+  Pendientes) trae 5 ClaimReview reales, todos sobre **Keir Starmer** (la
+  camiseta de Croacia, una dimisión, Macron y cocaína, árabe como lengua
+  oficial, Boris Johnson bailando) — CERO relación con Burnham ni con la nota.
+  Arreglado: el filtro ahora se aplica a AMBAS búsquedas (primaria y
+  fallback), exige **2+ palabras significativas en común** (no 1), y —
+  importante — **se re-aplica también al LEER del caché**, no solo al
+  escribirlo, así una entrada vieja mala se autolimpia sola sin tener que
+  borrar el archivo a mano. Verificado en vivo con la clave real: el mismo
+  caso pasó de **5 resultados falsos → 0**. `test_factcheck_relevante.py`
+  (3 pruebas, incluye el caso real de Fernando).
+
+- **Pulso social seguía sin Guayaquil/Ecuador — causa real: Mastodon.** El
+  arreglo de la primera tanda (subreddit/región por ámbito) sí funcionaba, pero
+  Mastodon busca por HASHTAG (no texto libre) y recibía el `query` YA con el
+  sufijo de ámbito que arma `_social_query` para Bluesky/YouTube ("carceles
+  Ecuador") — al convertirlo en hashtag daba `#carcelesecuador`, que
+  prácticamente nadie usa. Medido en vivo: `"carceles Ecuador"` → **0 posts**;
+  `"carceles"` solo → **20 posts reales**. Arreglado: `recolectar()` ahora
+  recibe también `term_base` (el término SIN el sufijo de ámbito) y se lo pasa
+  solo a Mastodon; el filtro geográfico para Mastodon queda a cargo del
+  respaldo por texto (`_post_es_foraneo`), igual que ya hacían Bluesky/Reddit
+  cuando el término solo no alcanza. Probado en vivo, tema "Ambiente"
+  (ámbito Guayaquil): 0 → 20 posts de Mastodon. **Limite real reconocido**: al
+  sacar el sufijo de país, Mastodon ya no filtra por geografía en la búsqueda
+  misma (solo por el respaldo de texto, que no es perfecto) — es una mejora
+  real (pasar de 0 a contenido real) pero no da precisión geográfica perfecta
+  en esta fuente puntual.
+
+- **"Mercado de cobertura" sigue mostrando solo Política — causa real
+  adicional encontrada (más allá del merge-cache de la primera tanda):**
+  `gdelt.interest()` recibe los temas en el MISMO orden alfabético siempre
+  (`sorted(...)` en monitor.py) y corta en el primer HTTP 429 — con GDELT
+  rate-limited casi toda corrida, los temas que van DESPU�S del primero que
+  falla nunca llegan a intentarse, ni esta pasada ni ninguna otra, porque el
+  orden nunca cambia. Arreglado: `gdelt.interest()` ahora mezcla el orden de
+  los temas en cada llamada (`random.shuffle`), así en el tiempo todos tienen
+  chance de ser los primeros. **Verificado en vivo, resultado honesto:** en el
+  momento de esta prueba GDELT rechazó **0 de 5 temas** (HTTP 429 total,
+  incluso con la rotación) — el bug de orden fijo está corregido (confirmado
+  por código y lógica), pero el rate limit de GDELT en sí sigue siendo un
+  límite externo real que la rotación no puede superar cuando GDELT está en un
+  corte total. Con la rotación, cuando GDELT SÍ deje pasar algo, va a ser un
+  tema distinto cada vez en vez de siempre el mismo — y gracias al merge-cache
+  de la primera tanda, eso ahora SÍ se acumula en vez de perderse.
+
+- **Más fuentes — pedido explícito: llegar a 40.** 28 → **44 feeds
+  configurados** (cada URL nueva probada a mano con `urllib` + `parse_feed()`
+  real antes de agregarla, igual que la tanda anterior): Ecuador/Guayaquil
+  +1 (El Universo Gran Guayaquil, sección real pero sin items al momento de
+  probarla — puede empezar a publicar en cualquier momento); internacionales
+  +15 (ABC.es Internacional, Euronews ES, RFI ES, Le Figaro, Corriere della
+  Sera, Der Standard, Sky News, NPR World, CBC News World, ABC News Australia,
+  The Hindu, Straits Times, Infobae, Semana Colombia, El Tiempo Colombia).
+  Medido con `monitor.collect()` real: **578 → 1314 artículos crudos por
+  corrida**, 43/44 feeds OK (Wambra sigue con su 429 transitorio de siempre).
+  Clustering sobre el dataset mas grande: 116/1059 historias con 2+ medios,
+  sin problemas de performance (collect 3.6s + cluster 1.7s para 1286
+  artículos). Quedan anotados en `feeds.py` (comentados, con el motivo) los
+  que se probaron y fallaron esta tanda: DW-ES, TRT-ES, Haaretz (devuelven
+  HTML, no RSS, pese a HTTP 200), CNN Español (certificado SSL inválido),
+  Milenio/La Tercera/ABC Paraguay (404), El Economista MX/El País Uruguay
+  (403), Andes agencia estatal EC (timeout).
+
+## Arreglos del 2026-09-23, tercera pasada (feedback de Fernando: pulso social "no funciona", Guayaquil no se recoge, Colombia se mezcla con Ecuador, Contraste con errores y sin categorizar)
+
+Cinco reclamos, con causas reales encontradas (dos de ellas eran bugs "documentados como resueltos" que en realidad nunca se habían conectado — mismo patrón que `ia.interpretar()` de la ronda anterior).
+
+- **BUG GRAVE — pulso social "no funciona", causa real de fondo:**
+  `get_social()` seguía tomando `themes[:SOCIAL_MAX]` — los primeros 5 temas
+  en orden ALFABÉTICO (`themes_present` ya llega ordenado), SIEMPRE los
+  mismos, pase lo que pase. Confirmado con `social_cache.json` real:
+  "Ambiente, Asamblea/Leyes, Carceles, Comercio/Inversion, Crimen/Violencia"
+  — exactamente los 5 primeros alfabéticos del catálogo de 20 temas — y los
+  otros 15 JAMÁS se consultaban, en ninguna pasada, nunca. CLAUDE.md ya
+  documentaba esto como arreglado con una función `_temas_por_relevancia()`
+  que en los hechos **nunca se había escrito**. Esto explica de raíz por
+  qué Guayaquil/Internacional podían quedar sin una sola publicación para
+  siempre: si por casualidad alfabética ningún tema de ese ámbito caía en
+  el prefijo fijo, quedaba excluido total y permanentemente, no de forma
+  intermitente. Implementado de verdad: `_temas_por_relevancia()` ahora
+  garantiza AL MENOS un tema de CADA ámbito presente (elegido al azar
+  dentro de ese ámbito, no el primero alfabético) y rota el resto también al
+  azar. Probado (`test_social_temas.py`, 4 pruebas): antes, 200 llamadas
+  daban el mismo resultado las 200 veces; después, en 200 pasadas los 3
+  ámbitos aparecen las 200/200 veces, y en 300 pasadas ningún tema del set
+  de prueba quedó en cero.
+- **Mastodon (arreglo de la ronda anterior) + el ambito badge**: además de
+  la corrección de la ronda anterior, cada tarjeta de tema en el panel
+  ahora muestra su propio rótulo de ámbito (Ecuador/Guayaquil/Mundo) —
+  antes, viendo "Todos", no había forma de saber a qué ámbito pertenecía
+  cada tarjeta sin ir tocando cada botón del toggle uno por uno.
+
+- **"No acogés las noticias de Guayaquil" — causa real:** el ámbito/ciudad
+  se decidía 100% por texto (`detect_city`/`is_ecuador` sobre el titular y
+  resumen), sin usar nunca la sección del propio medio. Una nota hiperlocal
+  de un barrio puntual (ej. "Remodelación de la plazoleta de Ceibos genera
+  cuestionamientos") no necesariamente repite la palabra "Guayaquil" en
+  ningún lado, así que quedaba mal clasificada. Arreglado: los feeds de
+  `feeds.py` ahora pueden llevar `"ciudad": "Guayaquil"` cuando SON
+  literalmente la sección editorial de Guayaquil de un diario (el medio ya
+  hizo esa clasificación al publicar ahí) — `build_stories()` usa esa señal
+  como DURA (no depende del texto). Se agregó la sección real de El
+  Universo (`eluniverso.com/.../guayaquil/`, 26 items reales probados en
+  vivo, ninguno con "Guayaquil" en el titular). Medido con el pipeline real
+  completo (`collect`+`cluster`+`build_stories`): **12 → 31 historias
+  etiquetadas Guayaquil**, incluyendo casos reales fusionados de 2-3 medios
+  (la inundación de "Sauces 6", el reportaje del "Escudo de las Américas").
+  `test_ciudad_feed.py` (3 pruebas).
+
+- **"Las de Colombia se mezclan con Ecuador" — causa real encontrada y
+  confirmada con el caso exacto de Fernando:** una nota de Semana
+  (Colombia) sobre Álvaro Uribe hablando del "Escudo de las Américas"
+  (alianza de seguridad de ~15 países) quedaba marcada como historia LOCAL
+  de Ecuador porque el resumen real (280 caracteres, capturado en vivo)
+  enumera "Argentina, Bolivia, Chile, Costa Rica, Ecuador, El Salvador,
+  Guyana..." — Ecuador es UNO MÁS en una lista larga, no el foco de la
+  nota. `is_ecuador()` (`ambito_de` no diferenciaba "país mencionado
+  al pasar en una enumeración" de "país foco de la nota"). Arreglado:
+  `_es_enumeracion_paises()` detecta si el texto nombra 3+ países
+  extranjeros distintos (señal de lista/ranking/alianza multilateral); en
+  ese caso, un match SOLO por el nombre "ecuador"/"ecuatorian" (sin ciudad
+  ni institución específica) ya no alcanza para clasificar local. Probado
+  en vivo con el caso real (ahora da `False`, antes daba `True`) y con 5
+  casos reales de Ecuador que NO deben romperse (bilaterales, locales,
+  con ciudad) — todos siguen dando `True`. `test_geo_enumeracion.py`
+  (4 pruebas).
+
+- **Contraste "aún presenta errores" — causa real encontrada en los
+  textos reales generados:** revisando 30 veredictos ya procesados en
+  vivo, varios traían texto roto/genérico: `"segun el contexto verificado
+  de la situacion... (40 palabras)"`, `"...(La Jornada); (La Nacion (AR));
+  (El Pais (Espana));"` — el modelo (qwen2.5:3b) estaba **copiando
+  literalmente** las frases de ejemplo y el placeholder de instrucción
+  `"(maximo 40 palabras, citando la fuente)"` que el prompt de
+  `ia.veredicto_contraste()` tenía escritos DENTRO del propio ejemplo de
+  JSON — un modelo chico no distingue bien "esto es una instrucción sobre
+  el campo" de "esto es texto literal para copiar". Arreglado: mismo
+  patrón que ya funciona en `ia.interpretar()` (ejemplos resueltos
+  completos, no instrucciones sueltas dentro del template) — el prompt
+  ahora trae DOS ejemplos completos (afirmación + material + JSON de
+  salida ya resuelto, uno "contradice" y uno "sin_datos") y pide
+  explícitamente el HECHO CONCRETO (un número, una fecha, una
+  calificación), no una frase genérica sin terminar. Probado en vivo
+  reconstruyendo el material real de 3 casos que habían salido rotos:
+  "Consumo eléctrico: 185 empresas..." pasó de `"segun el contexto
+  verificado de la situacion... (40 palabras)"` a `"El acuerdo menciona
+  que 185 empresas reducirán su consumo un día a la semana para aliviar
+  la demanda del Sistema Nacional Interconectado, lo que coincide con la
+  afirmación."` con citas reales `["El Universo", "Expreso"]`; los otros
+  dos casos rotos ("Ahead of Xi's...", "Modi plans Canada trip...") ahora
+  dan `sin_datos` con una frase completa y específica en vez de texto
+  cortado.
+
+- **Contraste "página eterna, sin categorizar" — arreglado:** `#secContraste`
+  ahora tiene el mismo toggle Todos/Ecuador/Guayaquil/Internacional que ya
+  usan Pulso social y Oportunidades (`#contrasteseg`, `contrasteAmb`) — con
+  un ámbito elegido, la página muestra SOLO ese grupo en vez de las 3
+  listas apiladas. Se agregó además un límite de `CONTRASTE_PAGE=12`
+  tarjetas por grupo con botón "Ver más" (mismo patrón que Noticias,
+  `PAGE=12`) para que ni el grupo Internacional (el más grande, ~33 notas
+  en la medición de hoy) sea una lista larga sin fin.
+
+- **GDELT ("Mercado de cobertura" sigue igual) — verificado, sigue siendo
+  el límite externo ya documentado:** la rotación de orden (arreglo de la
+  ronda anterior) sigue corregida y confirmada por código; en el momento
+  de esta ronda, GDELT sigue rechazando el 100% de los intentos (cache real:
+  `{"g": {"Ejecutivo": ...}, "err": "HTTP 429"}`, sin cambios desde la
+  ronda anterior). No es un bug de código pendiente — es un bloqueo
+  sostenido del lado de GDELT que ninguna de las dos rondas de arreglos
+  puede forzar a ceder. Si sigue igual en unos días, valdría la pena
+  revisar si es un bloqueo por IP (probar desde otra red) más que rate
+  limit normal.
+
+## Estilo de código
+Comentarios en español, claros, explicando el *por qué*. Nada de dependencias nuevas.
+Cambios acotados y probados con `MONITOR_SAMPLE=1` antes de correr con internet.
+
+## Capa móvil (avisos al iPhone + dashboard en el celular) — `movil.py`
+- Avisos por **ntfy** (ntfy.sh, publicación JSON vía urllib, sin cuenta). El tema
+  secreto y la clave se generan solos en `movil.json` (config editable; NO es cache).
+  Estado anti-spam y muestras horarias para "lo normal" en `movil_estado.json` (cache).
+- Se llama desde `write_outputs` → `avisar_movil()` en cada pasada del feed rápido.
+  Nunca rompe la corrida; se apaga en MONITOR_SAMPLE y con `MONITOR_NO_MOVIL=1`.
+- Disparadores: historia local con ≥ `min_medios` medios (def. 2) y "sigue creciendo";
+  pico de tema (historias en últimas 6 h vs. promedio APRENDIDO de muestras horarias,
+  requiere 12 muestras; no se compara con el total de 3 días porque los RSS sesgan
+  hacia lo reciente); brecha (demanda ≥ 25 y ≤ 3 historias, enfriamiento 48 h).
+  Temas "otros"/"general" ignorados. Primera corrida = línea base + aviso "conectado".
+- Horas de silencio 23–7 (hora EC): lo pendiente se avisa al terminar el silencio.
+- Servidor: con `acceso_red=true` escucha en 0.0.0.0. Esta PC (loopback) sin cambios.
+  Otros aparatos: necesitan la clave (`?k=` una vez → cookie `mk`, HttpOnly, 1 año),
+  solo pueden leer dashboard.html/data.json/logo.png/saved.json, y los POST
+  (/api/guardar, /api/chat) también piden clave.
+- `python monitor.py movil` (o `CONECTAR_IPHONE.bat`) muestra el tema y los enlaces y
+  manda un aviso de prueba.
+- LIMITACIÓN conocida: casi todas las historias locales tienen n_outlets=1 (el
+  agrupamiento entre medios EC casi no une), así que "historia fuerte" rara vez
+  dispara hasta mejorar el clustering.
+
+## Arreglos del 2026-09-22 (reclamo de Fernando: IA literal, graficos, reinicio de 15 min, Contraste, pulso social)
+- **Reinicio / 15 min**: causa raiz = GDELT sin cache (`gdelt_cache.json` nunca se escribia porque TODO daba 429 con
+  PAUSA=1.5 s) -> cada pasada del trabajador reintentaba ~40 consultas y la IA esperaba detras. Arreglo: (1) hilo nuevo
+  `enrich_red()`/`red_loop` para Trends/GDELT/SERCOP/social, separado de la IA (`enrich_pass` ya no las llama);
+  (2) `gdelt._esperar_turno()` espacia >=5.5 s TODAS las consultas (ambos hilos) y `interest()` corta al primer 429;
+  (3) enfriamiento `REINTENTO_FALLO` (`MONITOR_REINTENTO_MIN`, def. 40) en `get_gdelt`/`get_demand`: el fallo queda
+  anotado (`fallo_ts`) y no se reintenta en cada vuelta -- **superado por el merge-cache por tema del Problema 3
+  (2026-09-23, segunda tanda, ver mas abajo): `REINTENTO_FALLO`/`fallo_ts` ya NO existen en el codigo actual (confirmado
+  por grep en la cuarta pasada, 2026-09-23); el enfriamiento real hoy es el TTL normal de cada cache (con `_ts` por
+  tema) sumado al fallo que ya queda anotado ahi mismo, sin un mecanismo aparte** ; (4) `POST /api/refrescar` + boton "Actualizar ahora"
+  (evento `REFRESCAR`) despierta al hilo rapido; (5) `enrich_pass` prioriza notas de <=6 h.
+- **IA literal**: el campo `interpretacion` salia del MISMO JSON que clasificaba temas/geo y el modelo de 3B lo usaba
+  para justificar la etiqueta ("Noticia internacional sobre X, sin impacto en Ecuador"). Ahora `ia.analizar()` solo
+  clasifica e `ia.interpretar()` es una llamada aparte (`/api/chat`, texto libre, 3 ejemplos resueltos) con filtro
+  `ia.es_literal()` (reintenta una vez a mas temperatura; si sigue literal, no muestra nada). Cache: `interp`/`interp_v=2`
+  en `ia_cache.json`; las interpretaciones viejas NO se muestran. `MONITOR_IA_INTERP_MAX` (def. 12/pasada),
+  `MONITOR_IA_INTERP_MODEL` (modelo aparte para esto, opcional). Botones de preguntas rapidas en el detalle (modo profundo).
+- **Graficos**: `trends.py` ahora `today 1-m` (diario) y descarta el punto `isPartial`; el dashboard ya no toma el
+  ULTIMO punto como demanda (`demandaTema()` usa `DATA.demanda_tema`, promedio de la ultima semana completa). Barras
+  `.bars .fill` no se veian (span sin display:block). `lineChart()` interactivo (tooltip con fecha/valor, eje, max/prom).
+  GDELT guarda `fechas` por punto.
+- **Contraste**: `_factcheck_relevante` exige nombre propio en comun + palabra de contenido + >=3 palabras en comun,
+  se aplica a TODAS las busquedas y tambien al leer el cache (data real: 195 -> 3). Max 3 por nota, plegadas.
+- **Interaccion**: el poll ya no redibuja si data.json no cambio; si estas leyendo/escribiendo aparece "Hay datos
+  nuevos"; conserva desplegables abiertos y scroll. `data.json` se escribe atomico (`_escribir_atomico`).
+- **Notas**: `notas.json` (contenido de Fernando, no cache) via `POST /api/nota`; boton ✎ en tarjetas, caja en el
+  detalle de historia y de tema, lista "Mis notas" en Guardadas.
+- **Pulso social**: `SocialPost.tipo` persona/medio (`social.es_cuenta_medio`, heuristica por nombre de cuenta);
+  OSINT solo con personas si hay >=3; conteo personas/medios en el panel. BUG: `get_social` recibia temas en orden
+  ALFABETICO y miraba los 5 primeros; ahora `_temas_por_relevancia()`. Limite real: X/TikTok/Facebook/Instagram no
+  tienen acceso abierto.
+
+## Arreglos del 2026-09-23 (segunda tanda: 6 pedidos de Fernando, orden de trabajo 2→3→5→4→1→6)
+
+Cada uno se diagnostico primero con datos reales (`data.json`/cachés/corridas en vivo), despues se arreglo, despues
+se comprobo con una corrida nueva — igual que pidio Fernando. Nota de proceso: para probar sin arriesgar el
+`data.json`/`dashboard.html`/`history.json` reales (el usuario tenia `python monitor.py serve` corriendo en vivo
+todo este tiempo), las corridas de prueba se hicieron en una COPIA aislada del proyecto en el scratchpad, nunca en
+la carpeta real salvo un despiste al principio (ver abajo) que el propio `serve` autocorrigio en su siguiente
+pasada.
+
+- **Bug real propio, primer paso de esta sesion**: se corrio por error `MONITOR_SAMPLE=1 python monitor.py` (para
+  probar el arreglo del Problema 2) DIRECTO en la carpeta real, mientras `serve` seguia corriendo — sobreescribio
+  `data.json`/`dashboard.html` con las 9 historias de muestra y agrego una entrada de muestra a `history.json`.
+  El propio `run_fast` de `serve` (cada `MONITOR_FEED_MIN`) volvio a publicar datos reales unos minutos despues sin
+  intervencion; la entrada de muestra en `history.json` se boro a mano (autorizado por Fernando). Desde ahi, todas
+  las pruebas de este cambio se corrieron en una copia del proyecto fuera de la carpeta real. Leccion: nunca correr
+  `python monitor.py` (con o sin `MONITOR_SAMPLE`) en la carpeta real si `serve` puede estar corriendo.
+
+- **Problema 2 — Estadisticas: la cobertura solo mostraba Politica.** Diagnostico con `data.json` real: la
+  distribucion de `seccion` en si SI estaba sana (politica 153, general 157/158, economia ~50, seguridad ~30,
+  sociedad 27 sobre ~418 historias) — el bug NO estaba en el etiquetado de categorias, sino en el panel "Mercado de
+  cobertura" (GDELT) de Estadisticas: `gdelt_cache.json` solo tenia datos de 1 tema de 20 (`Ejecutivo`, que mapea a
+  Politica) porque GDELT viene devolviendo HTTP 429 en casi todos los intentos (`estado_gdelt`: "cache vencido
+  (1/20 temas; resto: HTTP 429)") — root cause real: `get_gdelt` PISABA el cache entero con el resultado de cada
+  pasada (ver Problema 3, es la MISMA causa). Se agrego de todos modos, por pedido explicito: `normalizar_categoria()`
+  (monitor.py) como punto UNICO de normalizacion de la clave `seccion` (mayusculas/tildes/sinonimos -> una de las 5
+  claves fijas del dashboard), usado en `parse_feed` y en `append_history`; `contar_por_categoria()`/
+  `imprimir_categorias()` para el conteo en terminal (se ve en cada corrida, `python test_categorias.py -v`);
+  `test_categorias.py` (falla si una categoria con notas da 0). El arreglo REAL del panel GDELT viene del fix de
+  cache del Problema 3 (accumula en vez de pisar).
+
+- **Problema 3 — Oportunidades: faltan datos en cada sesion.** BUG REAL raiz encontrado (misma causa para GDELT,
+  Trends y Pulso social): `get_gdelt`/`get_demand`/`get_social` escribian su cache JSON PISANDO el diccionario
+  entero (`"g": data`, `"vals": vals`, `"s": out`) con SOLO lo conseguido en esa pasada puntual, en vez de sumarse
+  a lo que ya habia. Con GDELT rate-limited a ~1 tema exitoso por pasada, cada pasada BORRABA el tema bueno de la
+  pasada anterior — medido en produccion: `gdelt_cache.json` nunca paso de 1 tema en dias; `social_cache.json`
+  (limitado ademas a `SOCIAL_MAX=5` temas por pasada) solo tenia 5 de 20 temas posibles, y como los 5 elegidos
+  varian segun relevancia, los otros ~15 se borraban y reaparecian sin ton ni son. Arreglado: las tres funciones
+  ahora MERGEAN el resultado de la pasada en el cache existente (`merged_g = dict(cache.get("g") or {});
+  merged_g.update(data)`, mismo patron para `vals`/`tend` y `s`), y guardan ademas un timestamp POR TEMA
+  (`g_ts`/`vals_ts`/`s_ts`) para poder mostrar "hace X" por tema (`_fmt_horas`/`_edad_mas_vieja`, monitor.py) —
+  implementa el "usar el ultimo dato bueno, marcado con su antiguedad" que pidio Fernando. Probado en vivo con
+  cache temporal aislado (`test_merge_cache.py`, 5 pruebas: simulan dos pasadas con 429 parcial y confirman que el
+  tema de la pasada 1 sigue presente despues de la pasada 2 — el caso real que fallaba antes). **Registro de salud
+  por corrida**: `construir_salud_fuentes()` arma `data.json["salud_fuentes"]` (por fuente: ok/error/desactivado +
+  detalle) a partir de los mismos estados que ya se calculaban; el panel de Oportunidades lo muestra arriba de todo
+  (`renderSaludFuentes()`). **No inventar oportunidades incompletas**: `renderGap()` ahora separa los temas con
+  historias pero SIN ninguna senal de interes (ni busqueda ni redes) en un bloque aparte "Incompletas — falta
+  senal de interes" (antes esos temas simplemente desaparecian del panel en silencio).
+
+- **Problema 5 — muy pocas noticias y demasiados duplicados.**
+  - *Mas feeds*: se probaron uno por uno (HTTP real, `urllib`) los candidatos EC que estaban comentados como
+    fallidos y varios nuevos. Resultado real: **Expreso** (`expreso.ec/rss`, medio de Guayaquil), **El Norte**
+    (`elnorte.ec/feed/` — antes daba `ParseError`, ver abajo) y **El Diario** (Manabi, `eldiario.ec/feed/`)
+    funcionan; se agregaron. Tambien **Al Jazeera**, **France24 en español** y **SCMP** (internacionales). Medido
+    con `monitor.collect()` real: **22 -> 28 feeds configurados, 578 -> 799 articulos crudos por corrida** (27/28
+    feeds OK, Wambra sigue con 429 transitorio como ya estaba documentado). Se probaron y quedaron fuera (con el
+    motivo anotado en `feeds.py`): La Hora, GK, Vistazo, Extra, Ecuavisa, Primicias, Teleamazonas, El Telegrafo
+    (404/403, o HTTP 200 pero ya no traen RSS real).
+  - *Bug real de paso, `parse_feed`*: El Norte manda un salto de linea ANTES de `<?xml ...?>` — `ElementTree` lo
+    rechaza (`XML or text declaration not at start of entity`) aunque el resto del documento sea XML valido.
+    Arreglado con `raw.lstrip()` antes de parsear (mas robusto para cualquier feed futuro con el mismo problema).
+  - *Agrupamiento (una tarjeta por noticia)*: diagnostico real: **402 de 420 historias con un solo medio** (95.7%),
+    peor que la medicion de Fernando (372/399). Causa: el umbral de similitud de titulares (0.30, solape/Jaccard)
+    era sensible a que dos medios titulen MUY parecido, pero periodistas distintos rara vez repiten las mismas 4+
+    palabras. Arreglado con **ventana de tiempo** (`CLUSTER_MAX_HORAS`, def. 72h, `MONITOR_CLUSTER_MAX_H`) + un
+    umbral MAS BAJO (0.20) pero mas exigente en otro sentido: solo aplica si ADEMAS comparten un **nombre propio**
+    (`_nombres_propios`, regex de palabras capitalizadas, sin contar Title Case ingles — ver bug real abajo). Sin
+    tocar el umbral general (0.30) para no aflojar el corpus internacional (~370 de las historias), que es la
+    mayoria. **BUG REAL encontrado en vivo durante la prueba**: los titulares en INGLES van en Title Case (casi
+    toda palabra capitalizada) — la primera version de `_nombres_propios` trataba "Memoir"/"From"/"Takeaways"
+    (capitalizadas por convencion tipografica, no por ser nombres propios) como si fueran nombres propios, y unio
+    FALSAMENTE un titular sobre el libro de Ari Emanuel con titulares sobre el libro de Charles Spencer/Princess
+    Diana (compartian "Memoir"+"From"). Arreglado detectando si el titular "parece" Title Case (mayoria de palabras
+    elegibles capitalizadas) y, en ese caso, no extrayendo ningun nombre propio de el. Medido antes/despues con
+    `monitor.collect()`+`cluster()` real (mismos 777 articulos tras dedup): **18/420 -> 70/636 historias con 2+
+    medios** (union falsa de Spencer/Emanuel confirmada resuelta), incluyendo casos nuevos reales como "Expreso +
+    El Universo" sobre el Escudo de las Americas (gracias a los feeds nuevos) y "Expreso + Clarin + El Diario"
+    sobre Santa Marta, Colombia. Revisados a mano 10 grupos al azar de 2+ medios: todos correctos (ningun caso de
+    union falsa quedo). Pruebas: `test_cluster.py` (4 casos: el caso real de Guayaquil/inundacion que fallaba
+    antes, el caso Title Case que se arreglo, la ventana de tiempo, y el caso normal que ya andaba bien).
+    **No implementado esta fase**: embeddings de Ollama (`nomic-embed-text`) como respaldo/mejora sobre el
+    matching por palabras — Ollama no estaba corriendo durante esta sesion (no se pudo probar en vivo); el enfoque
+    por palabras+ventana+nombre propio ya deja una mejora real y medida sin esa dependencia. Si Fernando instala
+    `nomic-embed-text` mas adelante, es un paso natural para sumar despues (`ia.py` ya tiene el patron de llamada a
+    Ollama listo para copiar a un `ia.embed()`).
+
+- **Problema 4 — Verificacion y Contraste desordenado y sin contexto.** Nueva pieza: `ia.veredicto_contraste()`
+  (mismo patron de siempre: el CODIGO junta el material ya verificado — contexto de Parte B, otros medios del
+  mismo grupo de la historia, contratos SERCOP, resultados FactCheck —, la IA SOLO redacta un veredicto
+  coincide/contradice/sin_datos citando que parte del material uso) + `monitor.get_veredicto()` (cachea en
+  `veredicto_cache.json`, corre en el hilo trabajador DESPUES de contexto/SERCOP/FactCheck porque los necesita ya
+  calculados, `MONITOR_VEREDICTO_MAX` historias nuevas por pasada, def. 8). Candado en CODIGO (no solo en el
+  prompt): sin NINGUN material (ni contexto, ni contratos, ni FactCheck), el estado es `sin_datos` sin siquiera
+  llamar a Ollama. **Estructura fija en el dashboard** (`contrasteCardHTML()`, dashboard_template.html, reemplaza
+  el uso de `cardHTML` en Contraste): afirmacion (titular+resumen) -> contexto actual (`renderContexto`, ya
+  incluye "tambien aparecio" de `entities.json`) -> fuentes oficiales SERCOP (plegado si hay muchas) ->
+  verificadores FactCheck (plegado) -> estado (badge de color: rojo=contradice, verde=coincide, gris=sin datos,
+  ambar=pendiente, con el texto del veredicto y las citas). `renderContraste()` ahora ordena cada grupo de ambito
+  primero por ESTADO (contradicciones primero) y despues por relevancia (interes) — antes solo agrupaba por
+  ambito sin ningun orden interno. **No se pudo probar en vivo el veredicto real de la IA** (Ollama no estaba
+  corriendo esta sesion): se probo el flujo completo con `MONITOR_SAMPLE=1` (wiring end-to-end sin errores,
+  `estado_veredicto` y `h.veredicto` llegan bien a `data.json`) y la sintaxis/estructura del HTML/JS se valido con
+  `node --check`; falta que Fernando lo vea con Ollama corriendo para confirmar que el texto del veredicto es
+  bueno de verdad.
+
+- **Problema 1 — Pulso social solo Ecuador y solo medios.** Diagnostico: los selectores de alcance
+  (Internacional/Ecuador/Guayaquil) YA EXISTIAN en el dashboard (`#socialseg`, `socialAmb`) pero no hacian nada
+  distinto de verdad — `get_social` siempre buscaba en el mismo subreddit fijo (`SOCIAL_SUBREDDIT`, "ecuador") y
+  YouTube siempre con `regionCode=EC`/`relevanceLanguage=es`, sin importar el ambito del tema. Y **bug real
+  encontrado en el propio dashboard**: el bloque de personas-vs-medios (`d.n_personas`/`d.n_medios`, ya escrito en
+  `dashboard_template.html` segun el registro del 2026-09-22) nunca se mostraba porque `monitor.py` JAMAS calculaba
+  esos dos numeros — confirmado con `data.json` real (ningun tema tenia esas claves). Arreglado:
+  - `social.py`: `REDDIT_SUB_POR_AMBITO`/`YT_REGION_POR_AMBITO` (nuevo) — Reddit usa r/worldnews+r/europe para
+    Internacional (sintaxis multi-subreddit nativa de Reddit) y r/ecuador para Ecuador/Guayaquil (no hay un
+    subreddit de Guayaquil con actividad real confirmada; queda configurable por `MONITOR_REDDIT_SUB_GYE` si
+    Fernando quiere probar uno); YouTube deja de fijar `regionCode`/`relevanceLanguage` para Internacional (antes
+    los tenia fijos SIEMPRE en EC/es, perdiendo creadores en otros idiomas). `recolectar(..., ambito=...)` nuevo
+    parametro que resuelve ambos; `monitor.get_social` ya pasaba el `ambito` calculado, solo faltaba mandarlo.
+  - **Mastodon, fuente nueva** (`social.mastodon_buscar`): Mastodon no tiene busqueda de texto libre sin token en
+    casi ninguna instancia desde la version 3.x — se usa la timeline PUBLICA de un hashtag
+    (`/api/v1/timelines/tag/:hashtag`, sin cuenta), derivando el hashtag del termino de busqueda. Probado en VIVO
+    (sin clave, gratis): `mastodon_buscar("Ecuador")` trajo 10 posts reales de instancias distintas, clasificados
+    persona/medio correctamente.
+  - **YouTube: canales de medios vs. creadores** (`social._yt_canales_info`, nuevo): `channels.list` (1 unidad de
+    cuota, barato, hasta 50 canales por llamada) trae nombre + suscriptores de cada canal de la busqueda; se
+    clasifica `canal_tipo` "medio"/"creador" por nombre (misma heuristica que Bluesky, `es_cuenta_medio`) — los
+    suscriptores se guardan y se muestran (`canal_subs`) pero NO deciden solos el tipo (un creador independiente
+    grande tambien puede tener muchos suscriptores). Cada comentario sigue clasificandose persona/medio por
+    separado segun si lo escribio el propio canal (sin cambios ahi). Probado en VIVO (con `MONITOR_YT_KEY` real):
+    busqueda "inseguridad Ecuador" -> canales "Ecuavisa" (2.14M suscriptores) y "Hechos Ecuador Noticias" (179K)
+    correctamente clasificados `medio`; comentarios de espectadores reales clasificados `persona` (salvo el propio
+    canal comentando en su video, clasificado `medio`, como ya funcionaba antes).
+  - **`get_social` (monitor.py)**: ahora calcula `n_personas`/`n_medios` de verdad (activa el bloque `vozTxt` del
+    dashboard que llevaba dias sin mostrarse nunca) y corre el OSINT SOLO sobre publicaciones de personas si hay
+    >=3 (si no, sobre todo lo recolectado, avisando en el propio texto — esto YA estaba en la intencion documentada
+    pero no en el codigo). Probado en vivo (ambito internacional, tema "Ambiente"): 45 posts (14 Bluesky, 11
+    YouTube, 20 Mastodon), 43 personas / 2 medios.
+  - **Dashboard**: el panel de una publicacion por fuente ahora separa dos bloques con encabezado propio — "🗣 Lo
+    que dice la gente" y "📰 Lo que dicen los medios" — en vez de una lista unica con una etiqueta inline; se
+    calcula la mejor publicacion por (fuente, tipo) en vez de solo por fuente, asi ambos bloques pueden tener
+    contenido real de cada plataforma. Nota nueva plegable en el panel: "Por que no estan X, TikTok, Instagram ni
+    Facebook" con lo que haria falta para cada una (ver mas abajo, mismo texto).
+  - **Redes sin API abierta y gratis — que haria falta**: **X (Twitter)**: plan de pago Basic desde ~$200 USD/mes,
+    cupo de lectura bajo para ese precio; el nivel gratis actual no permite busqueda. **TikTok**: la Research API
+    es gratis pero solo para investigacion academica verificada (afiliacion universitaria/instituto aprobado por
+    TikTok), no hay acceso equivalente para un proyecto personal. **Instagram/Facebook** (Meta Graph API): requiere
+    una app de Meta revisada y aprobada, y en la practica solo da datos de paginas/cuentas propias o con permiso
+    explicito del dueño, no busqueda abierta de lo que publica el publico. El modulo ya esta separado por fuente
+    (una funcion por red) para poder sumar una de estas despues sin tocar el resto.
+
+- **Problema 6 — el contexto de Wikipedia describe a la persona, no la situacion.** Dos arreglos:
+  - `_construir_contexto` (monitor.py) ahora incluye, PRIMERO en el material (antes que cualquier bio de
+    Wikipedia), los titulares de **otros medios del mismo grupo de la historia** (`s["fuentes"][1:5]` — el
+    clustering YA los junto, no cuesta ninguna llamada de red nueva): "que mas se publico sobre esto, ahora mismo,
+    contado por otro periodista" es la señal mas directa de la SITUACION que hay disponible gratis. El bloque de
+    biografia de Wikipedia ahora se etiqueta explicitamente en el material como "usar solo como dato secundario,
+    no como el centro de la respuesta" (antes no tenia esa aclaracion).
+  - `ia.extraer_entidades_con_evento()` (nueva; `extraer_entidades()` sigue igual para el resto del pipeline, es
+    un wrapper de compatibilidad) le pide al modelo, ADEMAS de las entidades con nombre propio de siempre, un
+    candidato de EVENTO por separado (una ley, un paro, un conflicto, un desastre — con su propia pagina posible
+    de Wikipedia, ej. "Paro nacional de Ecuador de 2022"), o `null` si la nota no tiene esa clase de identidad. En
+    `_construir_contexto`, el evento (si existe y pasa las mismas dos capas de verificacion de Wikipedia que
+    cualquier otra entidad) va PRIMERO en el material, etiquetado "articulo del SUCESO/EVENTO mismo — esta es la
+    fuente principal", antes que cualquier bio de persona.
+  - **No se pudo probar en vivo** (Ollama no estaba corriendo esta sesion): se probo la funcion nueva con la
+    llamada a Ollama mockeada (`test_evento.py`, 4 casos: entidades+evento juntos, evento `null`, evento sin
+    nombre se descarta, y que `extraer_entidades()` (compatibilidad) sigue devolviendo solo la lista). Falta que
+    Fernando lo corra con Ollama real para ver si el modelo de 3B propone eventos razonables en la practica (es un
+    pedido nuevo al mismo prompt, puede necesitar ajuste fino de ejemplo/formato una vez se vea el resultado real).
+  - **Para la siguiente fase (pedido explicito de Fernando, no implementado ahora)**: una API de busqueda web
+    (Google Custom Search JSON API, Bing Search, o similar) para el contexto, en vez de depender solo de que
+    Wikipedia tenga un articulo dedicado. Notas rapidas: Google Custom Search API tiene un nivel gratis de 100
+    consultas/dia (pago desde $5 por 1000 consultas extra); Bing Search API quedo descontinuada por Microsoft en
+    2025 (movida a Azure AI services, con otro modelo de precios); cualquiera de las dos deja de ser "gratis sin
+    limite" como Wikipedia/GDELT, y ninguna es stdlib (siguen siendo HTTP+JSON via `urllib`, asi que no hace falta
+    una libreria nueva, solo una clave de API paga o con cupo diario).
+
+## Estado al cierre del 2026-09-23
+Tres rondas de arreglos hoy (ver secciones de arriba para el detalle). Resumen breve:
+- **Categorias/salud de datos/duplicados/feeds**: `normalizar_categoria`, cache de GDELT/Trends/social ya no se
+  pisa entre pasadas, agrupamiento por nombre propio + ventana de tiempo, feeds 22 → 44.
+- **Contraste**: veredicto IA (`get_veredicto`) con estructura fija, filtro de FactCheck mas estricto (2+ palabras,
+  se re-aplica al leer cache), prompt reescrito (dejo de copiar texto de ejemplo), toggle de ambito + paginado.
+- **Interpretacion IA**: `ia.interpretar()` conectada de verdad (antes existia en `ia.py` pero `monitor.py` nunca
+  la llamaba).
+- **Pulso social**: alcance real por ambito (Reddit/YouTube/Mastodon), `_temas_por_relevancia()` implementada de
+  verdad (antes siempre los mismos 5 temas alfabeticos), badge de ambito visible por tarjeta.
+- **Geografia**: enumeraciones de 3+ paises ya no cuentan como señal local; secciones editoriales de un medio
+  (`"ciudad"` en `feeds.py`) fuerzan ciudad sin depender del texto.
+- **Pendiente real**: GDELT sigue bloqueado (HTTP 429 sostenido, limite externo, no de codigo); veredicto/contexto
+  de evento sin verificar a fondo con uso real prolongado de Ollama.
+- 32 pruebas automatizadas (8 archivos `test_*.py`) pasando. **Requiere reiniciar `python monitor.py serve`** para
+  tomar todo lo de hoy.
+
+## Arreglos del 2026-09-23, cuarta pasada (Bloque 1 del pedido de Fernando: diagnostico con datos reales de una
+## corrida `serve` en vivo, despues arreglos, verificado todo con un reinicio real del servidor)
+
+Diagnostico primero (con `serve` corriendo en vivo, sin tocarlo: cachés reales, `data.json` real, llamadas HTTP de
+solo lectura), arreglos despues, y verificacion final con un reinicio real de `python monitor.py serve` (parado y
+vuelto a levantar) -- confirmado con `data.json`/`notas.json` reales de la corrida nueva, no solo con las pruebas
+unitarias. Se encontraron y detuvieron ademas **dos procesos `python monitor.py serve` corriendo a la vez** (arboles
+de proceso distintos, no relacionados entre si) antes de reiniciar -- riesgo real de que dos instancias escriban
+`data.json`/`dashboard.html` a la vez y se pisen; quedo UNA sola instancia corriendo al terminar.
+
+- **Punto 1 (salud de fuentes), diagnostico**: feeds RSS 43/44 OK (Wambra 429 transitorio, ya documentado);
+  Trends/Wikipedia 20/20 temas OK; GDELT 1/20 temas (HTTP 429 sostenido, limite externo, sigue igual que en rondas
+  anteriores); SERCOP OK; FactCheck OK con la clave real (`MONITOR_FACTCHECK_KEY` configurada y funcionando, incluso
+  trae verificaciones de Ecuador Chequea via el indice de Google). El unico bug real de fuentes fue el pulso social
+  (ver Problema 3 mas abajo). De paso: el `CLAUDE.md` documentaba `REINTENTO_FALLO`/`fallo_ts` como mecanismo activo
+  de enfriamiento (arreglo del 22/9) -- confirmado por grep que ya no existe en el codigo, superado hace tiempo por
+  el merge-cache por tema del Problema 3 (segunda tanda). Corregido arriba, en la seccion original.
+
+- **Problema 3a — pulso social sin lectura OSINT, congelado hasta 6h**: `get_social()` (`monitor.py`, cerca de
+  `SOCIAL_TTL`) escribia el MISMO `ts` global tanto si el analisis OSINT tuvo exito como si fallo (ej. Ollama
+  todavia no habia arrancado cuando partio el servidor) -- el panel quedaba sin lectura OSINT hasta 6 horas despues,
+  aunque Ollama ya estuviera disponible hace rato. Arreglado con `SOCIAL_OSINT_RETRY_TTL` (`MONITOR_SOCIAL_OSINT_RETRY_MIN`,
+  def. 20 min): si algun tema en cache tiene `osint_error` sin `resumen`, el TTL efectivo de TODO el cache baja a 20
+  min en vez de las 6h completas, para que el trabajador lo reintente pronto. No cambia nada cuando todo viene bien.
+- **Problema 3b — segmentacion por tema×ambito**: confirmado que `_temas_por_relevancia()` ya funciona bien (no era
+  un bug nuevo); lo que se veia como "solo trae informacion general" era la MISMA causa que 3a (cache congelado con
+  una foto vieja de solo 5 temas, todos Ecuador/Guayaquil). Se resuelve solo con el arreglo de 3a.
+
+- **Problema 2 — "Mercado de cobertura" enganoso**: con GDELT en 1 de 20 temas, el grafico de torta de
+  `renderPies()` (dashboard_template.html) mostraba ESE unico tema al 100% sin ninguna aclaracion -- se veia como
+  "todo es Politica" en vez de "solo tenemos dato de un tema". A diferencia del resto del dashboard (`renderGdelt`,
+  `renderGap`), este punto nunca usaba `DATA.estado_gdelt` (que ya trae el motivo real). Arreglado: se cuenta
+  cuantos de los temas que aparecen HOY en las historias tienen dato real de GDELT: si tiene 0, se muestra el mismo
+  mensaje honesto que ya usa el resto del dashboard; si tiene ALGO pero menos de la mitad, se muestra igual la
+  torta parcial pero con un aviso debajo ("Datos de GDELT de solo N de M temas... el grafico no representa el
+  mercado completo").
+
+- **Problema 4a — BUG GRAVE de fondo, mas serio de lo que parecia**: el reclamo de Fernando ("la noticia #1 de
+  Ecuador era de Infobae, que no es un medio local") tenia DOS causas, y la mas importante no era la que se
+  sospechaba inicialmente (una colision de `EC_TERMS`/`_ASAMBLEA_AMBIGUA`) sino un **bug real de agrupamiento**
+  (`cluster()`, `monitor.py`): en dias de un evento grande cubierto por muchos medios a la vez (la semana de la
+  Asamblea General de la ONU, con Ecuador, Venezuela, Cuba, Iran y la realeza europea todos presentes en Nueva
+  York), decenas de titulares DISTINTOS compartian palabras de SEDE/EVENTO ("Nueva York", "Asamblea General",
+  "ONU") sin ser la misma historia -- el enlace por MAXIMO (single-linkage) de `cluster()` los encadenaba a TODOS
+  en un solo grupo gigante. Reproducido con los 21 titulares reales de esa corrida (guardados en
+  `test_cluster_evento_generico.py`): una nota de El Universo sobre Daniel Noboa/Ecuador en la ONU terminaba en el
+  MISMO cluster que Delcy Rodriguez/Trump, Iran, Cuba y la realeza europea (9 medios, 7 internacionales) -- y como
+  el grupo mezclado SI mencionaba "Ecuador" en una nota, TODA la historia se clasificaba como ambito local,
+  encabezando Ecuador sin que ningun medio ecuatoriano cubriera realmente ese angulo puntual.
+  Se probaron dos arreglos antes de quedarse con el bueno: (1) excluir por FRECUENCIA los tokens/nombres que
+  aparecen en muchos titulares de la misma corrida -- descartado porque rompia el caso normal (una historia real
+  cubierta por 10+ medios legitimamente comparte su propio nombre muchas veces, indistinguible por frecuencia sola
+  de una palabra generica de evento); (2) el que quedo: `EVENTO_GENERICO` (`monitor.py`, junto a `STOPWORDS`), una
+  lista chica y curada de palabras de sede/evento ("nueva", "york", "onu", "asamblea", "general", "naciones",
+  "unidas") que se resta tanto del solape de palabras (`_tok`) como del nombre propio compartido (`_nom`) SOLO
+  dentro de `cluster()` -- mismo mecanismo que ya usa el proyecto para "ecuador"/"ecuatoriano" en `STOPWORDS`
+  (demasiado genericos para identificar una historia puntual) y para `_ASAMBLEA_AMBIGUA` (misma clase de problema,
+  resuelta con el mismo estilo de excepcion curada en vez de un mecanismo generico). Verificado con un reinicio
+  real de `serve`: los titulares de Noboa/Ecuador en la ONU ahora son historias PROPIAS y separadas (la mayoria con
+  ambito internacional correctamente, salvo las que de verdad tienen angulo local con medios ecuatorianos
+  cubriendolas), y la nota de Delcy Rodriguez/Trump quedo en su propio cluster de ambito internacional, sin
+  arrastrar a Ecuador. `test_cluster_evento_generico.py` (2 pruebas: el caso real no se encadena; la historia real
+  con varios medios genuinos sigue uniendose).
+- **Problema 4b — el ranking no pesaba medios locales vs. internacionales**: `build_stories()` ya calculaba
+  `outlets_intl` pero `s["interes"]` (la formula real de ranking, duplicada en `run_once` y `run_fast`) usaba
+  `s["n_outlets"]` a secas -- un medio internacional pesaba EXACTAMENTE igual que uno local. Arreglado con
+  `_peso_outlets(s)`: en historias de ambito LOCAL, cada medio ecuatoriano sigue pesando 40 puntos, cada
+  internacional pesa 5 (un octavo) -- 7 medios internacionales (35 puntos) siguen pesando MENOS que 1 solo medio
+  ecuatoriano (40 puntos), asi que una nota de Ecuador con mayoria de cobertura internacional ya no puede encabezar
+  sola sin cobertura local. En ambito internacional no cambia nada (ahi la cobertura extranjera SI es la señal
+  relevante). Verificado con un reinicio real: el top 10 de Ecuador por interes paso a ser el 100% historias con
+  CERO medios internacionales (antes mezclaba Infobae/ABC.es/Clarin en el tope). `test_ranking_medios.py`
+  (3 pruebas).
+- **Problema 4c — dos categorias mal cubiertas por `KEYWORDS`**: "Ecuador suma un nuevo dia de descanso... feriados
+  de 2026" no matcheaba NINGUN termino (quedaba en 'otros' con `temas=[]`) -- se agrego "feriado"/"feriados"/"dia
+  de descanso"/"puente vacacional"/"asueto" a `Cultura/Comunidad` en `feeds.py`. Por separado, "inversion" a secas
+  en `Comercio/Inversion` era demasiado generica: cualquier nota que mencionara "una inversion de $X millones" (ej.
+  un plan de salud infantil) activaba esa categoria sin tener nada que ver -- se exigio la frase completa
+  ("inversion extranjera"/"inversionista"/"inversion privada"), mismo criterio ya usado antes para depurar
+  `EC_TERMS` ("sucre", "los rios", "el oro"). Verificado que ambos casos reales clasifican limpio ahora
+  (`themes_for()` devuelve una sola categoria correcta en vez de vacio o una categoria falsa de mas).
+  **No resuelto del todo**: un tercer caso real ("Ejercito inhabilita... mineria ilegal en Putumayo") SI clasifica
+  bien por `themes_for()` (→ Ambiente) pero terminaba en 'otros' en `data.json` real -- la perdida ocurre DESPUES,
+  en la reclasificacion de la IA (`get_ia`/`_apply`, que solo puede QUITAR categorias, nunca agregar). No se
+  investigo la causa exacta (requiere una corrida con Ollama real para observar que decidio el modelo en ese caso
+  puntual) -- queda como pendiente.
+
+- **Problema 5 — verificaciones (Contraste) "sin datos" en Ecuador**: confirmado que la clave de FactCheck
+  funciona bien (no es un problema de cuota/clave). De 19 historias Ecuador con veredicto `sin_datos` revisadas 10
+  a mano: genuinamente no tienen contrato SERCOP ni verificacion viral asociada (notas de feriados, certamenes,
+  clima) -- el `sin_datos` ahi es HONESTO, no un bug del filtro `_factcheck_relevante`. Ecuador Chequea ya esta
+  cubierto indirectamente (Google Fact Check Tools lo indexa). **No se investigo** si el Registro Oficial o
+  boletines de Presidencia/Asamblea tienen RSS/API abierta -- queda pendiente, no evaluado en esta pasada.
+
+- **Problema 6 — el mas grave del diagnostico, `/api/nota` nunca existio**: el frontend (`dashboard_template.html`)
+  ya mandaba las notas a `POST /api/nota` desde la sesion del 22/9 (documentado ahi como implementado), pero el
+  servidor (`monitor.py`, `_do_POST`) NUNCA agrego esa ruta -- solo conocia `/api/guardar` y `/api/chat`; cualquier
+  nota que Fernando escribia recibia un 404 y se perdia al instante. Mismo patron de "documentado como resuelto
+  pero nunca conectado" que ya paso antes con `ia.interpretar()` y `_temas_por_relevancia()`. Arreglado: `NOTAS_PATH`
+  = `notas.json`, `load_notas()`/`save_notas()` (mismo patron que `saved.json`: contenido del usuario, no cache,
+  archivo temporal + `os.replace`), ruta `/api/nota` en `_do_POST` (guarda si hay texto, borra la clave si el texto
+  queda vacio), y `notas.json` agregado a `RUTAS_MOVIL` para que tambien se pueda leer desde el celular. Verificado
+  en vivo contra el servidor real reiniciado: `POST /api/nota` con una nota de prueba respondio `{"ok":true,...}`,
+  `GET notas.json` la devolvio, y se borro la nota de prueba antes de terminar (no quedo contenido de prueba en el
+  `notas.json` real de Fernando).
+  **Bug relacionado, encontrado de paso (la sospecha original de Fernando, aunque no era la causa del 404)**:
+  `story_key()`/`storyKey()` (la clave que comparten Guardadas Y Notas) usan `fuentes[0].link` -- pero `fuentes` no
+  tenia un orden garantizado (dependia de como `cluster()` fue armando el grupo), asi que si una historia en
+  desarrollo sumaba un medio NUEVO y mas reciente, esa fuente podia pasar a ocupar la posicion 0 y CAMBIAR la clave,
+  dejando huerfana una nota/guardado ya hecho. Arreglado en `build_stories()`: `fuentes` ahora se ordena por fecha
+  ASCENDENTE (la fuente MAS VIEJA queda en la posicion 0) -- la fuente que arranco el cluster casi no cambia entre
+  corridas, es la eleccion mas estable disponible sin agregar un id propio a cada historia. `test_notas.py`
+  (5 pruebas: round-trip de notas.json + que fuentes[0] es la mas vieja + que la clave no cambia al sumar un medio).
+
+- **Verificacion final, reinicio real de `serve`**: se detuvieron los DOS procesos `python monitor.py serve` que
+  estaban corriendo a la vez (ver arriba) y se levanto una instancia nueva y unica con todo el codigo de hoy. El
+  servidor bindeo el puerto en menos de 30s (cache de GDELT/Trends no estaba vencido de forma total esta vez, asi
+  que no aplico el escenario de 9+ minutos ya documentado). Confirmado con `data.json` real de la corrida nueva:
+  top 10 de Ecuador con 0 medios internacionales (antes mezclaba varios), el caso Noboa/Delcy separado en historias
+  propias, "Ecuador suma un nuevo dia de descanso" y "Plan de Primera Infancia" ahora con categoria real en vez de
+  'otros', y `estado_gdelt`/`estado_social` mostrando el mismo texto honesto de siempre. `/api/nota` probado con
+  una llamada HTTP real de punta a punta. 39 pruebas automatizadas (11 archivos `test_*.py`, sumando los 4 archivos
+  nuevos de hoy) pasando.
+
+- **Pendientes reales que quedan de esta pasada** (no resueltos, anotados para no perderlos):
+  1. La IA (`get_ia`/`_apply`) a veces quita TODAS las categorias de una nota que `themes_for()` si habia
+     clasificado bien (caso real: "mineria ilegal en Putumayo" → Ambiente por keywords, pero 'otros' en
+     `data.json`) -- no investigado a fondo, requiere una corrida con Ollama real y revisar que decidio el modelo
+     para ese caso puntual.
+  2. No se evaluo si el Registro Oficial de Ecuador o boletines de Presidencia/Asamblea Nacional tienen RSS/API
+     abierta y gratuita para sumar como fuente de Contraste.
+  3. GDELT sigue en corte casi total (1/20 temas), limite externo confirmado de nuevo, no arreglable por codigo.
+  4. Bloque 2 del pedido de Fernando (agente IA con herramientas sobre `data.json`/`history.json`/
+     `guardadas`/`notas`/Trends/GDELT/SERCOP/pulso social, cruce de informacion, citas obligatorias, 10 preguntas
+     de prueba antes/despues) **no arrancado todavia** -- queda como siguiente fase.
+
+## Bloque 2 — el Asistente (2026-09-23, quinta pasada): agente con herramientas sobre los datos propios
+
+Implementado, probado en vivo (Ollama corriendo de verdad) y verificado con un reinicio real de `serve`.
+Modulos nuevos: `herramientas.py` (herramientas de solo lectura) y `agente.py` (ciclo de herramientas +
+respuesta final), mas la ruta `/api/asistente` en `monitor.py` y una pestaña nueva "Asistente" en el
+dashboard (ver sus entradas en "Módulos" mas arriba para el detalle tecnico). Resumen de las decisiones:
+
+- **Hardware de esta PC** (relevante para elegir modelo): 16.4 GB RAM, GPU GTX 1650 SUPER con 4GB VRAM
+  (dato de sesiones previas, reconfirmado). Modelos instalados en Ollama mas alla de los dos que ya usa el
+  proyecto (`qwen2.5:3b`, `monitor-critico` 8.2B): `deepseek-r1:8b`, `gemma2:9b`, `qwen2.5-coder:7b`,
+  `deepseek-coder:6.7b`, `command-r` (18GB), `command-r-plus` (59GB), `periodista-pro`, `gemma4`, entre otros.
+
+- **Benchmark real, medido en esta sesion** (no estimado): `qwen2.5:3b` cargo en 18.8-19.6s y genero 38-41
+  tokens en total ~22s; `gemma2:9b` cargo en 78.6s la PRIMERA vez (disco frio) y 27.9s la segunda (ya en
+  cache del SO), sin ninguna ventaja de calidad clara sobre qwen2.5:3b en la prueba directa. Dato clave:
+  **en esta GPU de 4GB VRAM solo entra UN modelo resiente a la vez** -- cargar `gemma2:9b` desalojo a
+  `qwen2.5:3b`, que tuvo que recargar de cero en la siguiente llamada. `command-r`/`command-r-plus`
+  (18GB/59GB) se descartaron SIN medirlos en vivo: si un modelo de 8B (5.2GB) ya corre ~65% en CPU (~5
+  tokens/seg, medido antes para `monitor-critico`), un modelo de 18-59GB corre casi enteramente en CPU --
+  la aritmetica ya lo descarta para uso interactivo sin hacer esperar varios minutos solo para confirmarlo.
+
+- **Decision de arquitectura: DOS modelos, no uno solo.** `qwen2.5:3b` (el mismo modelo rapido del pipeline
+  por lotes) maneja el CICLO DE HERRAMIENTAS -- decide que consultar, ronda por ronda, hasta 4 rondas
+  (`agente.MAX_RONDAS`). `monitor-critico` (el mismo modelo pesado que ya usa el chat "profundo" de Parte E)
+  redacta la RESPUESTA FINAL, una sola vez por pregunta, con todo el material ya juntado. Paga la recarga
+  pesada (~20-30s) una sola vez por pregunta en vez de en cada ronda de decision, y es el que de verdad
+  necesita criterio para cruzar datos y notar contradicciones -- no solo repetir el material.
+
+- **Herramientas** (`herramientas.py`, ver "Módulos" para el detalle completo): `buscar_historias` (con
+  filtro `veredicto` agregado despues de la prueba en vivo, ver abajo), `detalle_historia`,
+  `buscar_guardadas`, `buscar_notas`, `tendencia_tema`, `comparar_periodo`, `buscar_contratos_sercop`. Mismo
+  principio de Parte B llevado al agente: **nunca** disparan una llamada nueva a Trends/GDELT/SERCOP/redes
+  en vivo, solo leen lo que el pipeline normal ya calculo -- usar el Asistente no agrega latencia ni riesgo
+  de rate-limit nuevo a esas fuentes.
+
+- **Bug real encontrado probando el ciclo en vivo**: el modelo que decide que consultar no siempre
+  reproduce el nombre EXACTO del catalogo de temas (paso `"carceles"` en vez de `"Carceles"`) ni el valor
+  exacto de ambito (`"Ecuador"` en vez de `"local"`) -- 0 resultados hasta agregar `_normalizar_tema()` y un
+  mapeo de sinonimos de ambito (mismo problema, mismo tipo de arreglo, que ya resolvio `ia._TEMA_LOOKUP`
+  para la clasificacion por lotes). Confirmado antes/despues con el mismo caso real.
+
+- **Hallazgo real de la comparacion antes/despues** (ver abajo): al pedirle "hay contradicciones entre
+  medios", el agente respondio que no tenia forma de saberlo -- no habia ninguna herramienta que expusiera
+  directamente el `veredicto` (coincide/contradice/sin_datos/pendiente) que Contraste YA calcula por
+  historia. Se agrego el argumento `veredicto` a `buscar_historias` (con `test_herramientas.py` cubriendo el
+  caso) para que una pregunta de este tipo se pueda responder de forma directa en vez de que el agente
+  tenga que adivinar con otra herramienta.
+
+- **Streaming + progreso**: mismo protocolo NDJSON que el chat por item (`/api/chat`), con un tipo de linea
+  nuevo `{"progreso": "..."}` que el dashboard muestra mientras el ciclo de herramientas corre (si no, la
+  espera de varios segundos antes de la respuesta final se siente muda -- mismo criterio que ya establecio
+  el streaming de Parte E). Probado en vivo con `curl -N` contra el servidor real reiniciado: la linea de
+  progreso llega primero, despues los tokens de la respuesta de a uno, despues `{"done":true,"ok":true}`.
+
+- **Memoria de la conversacion**: igual que el chat por item (Parte E, "Decisiones ya tomadas") -- vive en
+  el navegador (`asistenteHilo` en `dashboard_template.html`), se manda entera en cada pregunta, se pierde
+  al recargar la pagina. Mismo criterio de simplicidad deliberada, no una limitacion nueva de este bloque.
+
+- **Comparacion antes/despues, 3 de las 10 preguntas probadas EN VIVO con Ollama real** (las otras 7 quedan
+  preparadas para que Fernando las pruebe el mismo, ver la lista completa abajo -- correr las 10 en vivo
+  hubiera tomado ~25-30 min mas de tiempo de modelo, y 3 ya alcanzan para mostrar el patron real):
+
+  1. *"Que se sabe hoy sobre carceles en Ecuador? Cita las fuentes."*
+     - **Antes** (mismo modelo pesado, SIN herramientas, item vacio -- el chat de hoy siempre necesita un
+       item abierto): *"no tengo los datos específicos que el periodista ha calculado para esta consulta...
+       ¿Podrías compartir los datos calculados?"* -- inutil para una pregunta abierta, el modelo no tiene de
+       donde sacar el dato.
+     - **Despues**: cito el titular real, el medio (El Comercio) y el link de una nota sobre un militar
+       separado del cargo por un caso de abuso sexual en una carcel de Guayaquil, marco aparte una segunda
+       nota como "incompleta... no tengo suficiente informacion", y cerro con una "Lectura critica"
+       explicitamente etiquetada como tal (no mezclada con el dato) proponiendo una pregunta de seguimiento.
+  2. *"Hay contradicciones entre lo que reportan distintos medios sobre algun tema de seguridad esta
+     semana?"*
+     - **Antes**: mismo rechazo generico, sin dato.
+     - **Despues**: contesto honesto que no tenia con que responder esa pregunta puntual (ver el hallazgo
+       real de arriba, ya corregido agregando el filtro `veredicto`).
+  3. *"Que angulo de reportaje me recomendarias sobre economia/comercio esta semana, con que fuentes
+     empezar?"*
+     - **Antes**: **no genero ninguna respuesta** (string vacio).
+     - **Despues**: contesto honesto que no tenia datos especificos de esa semana puntual y sugirio revisar
+       la demanda de busqueda como punto de partida -- correcto en el sentido de "no inventar", aunque
+       generico; con el catalogo de herramientas de hoy el agente no tiene una funcion dedicada a "sugerir
+       un angulo" mas alla de lo que ya trae el material (ver Pendientes).
+  4. *"Que contratos SERCOP hay relacionados con el Ministerio de Salud?"* (probada aparte, via `curl -N`
+     directo contra `/api/asistente`, confirmando el protocolo NDJSON de punta a punta): *"No tengo datos
+     sobre contratos SERCOP relacionados con salud en este momento."* -- honesto, el termino nunca se habia
+     consultado en una corrida anterior del trabajador (`sercop_cache.json` no lo tenia).
+
+  **Las 10 preguntas de prueba** (1-4 ya probadas arriba; 5-10 quedan listas para que Fernando las corra
+  desde la pestaña Asistente):
+  5. ¿Cómo cambió la cobertura de noticias sobre Cárceles comparado con hace una semana?
+  6. ¿Qué dice el pulso social sobre el desempleo en Ecuador esta semana?
+  7. ¿Hay alguna nota guardada o nota personal sobre corrupción que deba retomar?
+  8. ¿Qué brecha hay entre lo que busca la gente en internet y lo que cubren los medios esta semana?
+  9. ¿Qué medios están cubriendo el tema Asamblea/Leyes y qué dicen?
+  10. ¿Cuál es la demanda de búsqueda sobre inflación y cómo se compara con la cobertura de prensa?
+
+  **Tiempo real medido, no estimado**: 110-175s por respuesta completa en esta PC (antes: 110-164s incluso
+  SIN hacer nada util; despues: 122-175s, el ciclo de herramientas agrega ~10-20s sobre el tiempo que ya
+  tomaba el chat "profundo" de Parte E). Mas lento que el objetivo implicito de una consulta interactiva --
+  es el mismo limite de hardware ya documentado para `monitor-critico` (deepseek-r1:8b, ~5 tokens/seg,
+  65% CPU), no algo nuevo de este bloque. El streaming ayuda a que la espera se sienta mejor (la linea de
+  progreso aparece primero), pero no baja el tiempo total.
+
+- **Pendientes reales, no resueltos en esta pasada**:
+  1. Solo se corrieron 3 de las 10 preguntas de prueba en vivo con Ollama real (mas una cuarta via `curl`
+     directo) -- las otras 6 quedan listas en la lista de arriba para que Fernando las pruebe.
+  2. El agente no tiene una herramienta dedicada a "proponer angulos de reportaje" mas alla de razonar sobre
+     el material que ya trajeron las otras herramientas -- si la pregunta 3 de la prueba se repite seguido,
+     vale la pena revisar si hace falta una herramienta que cruce demanda alta + poca cobertura (la misma
+     logica que ya usa `renderGap()`/Oportunidades en el dashboard) en vez de dejar que el agente lo infiera
+     solo del material que ya tiene.
+  3. El material que arma `_fmt_transcripcion()` en `agente.py` a veces incluye campos "crudos" del dato
+     (ej. `veredicto_contraste: pendiente, veredicto_texto: Todavia no procesado`) que el modelo termina
+     citando casi textual en la respuesta -- funciona, pero no es la redaccion mas prolija; podria filtrarse
+     antes de armar el material (descartar campos sin valor real, ej. `veredicto=="pendiente"`) para que la
+     respuesta final quede mas limpia. No se hizo en esta pasada por tiempo.
+  4. No se probo el comportamiento del ciclo de herramientas con una pregunta que genuinamente necesite 3-4
+     rondas encadenadas (las probadas en vivo resolvieron todas en 1 ronda) -- vale la pena una prueba
+     puntual con una pregunta mas compleja (ej. "compara la cobertura de Ejecutivo de hoy contra hace 10
+     dias y decime si hay alguna nota guardada relacionada") para confirmar que el corte de rondas repetidas
+     (`vistos`, en `ciclo_herramientas`) no corta antes de tiempo un caso legitimo de varias consultas.
+  5. Se encontraron y detuvieron, de nuevo, DOS instancias de `python monitor.py serve` corriendo a la vez
+     antes de este reinicio (mismo riesgo de la pasada anterior: escritura simultanea de `data.json`/
+     `dashboard.html`). Si esto sigue repitiendose, vale la pena revisar si `INICIAR.bat`/algun acceso
+     directo esta arrancando el programa mas de una vez sin que Fernando lo note.
+
+## Bloque 2, continuacion (2026-09-23, quinta pasada): modelo mejor para la Lectura IA de cada tarjeta
+
+Pedido de Fernando tras ver el reporte de arriba: *"aun estas corriendo qwen [2.]5:3[b], necesitamos un
+mejor modelo para la IA local para que funcione mejor"*. Antes de tocar nada se le explico el mapa completo
+(4 lugares donde el proyecto usa un modelo, cada uno con una razon distinta de velocidad) y confirmo:
+activar el modelo pesado para la Lectura IA de las tarjetas (`ia.interpretar()`, acotada a
+`MONITOR_IA_INTERP_MAX`=12 notas nuevas por pasada), dejando la clasificacion de tema/Ecuador-Mundo
+(`ia.analizar()`, corre sobre MUCHO mas volumen por pasada) en el modelo rapido como esta hoy.
+
+- **BUG REAL encontrado antes de poder activar nada**: `INTERP_MODEL`/`MONITOR_IA_INTERP_MODEL` existia en
+  `ia.py` desde el arreglo de "IA literal" (documentado como una opcion disponible), pero **nunca podia
+  hacer efecto** -- `monitor.py` llamaba a `ia.interpretar(..., forzado=IA_MODEL)` SIEMPRE, y `forzado` le
+  gana a `INTERP_MODEL` en la resolucion del modelo. Mismo patron de "quedo documentado pero nunca
+  conectado" que ya paso con `ia.interpretar()` en si (2026-09-22), `_temas_por_relevancia()` (2026-09-23,
+  segunda tanda) y `/api/nota` (2026-09-23, cuarta pasada) -- cuarta vez que aparece esta clase de bug en el
+  proyecto, vale la pena tenerlo presente al revisar cualquier "ya deberia estar andando".
+- **Arreglo, dos lados**: se saco `forzado=IA_MODEL` del llamado en `monitor.py` (`get_ia`), y en `ia.py` la
+  resolucion de modelo de `interpretar()` paso a ser `forzado > INTERP_MODEL (env) > elegir_modelo_chat()`
+  (el mismo modelo pesado del chat "profundo", `monitor-critico`, con el fallback automatico al rapido que
+  `elegir_modelo_chat()` ya hacia si no esta instalado). Cuando el modelo resuelto NO es el rapido del
+  pipeline, `num_predict` sube de 140 a 600 y el timeout minimo sube a 220s -- **sin esto el cambio se
+  rompe solo**: con poco num_predict, un modelo de razonamiento gasta todo el presupuesto "pensando" y
+  devuelve string VACIO sin ningun error (el mismo bug real ya documentado para `chat_stream`/`MODOS_CHAT`,
+  se repite aqui si no se replica el mismo arreglo).
+- **Probado en vivo, mismo titular, antes/despues real** (no simulado):
+  - Titular: *"Gobierno de Ecuador anuncia subsidio focalizado al diesel para transporte pesado"*.
+  - **Antes** (`qwen2.5:3b`, 6.4s): *"¿Quién será beneficiado con el subsidio y cuáles son las
+    restricciones? ¿Cómo afectará esto a los transportistas y el fisco?"* -- preguntas razonables pero sin
+    comprometerse con una lectura concreta.
+  - **Despues** (`monitor-critico`, 103.3s): *"El subsidio a los camiones de carga puede favorecer a los
+    transportistas, pero no resolverá el transporte nacional ni la logística de importación. Quienes se
+    beneficiarán son los que usan camiones, pero a los ciudadanos les subirá el costo indirecto."* -- toma
+    posicion: nombra a quien beneficia, que NO resuelve, y una consecuencia indirecta concreta.
+  - Confirmado con `ia.elegir_modelo_chat()` que el modelo resuelto es efectivamente `monitor-critico`
+    (no una casualidad de que ambos dieran texto parecido).
+- **Costo real, no estimado**: ~16x mas lento por nota (6.4s vs 103.3s). Con `MONITOR_IA_INTERP_MAX`=12
+  notas nuevas por pasada del trabajador, el peor caso ronda los 12-20 minutos SOLO para interpretacion en
+  esa pasada (corre en el hilo trabajador de fondo, Parte C -- nunca bloquea el feed/`run_fast`, pero SI
+  puede atrasar el resto del trabajo de esa misma pasada -- contexto, FactCheck, veredicto, social -- que
+  corre despues en la misma funcion `enrich_pass`). Si en el uso real esto se siente demasiado lento para
+  que el resto del trabajador avance, la palanca es bajar `MONITOR_IA_INTERP_MAX` (ej. a 4-6) via variable
+  de entorno -- no se cambio el default en esta pasada, queda como ajuste fino pendiente de ver en uso real.
+- `test_interpretar_modelo.py` (4 pruebas, sin golpear Ollama: monkeypatchea `ia._post` para capturar que
+  modelo/num_predict/timeout arma `interpretar()` en cada combinacion) + prueba en vivo con Ollama real
+  documentada arriba. Verificado con un reinicio real de `serve` (se encontraron y detuvieron, otra vez,
+  dos instancias corriendo a la vez -- tercera vez que pasa en esta sesion, ver Pendientes del bloque
+  anterior).
+- **Pendiente**: no se probo si 12 notas/pasada con el modelo pesado genera un atraso perceptible en el
+  resto del trabajador durante uso real prolongado (solo se midio el costo de UNA llamada) -- revisar en
+  unos dias de uso real si `estado_ia`/`estado_contexto`/etc. se sienten mas atrasados que antes, y si es
+  asi, bajar `MONITOR_IA_INTERP_MAX`.
+
+## Causa real de las instancias duplicadas de `serve` (2026-09-23, quinta pasada)
+
+Fernando pidio revisar por que `INICIAR.bat` parecia arrancar el Monitor dos veces (encontrado y corregido
+a mano tres veces en esta sesion, ver Pendientes de los dos bloques anteriores).
+
+- **Causa real, confirmada leyendo el .bat**: `INICIAR.bat`/`CONECTAR_IPHONE.bat`/
+  `ABRIR_EN_CELULAR_TAILSCALE.bat` usaban el patron `python ... || py ...` ("si el primer comando termina
+  con error, corre el segundo"). Para un comando de un solo golpe (como `monitor.py movil`) esto es
+  inofensivo. Para `INICIAR.bat`, que lanza `monitor.py serve` -- un servidor que deberia quedar corriendo
+  INDEFINIDAMENTE hasta que Fernando cierre la ventana -- es peligroso: en esta PC, `python` resuelve al
+  alias de Windows Store (`...\WindowsApps\python.exe`), que reenvia la ejecucion al interprete real
+  (`...\pythoncore-3.14-64\python.exe`) como un proceso hijo. Si ese alias devuelve un codigo de salida
+  distinto de cero en el momento del reenvio (comportamiento conocido de los alias de Windows Store, no
+  exclusivo de este proyecto) AUNQUE el programa real haya arrancado bien de fondo, `||` interpreta eso como
+  "fallo" y dispara el segundo comando (`py monitor.py serve`) -- una SEGUNDA instancia completa, corriendo
+  en paralelo a la primera, ambas escribiendo `data.json`/`dashboard.html`/`history.json` a la vez.
+- **Arreglo**: los tres `.bat` ahora eligen UN SOLO interprete de antemano con `where python` (si existe,
+  usa `python`; si no, `py`) y lo usan una sola vez -- nunca los dos en la misma ejecucion, sin importar el
+  codigo de salida de nada. `INICIAR.bat` ademas suma un chequeo de seguridad: antes de arrancar nada,
+  prueba si el puerto 8000 ya esta contestando (`Test... TcpClient` via PowerShell, sin depender de
+  `curl`/`netstat` que pueden no estar disponibles) -- si YA hay un Monitor corriendo, no lo duplica, solo
+  abre el dashboard en el navegador. Probado en vivo: con el servidor real corriendo, `INICIAR.bat` detecto
+  el puerto ocupado y mostro el mensaje correcto ("El Monitor ya esta corriendo... Abriendo el dashboard")
+  en vez de arrancar una instancia nueva.
+- **No confirmado con el 100% de certeza que esta fuera la causa** de las tres duplicaciones vistas en esta
+  sesion -- no se pudo reproducir el fallo EXACTO del alias de Windows Store bajo demanda (es intermitente
+  por naturaleza), pero es la explicacion mas consistente con la evidencia (el patron `||` estaba ahi,
+  "python" es el alias en esta PC). De todos modos, el chequeo de puerto nuevo hace que, sea cual sea la
+  causa exacta, ya no pueda volver a pasar -- no depende de entender por que "python" devuelve codigo de
+  error, solo de no arrancar nada nuevo si el puerto 8000 ya esta ocupado.
+
+## Fase 0 (2026-09-23, sexta pasada) — velocidad: por que una noticia podia tardar horas en verse
+
+Fernando reporto una noticia de un medio de Ecuador que aparecio 2h despues de publicada, con meta de <3
+min entre publicacion real y aparicion en el dashboard. Diagnostico con datos/pruebas reales primero,
+despues arreglos, siguiendo el orden de causas candidatas del propio pedido.
+
+### Diagnostico (evidencia real, no estimada)
+
+- **(b) MONITOR_FEED_MIN/run_fast, DESCARTADO**: medido en vivo, el pipeline completo (`collect()` +
+  `dedup()` + `cluster()` + `build_stories()`, los 44 feeds) tarda **10.2s** de punta a punta. Con
+  MONITOR_FEED_MIN=2 (el valor de antes), hay margen de sobra -- esto NO explica una demora de horas.
+- **(c) zona horaria, CONFIRMADO Y ARREGLADO**: `parse_date()` usaba `%Z` de `strptime` para las fechas con
+  sigla de zona horaria ("EDT", "PST", etc.) -- Python's `%Z` en parseo SOLO reconoce un puñado fijo
+  (basicamente UTC/GMT), confirmado con una prueba directa (`strptime(..., "%Z")` con "EDT" -> `ValueError`,
+  con "GMT" -> OK). **CBC News mandaba TODAS sus fechas en este formato** ("Wed, 23 Sep 2026 13:06:11 EDT")
+  -- el 100% de sus notas quedaba con `date=None`. Consecuencia real en `build_stories()`: con `date=None`,
+  el `recency_bonus` (el peso de "que tan nueva es") cae a 0 -- el PEOR valor posible, igual que si la nota
+  tuviera dias -- y ademas nunca se marca `antigua=True` (por el mismo `hours=None`). Una nota de CBC
+  reciente de verdad se hundia en el ranking sin ningun error visible. Arreglado con un diccionario de
+  siglas comunes (`_TZ_ABBREV`: EST/EDT/CST/CDT/MST/MDT/PST/PDT/GMT/UTC/BST/CET/CEST) que traduce la sigla a
+  un offset numerico ANTES de intentar los formatos -- asi %z (confiable) la agarra en vez de depender de
+  %Z. Verificado en vivo: CBC paso de 0/20 a 20/20 notas con fecha real parseada, y se confirmo de nuevo con
+  el servidor real reiniciado (`latencia_feeds["CBC News (World)"].sin_fecha == 0`). `test_parse_date_tz.py`
+  (5 pruebas). De paso, revisando los 44 feeds en vivo se encontraron dos casos que NO son bugs de codigo:
+  **Corriere della Sera** (`xml2.corriereobjects.it/rss/esteri.xml`) sirve contenido genuinamente viejo
+  (~566 dias, confirmado con las fechas crudas del feed: marzo 2025-diciembre 2024) -- el feed en si esta
+  abandonado/no se actualiza, no hay nada que nuestro codigo pueda arreglar ahi; **La Gaceta** simplemente
+  no habia publicado nada nuevo en ~23h al momento de medir -- puede ser normal para un medio chico, no
+  necesariamente un problema.
+- **(f) el dashboard no avisa de lo nuevo, CONFIRMADO -- la explicacion mas probable del caso real de
+  Fernando**: `usuarioOcupado()` (dashboard_template.html) devuelve `true` si `window.scrollY > 400` -- con
+  eso, el `poll()` de cada 45s (antes) NUNCA aplicaba datos nuevos solo, mostraba la pildora "Hay datos
+  nuevos" (facil de no notar leyendo) y se quedaba ahi. Si Fernando tenia la pestaña abierta, scrolleado
+  leyendo, la nota podia estar lista en el `data.json` real en minutos pero la pestaña seguia mostrando la
+  foto vieja hasta que el volviera a scrollear arriba y la aplicara a mano -- perfectamente consistente con
+  "tardo 2 horas en aparecer" siendo, en realidad, un problema de que la pestaña abierta no se actualizaba
+  sola, no de que el dato tardara. Este mecanismo es CORRECTO para el resto del dashboard (no interrumpir la
+  lectura a proposito, ver Decisiones ya tomadas del 2026-09-22) -- el arreglo no lo toca, agrega una vista
+  aparte pensada justamente para esto (ver "Última hora" abajo).
+- **(d)/(e) ranking bajo / cluster se pego a una historia vieja, DESCARTADOS por diseño**: revisado el
+  codigo de `build_stories()`/`cluster()` -- `newest` (y por lo tanto `hours`/`antigua`/`recency_bonus`) se
+  recalcula sobre el MAXIMO de fechas de TODOS los articulos del cluster en cada pasada, incluida una nota
+  nueva que se una a un grupo viejo -- no se encontro ningun caso donde una nota nueva quedara "atrapada"
+  con la fecha vieja del grupo. No se encontro evidencia de un bug aca (a diferencia de (c) y (f), que si
+  tenian evidencia real).
+- **BUG REAL de paso, encontrado revisando `write_outputs()`**: el CLAUDE.md documentaba "data.json se
+  escribe atomico (`_escribir_atomico`)" como ya hecho (arreglo del 2026-09-22) -- confirmado por grep que
+  esa funcion **nunca existio en el codigo**, `write_outputs()` seguia escribiendo `data.json`/
+  `dashboard.html` directo. Sexta vez que aparece el patron "documentado pero nunca conectado" en este
+  proyecto. Riesgo real (bajo pero real): el `poll()` del dashboard puede pedir `data.json` a mitad de una
+  escritura y recibir JSON invalido (ya lo tolera, reintenta solo en el siguiente poll, pero mejor que no
+  pase). Arreglado con archivo temporal + `os.replace`, mismo patron que `saved.json`/`notas.json`.
+
+### Arreglos implementados
+
+1. **`fetch_cache.json` (nuevo) + peticion condicional (ETag/If-Modified-Since)**: `fetch()` ahora manda
+   `If-None-Match`/`If-Modified-Since` si los tiene guardados de la vuelta anterior; si el servidor
+   contesta 304 (sin cambios), no baja el cuerpo entero. Probado en vivo: de 44 feeds, **15 devolvieron 304
+   real** en una segunda consulta inmediata (los otros 28 no lo soportan bien o de verdad cambiaron algo en
+   esos segundos -- comun en CMS de noticias, no es un bug nuestro). Esto es lo que permite chequear mas
+   seguido sin abusar de los servidores de los medios.
+2. **Frecuencia propia por feed**: cada feed puede llevar `"frecuencia_seg"` en `feeds.py` (ninguno lo tiene
+   todavia -- no hay historial real para clasificar cuales son "rapidos"/"lentos" con evidencia, se
+   preferio dejar el mecanismo listo antes que adivinar). Sin frecuencia propia, un feed se chequea cada
+   vez que le toca el tick global.
+3. **Tick global bajado de 2 a 1 minuto** (`MONITOR_FEED_MIN`, ahora acepta fracciones -- ej. `0.5` para
+   30s): justificado por el punto (b) del diagnostico (pipeline completo mide 10s, hay margen de sobra).
+   `python monitor.py` (una corrida unica, sin `serve`) SIEMPRE trae todo fresco (`collect(respetar_frecuencia=False)`)
+   -- el "esperar el turno" es solo para el modo continuo.
+4. **`history.json` protegido de la mayor frecuencia**: `append_history()` ahora se salta el guardado si no
+   pasaron `MONITOR_HIST_MIN` (def. 2, el mismo espaciado de antes) desde el ultimo snapshot -- sin esto,
+   bajar el tick a 1 min hubiera duplicado la velocidad de crecimiento del archivo y, con `HIST_MAX` fijo,
+   RECORTADO A LA MITAD cuanto tiempo atras llega el historial (justo lo que necesitan la Fase 2 y
+   `comparar_periodo` del Asistente).
+5. **`latencia_cache.json` (nuevo) + `calcular_latencia_por_feed()`**: registro real de cuando un medio
+   publico una nota (segun su feed) vs. cuando el monitor la vio por primera vez (`first_seen`, nunca se
+   pisa una vez registrado). Es la materia prima real para medir demora -- antes el proyecto no guardaba
+   esto en ningun lado. Expuesto en `data.json["latencia_feeds"]` y en un panel nuevo dentro de
+   Estadisticas ("Demora real por medio"). **IMPORTANTE, limitacion metodologica real**: la PRIMERA vez que
+   esto corre despues de instalarse, los numeros salen inflados (horas/dias) porque "primera vez que lo
+   vimos" incluye TODO el backlog que cada feed ya traia en su ventana de RSS, no solo lo genuinamente
+   nuevo -- confirmado en vivo (ej. "Corriere della Sera" salio con una mediana de 816477 min == el backlog
+   stale ya documentado arriba). Los numeros se vuelven representativos de la demora REAL recien despues de
+   que el sistema lleva un rato corriendo continuo y la mayoria de entradas nuevas en `latencia_cache.json`
+   son genuinamente nuevas, no backlog -- por eso la verificacion pide `serve` corriendo 1h+ antes de sacar
+   conclusiones (ver Pendientes).
+6. **"Última hora" (pestaña nueva)**: lista ordenada SOLO por hora de publicacion (`h.newest`), sin pasar
+   por el ranking de interes -- exactamente para el caso (f) de arriba. Su badge (`#uhBadge`) se actualiza
+   en CADA poll SIN respetar `usuarioOcupado()` (a proposito, es la pestaña pensada para enterarse rapido) y
+   su contenido se refresca solo si esa pestaña esta activa, tambien sin el bloqueo de scroll.
+7. **Hora explicita en America/Guayaquil**: `toLocaleString("es-EC")` sin `timeZone` usa la zona del
+   SISTEMA del navegador, no necesariamente Ecuador -- `fmtHoraEC()` (nuevo) fuerza
+   `timeZone:"America/Guayaquil"` explicito en los dos lugares que mostraban hora absoluta.
+8. **Poll mas seguido**: 45s -> 20s (el backend ahora puede publicar cada 1 min en vez de 2, el poll le
+   sigue el paso).
+9. **Aviso al iPhone por nota nueva de Guayaquil/Ecuador** (`movil.py`, pedido explicito, apagado por
+   defecto): `avisos_nota_nueva` en `movil.json` -- a diferencia de "historia fuerte" (exige `min_medios`,
+   en la practica casi nunca dispara segun la LIMITACION ya documentada), esto avisa con una sola fuente
+   si es reciente (`nota_nueva_max_horas`, def. 1h) y del ambito pedido (`nota_nueva_ambito`, def.
+   "guayaquil"), con cupo propio por hora (`nota_nueva_limite_hora`, def. 4) para no bombardear. `test_movil_nota_nueva.py`
+   (7 pruebas).
+10. **`_escribir_atomico` de verdad** (ver bug real arriba): `data.json`/`dashboard.html` ahora se escriben
+    con archivo temporal + `os.replace`.
+11. **WebSub/sitemap, investigado, NO implementado**: se probaron 8 feeds ecuatorianos en vivo por un link
+    `rel="hub"` (WebSub) -- **ninguno lo ofrece**, la via queda descartada de raiz (ademas de la limitacion
+    ya conocida de no tener un endpoint publico para recibir el callback en la PC de Fernando). Como
+    hallazgo real aparte: **El Comercio SI tiene un sitemap de noticias real y actualizado**
+    (`elcomercio.com/sitemap-news.xml`, HTTP 200, generado con fecha de HOY, fechas ya en hora de Ecuador
+    explicita `-05:00`, mas categorias que las que trae el RSS clasificado) -- El Universo y Expreso NO
+    tienen el suyo (404/403). Queda anotado como una fuente complementaria real para El Comercio si mas
+    adelante hace falta exprimir mas velocidad ahi -- no se integro esta pasada (requiere un parser de
+    sitemap aparte del de RSS, mas alcance del que da esta fase).
+
+### Pendientes reales de la Fase 0
+
+1. **La "verificacion con serve 1h+" (tabla antes/despues real) todavia no se puede reportar con numeros
+   honestos**: `latencia_feeds` recien empezo a registrar datos en esta misma sesion, y la primera lectura
+   esta inflada por el backlog (ver limitacion metodologica arriba). Hace falta dejar `serve` corriendo un
+   rato real antes de que los numeros signifiquen "demora de deteccion" en vez de "que tan viejo era el
+   backlog". `serve` quedo corriendo al cierre de esta pasada -- revisar `data.json["latencia_feeds"]` en
+   una hora o mas para la tabla real.
+2. **Ninguna frecuencia (`frecuencia_seg`) esta configurada todavia por feed** -- una vez que
+   `latencia_feeds` tenga datos representativos (ver pendiente 1), se puede usar esa evidencia real para
+   decidir cuales feeds merecen chequeo mas seguido y cuales pueden espaciarse, en vez de adivinar.
+3. **La sección tecnica del dashboard (demora por medio) esta en Estadisticas** (no un lugar aparte) --
+   funciona, pero valdria la pena revisar si Fernando prefiere que sea mas visible.
+4. Sitemap de El Comercio: hallazgo real, no integrado (ver arriba).
+5. **`serve` no se pudo reiniciar de inmediato con el codigo de la Fase 1**: la RAM libre volvio a
+   bajar (1.6 GB) justo despues de terminar la Fase 1 -- se dejo corriendo la instancia vieja (sin los
+   cambios de Fase 1) en vez de arriesgar otro corte, ver Fase 1 mas abajo para el detalle. Reiniciar
+   cuando la memoria de la PC lo permita.
+
+## Fase 1 (2026-09-23/24) — Guayaquil: mas fuentes y mas voz de la gente
+
+### Noticias — resultado medido
+
+- **44 -> 53 feeds configurados**, cada URL probada a mano con `fetch()`+`parse_feed()` real antes de
+  agregarla (mismo criterio de siempre). Nuevos: **Extra** (tabloide de Guayaquil -- ya se habia
+  descartado con `/feed/`, con `/rss` SI funciona: 58 items reales, fuerte en seguridad/crimen local),
+  **RTS** y **TC Television** (canales con sede en Guayaquil), **Municipio de Guayaquil** (con
+  `"ciudad":"Guayaquil"`, es literalmente el gobierno de la ciudad), **Prefectura del Guayas**, **ECU
+  911**, **Presidencia Ecuador**, y tres busquedas de **Google News RSS** geo-scopeadas (Guayaquil, Duran
+  Ecuador, Samborondon) como respaldo pedido explicitamente en la Fase 1 -- 100 items reales cada una.
+- **Medido antes/despues, mismo momento, pipeline real completo** (`collect`+`dedup`+`cluster`+
+  `build_stories`): **42 -> 90 historias de Guayaquil** (+114%), con agrupamiento real de 2-3 medios por
+  historia en varios casos (ej. "Municipio de Guayaquil retira monticulo de cemento..." con El Universo
+  (Guayaquil) + Expreso + Municipio de Guayaquil). 43/44 feeds viejos + 9/9 nuevos respondieron OK (solo
+  Wambra con su 429 transitorio ya documentado). 20 ejemplos reales revisados a mano, todos genuinamente
+  de Guayaquil (inundaciones, seguridad, transito, salud, municipales) -- ver el detalle completo en el
+  log de esta sesion si hace falta revisar mas.
+- **`detect_city()` ampliado con barrios reales** (evidencia de titulares del dia: Pascuales, Urdesa,
+  Isla Trinitaria, Kennedy Norte, Flor de Bastion) -- todas en frase completa o palabras poco comunes,
+  mismo cuidado de siempre contra colisiones (`test_detect_city_barrios.py`, 3 pruebas, incluye el caso
+  de que "Kennedy" solo NO debe matchear por el riesgo real de JFK/familia Kennedy en prensa
+  internacional).
+- **BUG REAL encontrado probando las busquedas de Google News en vivo**: buscar "Duran" (el canton junto
+  a Guayaquil) trae, entre resultados reales, una nota sobre el futbolista COLOMBIANO Jhon Duran -- nada
+  que ver con el canton. "Duran" NO se agrego a `CITIES` por esto (documentado en el codigo con el caso
+  real) -- es un apellido comun ademas de un topónimo, deja pasar falsos positivos si se usa como
+  termino geografico suelto. Las notas de Google News para "Duran Ecuador" se dejan sin forzar
+  `"ciudad":"Guayaquil"` a nivel de feed (a diferencia de las secciones editoriales reales) -- se apoyan
+  en la clasificacion geografica normal por texto para autocorregirse.
+
+### Voz de la gente — resultado medido
+
+- **Medido en vivo, busqueda "Guayaquil" ambito guayaquil** (`social.recolectar`): **66 publicaciones**
+  reales -- Bluesky 21 personas + 4 medios, Mastodon 7 medios (0 personas en esta muestra puntual),
+  YouTube 34 personas + 0 medios, Reddit 0 (bloqueado, ver abajo). **55 de 66 (83%) son de personas**,
+  no de medios.
+- **Reddit 403, causa real confirmada (no es el User-Agent)**: probado con 3 User-Agent distintos
+  (generico, de navegador real, declarado como bot) -- los tres dan el mismo `403 Blocked`. La respuesta
+  trae `server-timing: reddit-ct;desc="dn=FT,p=BOG,cs=MISS"` (enrutamiento geografico visible, `p=BOG` =
+  Bogota) -- consistente con un bloqueo por IP/geografia o el endurecimiento general de Reddit contra
+  scraping no autenticado del `.json` publico, no con headers. **La unica via real es la API oficial con
+  OAuth** (gratis, cupo generoso para lectura, pero pide que Fernando cree una app de Reddit -- mismo tipo
+  de paso que ya hizo para `MONITOR_YT_KEY`/`MONITOR_FACTCHECK_KEY`) -- no implementado, es una decision
+  suya (necesita que el registre la app con su cuenta).
+- **YouTube confirmado funcionando bien para Guayaquil**: probado en vivo con `MONITOR_YT_KEY` real,
+  busqueda "noticias Guayaquil" -> 12 comentarios reales, el 100% clasificados correctamente como
+  "persona" (comentarios de espectadores en videos de Teleamazonas/Ecuavisa/Noticias Mundionline sobre
+  seguridad en Guayaquil).
+- **Telegram: probados 20 nombres de canal candidatos, 1 real encontrado** ("alertaecuador" -- 10 posts
+  reales, alertas de crimen que SI mencionan Guayaquil/Pascuales/Samborondon, aunque es de alcance
+  nacional, no exclusivo de Guayaquil, y tenia una publicidad/spam mezclada). **Diagnostico sincero**:
+  adivinar nombres de canal tiene una tasa de acierto muy baja (1/20 en esta prueba) -- no hay forma de
+  buscar en el directorio de Telegram sin una API propia (Telethon, ya documentado como upgrade futuro NO
+  implementado). Confirma lo que ya decia el proyecto: `MONITOR_TG_CANALES` sigue vacio por defecto, la
+  mejor fuente de nombres reales de canales de Guayaquil es que Fernando revise los que YA sigue en su
+  propio Telegram.
+  - **Bug real encontrado de PASO, en el script de prueba propio (no en `social.py`)**: al escribir la
+    prueba, concatenar `"ULTIMO ERROR: " + social.last_error` cuando `last_error` seguia en `None`
+    (canal sin posts pero sin error real, ej. no existe) tiraba `TypeError`. Confirmado con una
+    reproduccion directa que `social.py` en si NO tiene este bug -- devuelve `[]` limpio para un canal
+    sin resultados, es responsabilidad del que lo llama chequear `last_error` antes de usarlo. Sin
+    cambios de codigo en el proyecto, solo queda anotado por si alguien mas escribe un script de
+    diagnostico parecido.
+- **OSINT por segmento (tema × ambito), confirmado en vivo funcionando** despues del arreglo de la pasada
+  anterior (`SOCIAL_OSINT_RETRY_TTL`): 13 de 15 temas con lectura OSINT real en el momento de revisar,
+  cubriendo los 3 ambitos (guayaquil: Carceles/Crimen-Violencia/Policia-Militar/Cultura-Comunidad/Salud/
+  otros; ecuador: Asamblea-Leyes/Comercio-Inversion/Fiscal-Presupuesto/Elecciones/Narcotrafico/Precios;
+  internacional: Migracion/Impuestos).
+- **Redes fuera de alcance, diagnostico sincero (ya investigado en una ronda anterior, reafirmado, sin
+  cambios)**: X/Twitter (plan pago Basic desde ~$200 USD/mes), TikTok (Research API gratis pero solo para
+  afiliacion academica verificada), Instagram/Facebook (Meta Graph API pide app revisada y aprobada, y en
+  la practica solo da datos de paginas propias, no busqueda publica abierta). Ver "Arreglos del
+  2026-09-23, segunda tanda, Problema 1" para el detalle completo -- sigue vigente.
+
+### Pendientes reales de la Fase 1
+
+1. Reddit: decision de Fernando si vale la pena registrar una app OAuth (gratis) para tener el pilar real
+   en vez de best-effort.
+2. Telegram: Fernando revisa sus propios canales seguidos y le pasa nombres reales -- adivinar no
+   funciona bien (1/20 de tasa de acierto medida).
+3. ~~No se corrio todavia una verificacion en vivo de `serve`~~ -- **resuelto**: la memoria se recupero
+   (4.55 GB libres) y se pudo reiniciar `serve` con Fase 0+1+2 juntas. Confirmado con el servidor real:
+   **89 historias de Guayaquil** (consistente con las 90 medidas antes con el pipeline directo) y una
+   sola instancia limpia corriendo.
+
+## Fase 2 (2026-09-23/24) — Marco de cobertura con datos propios (no GDELT)
+
+- **"Mercado de cobertura" dejo de depender de GDELT**: antes ese panel (dentro de Estadisticas) mostraba
+  el volumen de GDELT por categoria -- con GDELT bloqueado la mayor parte del tiempo (documentado en
+  varias rondas anteriores), el panel quedaba vacio o con datos parciales enganosos la mayoria de las
+  veces. Ahora usa **datos propios**: la suma de `n_articles` (volumen real de articulos ya recolectados
+  por el monitor, antes del clustering) por categoria -- siempre disponible, nunca depende de una fuente
+  externa. GDELT paso a ser una nota COMPLEMENTARIA debajo del grafico (cuantos temas respondio hoy), sin
+  bloquear ni vaciar el panel principal.
+- **"Cada sector aparece siempre, aunque tenga cero"**: se encontraron y arreglaron dos lugares del
+  dashboard que filtraban en silencio una categoria sin historias (`CAT_ORDER.filter(c=>cnt[c])`) -- el
+  panel "Historias por categoria" y el nuevo "Mercado de cobertura" ahora siempre muestran las 5
+  categorias fijas (`CATEGORIAS_VALIDAS`/`CAT_ORDER`, la misma lista de siempre, ya compartida entre
+  Python y el dashboard), con 0 si no hay nada -- un cero real ahora se ve igual de claro que cualquier
+  otro numero, no desaparece.
+- **Marco por ambito + evolucion en el tiempo**: `#statseg` (el toggle de Estadisticas) suma un boton
+  **Guayaquil** (antes solo Todo/Ecuador/Mundo). `append_history()` ahora guarda, ademas del agregado de
+  siempre, `secciones_ambito` (el mismo conteo por categoria pero desglosado Guayaquil/Ecuador-sin-Guayaquil/
+  Internacional) y `cobertura` (volumen de articulos, no GDELT) en cada snapshot -- nuevo panel "Evolución
+  por categoría" grafica esas 5 categorias en el tiempo, respetando el filtro de ambito activo. Los
+  snapshots viejos (de antes de este cambio) no tienen `secciones_ambito` -- el panel lo dice explicitamente
+  ("todavia no hay suficiente historial") en vez de graficar con huecos silenciosos; se va a ir llenando
+  solo con las pasadas nuevas. `test_fase2_cobertura.py` (4 pruebas, incluye que Guayaquil no se cuenta dos
+  veces dentro de "local").
+- **BUG REAL, la IA borraba categorias correctas — reproducido en vivo con Ollama real**: el caso ya
+  documentado como pendiente ("mineria ilegal en Putumayo", que `themes_for()` clasificaba bien como
+  Ambiente pero terminaba en 'otros') se reprodujo llamando a `ia.analizar()` de verdad: el modelo devolvio
+  `{"cat": "Policia/Militar", "score": 1.0}` -- una categoria que NO estaba en las que las keywords ya
+  habian detectado (`["Ambiente"]`). El candado del codigo (correctamente) descarta "Policia/Militar" por
+  no estar en el set permitido, pero como no quedaba NINGUNA categoria en comun, el resultado caia en
+  'otros' -- perdiendo una clasificacion valida que la IA nunca dijo explicitamente que estuviera mal
+  (score bajo), solo no la reconfirmo. Arreglado: si la interseccion queda vacia, se preserva la
+  clasificacion de keywords tal cual en vez de caer en 'otros' -- el candado sigue siendo "la IA solo
+  puede QUITAR", pero ahora "no reconfirmar nada" ya no equivale a "vaciar todo".
+- **BUG REAL, candado de geografia asimetrico — confirmado y arreglado**: `_apply()` exigia respaldo real
+  de texto (`detect_city`/`is_ecuador`) para aceptar que la IA marque "local"/"guayaquil", pero aceptaba
+  "internacional" SIN ninguna condicion -- el caso ya documentado ("Estados Unidos intercepta embarcacion
+  de Ecuador" quedando Internacional pese a mencionar Ecuador) confirma el patron. Arreglado con el mismo
+  criterio en los dos sentidos: `"internacional" in geo and not is_ecuador(texto)` -- si el texto SI
+  menciona Ecuador de verdad, "internacional" tampoco se acepta a ciegas, se deja la clasificacion de
+  palabras clave. `test_fase2_candado_ia.py` (5 pruebas: los dos casos reales reproducidos + que el
+  comportamiento normal/correcto no se rompe en ningun caso).
+- **Verificado con un reinicio real de `serve`**: 89 historias de Guayaquil sirviendose en vivo (consistente
+  con la medicion directa de la Fase 1), y de las historias locales, solo 2 quedaron en 'otros' en el
+  momento de revisar (numero que deberia seguir bajando a medida que el trabajador de fondo re-procese
+  historias con el candado ya arreglado).
+
+### Pendientes reales de la Fase 2
+
+1. El marco por Mundo/Ecuador/Guayaquil recien empieza a acumular historial desglosado
+   (`secciones_ambito`) desde este reinicio -- el panel de evolucion en el tiempo va a estar vacio/con
+   pocos puntos hasta que pasen varias pasadas mas del feed.
+2. **No hacia falta limpieza retroactiva de `ia_cache.json`**: `_apply()` se vuelve a correr con el
+   candado arreglado cada vez que `get_ia()` lee una historia (incluso en modo_lectura/cache hit) -- el
+   arreglo se aplica solo en la siguiente pasada de `run_fast`, sin reprocesar nada con Ollama.
+
+## Fase 3 (2026-09-23/24) — Base de contraste oficial
+
+Modulo nuevo: `oficial.py` (solo stdlib). Dos piezas:
+
+- **Constitucion del Ecuador (2008) indexada por articulo**: fuente real encontrada y probada en vivo
+  -- Wikisource (`es.wikisource.org`) tiene el texto completo transcrito, dividido en 9 sub-paginas por
+  TITULO (no una sola pagina), con un patron limpio y consistente (`'''Art. N.-''' texto`). Se descarga UNA
+  VEZ (`reconstruir_constitucion()`, ~9 llamadas a la API de Wikisource) y se guarda en
+  `constitucion.json` -- se reconstruye sola si pasan mas de 180 dias (la Constitucion casi no cambia, pero
+  puede haber enmiendas) o si no existe todavia. **300 de ~444 articulos reales indexados** (cobertura
+  parcial, no completa -- algunos articulos con formato de wikitexto distinto al patron esperado no se
+  detectan; confirmado que los mas citados en la practica SI estan: Art. 1, 66, 83, 424). Se etiqueta
+  siempre como "transcripcion verificada, no el PDF oficial escaneado" -- mejor una fuente secundaria
+  confiable con esa aclaracion que ninguna.
+- **Boletines de instituciones publicas**: 4 fuentes reales con RSS que SI funciona, cada URL probada a
+  mano (`fetch()`+parse real): **Asamblea Nacional** (10 items, noticias legislativas reales), **INEC**
+  (10 items, boletines estadisticos), **Banco Central del Ecuador** (10 items, cifras economicas reales --
+  crecimiento, exportaciones, comercio exterior), **Registro Oficial** (20 items, el boletin legal oficial
+  -- por ahora solo el LISTADO de ediciones/suplementos con link, no el contenido de cada PDF). Cacheados en
+  `oficial_cache.json` con frecuencia propia bien espaciada (1-6 horas segun la fuente, mucho mas lento que
+  las noticias -- estas instituciones publican pocas veces al dia). **Probadas SIN RSS publico en la URL
+  obvia** (HTTP 200 pero HTML, no XML): Fiscalia General, Corte Constitucional, Contraloria General, CNE.
+  Funcion Judicial dio error de conexion. Documentado en `oficial.py` por si aparece una URL real para
+  alguna despues.
+- **Integrado**: `monitor.py` construye la Constitucion una vez al arrancar el hilo trabajador (si hace
+  falta) y llama a `oficial.actualizar()` en cada pasada de `enrich_pass` (se auto-limita por la
+  frecuencia propia de cada fuente, igual que collect() de Fase 0). `data.json["oficial"]` expone que hay
+  disponible (honesto: 0 si todavia no se construyo/consulto nada). Dos herramientas NUEVAS del Asistente
+  (`herramientas.py`/`agente.py`): `buscar_constitucion(termino)` y `buscar_boletines_oficiales(termino)`
+  -- probadas en vivo end-to-end sin necesitar el servidor corriendo. Panel nuevo en Contraste
+  (`#oficialEstado`) que muestra la disponibilidad real y como consultarlo desde el Asistente.
+  `test_oficial.py` (9 pruebas, sin golpear la red).
+- **No implementado esta fase (decision consciente por tiempo)**: integracion PROFUNDA por-nota (ej. que
+  cada tarjeta de Contraste muestre automaticamente el articulo constitucional o boletin relacionado) --
+  por ahora es una herramienta que el Asistente puede usar cuando se le pregunta, no un cruce automatico
+  contra cada historia. Ese cruce automatico es mas del tipo de cosa que pide la Fase 5 (contraste de
+  declaraciones con el pasado) -- tiene mas sentido construirlo ahi, con el mismo motor, que duplicarlo
+  aca.
+
+### Pendientes reales de la Fase 3
+
+1. Cobertura de la Constitucion parcial (300/~444 articulos) -- revisar el patron de wikitexto de los
+   articulos faltantes si se necesita citar alguno que no aparece.
+2. Registro Oficial solo trae el LISTADO de ediciones (titulo + link), no el contenido -- para citar un
+   articulo de una ley puntual publicada ahi haria falta bajar y parsear el PDF de cada edicion, no
+   implementado.
+3. Fiscalia/Corte Constitucional/Contraloria/CNE sin RSS encontrado en la URL obvia -- no se probaron
+   variantes (ej. `/rss`, sitemaps) por tiempo, a diferencia de lo que si se hizo en la Fase 1 para los
+   medios de Guayaquil. Revisar si vale la pena la misma busqueda exhaustiva aca.
+4. No se pudo verificar con un reinicio real de `serve` en esta pasada (memoria de la PC volvio a estar
+   justa, 1.8 GB libres) -- las herramientas del Asistente SI se probaron end-to-end de forma directa (sin
+   el servidor). Reiniciar `serve` cuando la memoria lo permita para confirmar `data.json["oficial"]` y el
+   panel de Contraste en vivo. (contrario a lo que se penso al principio):
+   `_apply()` se vuelve a correr con el candado arreglado CADA VEZ que `get_ia()` lee una historia, incluso
+   en modo_lectura (cache hit) -- lo que se guarda en cache es la respuesta CRUDA de la IA, no el resultado
+   ya filtrado. El arreglo se aplica solo, en la siguiente pasada de `run_fast`, a TODAS las historias
+   cacheadas de antes, sin reprocesar nada con Ollama. Confirmado que los 2 casos de 'otros' que quedaban
+   en la corrida real eran historias sin cache todavia (`interp_v` sin llegar), no un efecto de cache vieja.

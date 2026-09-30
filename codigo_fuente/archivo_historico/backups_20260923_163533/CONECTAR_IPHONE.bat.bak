@@ -1,0 +1,6 @@
+@echo off
+REM Doble clic: muestra como conectar el iPhone y manda un aviso de prueba.
+cd /d "%~dp0"
+python monitor.py movil || py monitor.py movil
+echo.
+pause

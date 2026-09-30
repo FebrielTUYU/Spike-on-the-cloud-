@@ -1,0 +1,5511 @@
+{
+  "historias": [
+    {
+      "firma": [
+        "electrica",
+        "fuerte",
+        "guayaquil",
+        "lluvia",
+        "madrugada",
+        "marcaron",
+        "tormenta"
+      ],
+      "medios": 5,
+      "ts": 1790536321.9805925
+    },
+    {
+      "firma": [
+        "causa",
+        "ciudad",
+        "complicaciones",
+        "guayaquil",
+        "lluvia",
+        "sectores",
+        "varios"
+      ],
+      "medios": 5,
+      "ts": 1790536322.2669678
+    },
+    {
+      "firma": [
+        "durante",
+        "ecuador",
+        "fuertes",
+        "horas",
+        "lluvias",
+        "moderadas",
+        "persistiran",
+        "proximas",
+        "varias",
+        "zonas"
+      ],
+      "medios": 5,
+      "ts": 1790536322.2674086
+    },
+    {
+      "firma": [
+        "alemania",
+        "cocaina",
+        "desde",
+        "espanola",
+        "guayaquil",
+        "hacia",
+        "kilos",
+        "llevaba"
+      ],
+      "medios": 5,
+      "ts": 1790536322.267812
+    },
+    {
+      "firma": [
+        "calles",
+        "comienza",
+        "fenomeno",
+        "guayaquil",
+        "impactar",
+        "inundables",
+        "kilometros",
+        "nino"
+      ],
+      "medios": 5,
+      "ts": 1790536322.268072
+    },
+    {
+      "firma": [
+        "abatido",
+        "alias",
+        "cabecilla",
+        "criminal",
+        "este",
+        "gutierrez",
+        "historial",
+        "marquetalia",
+        "robinson",
+        "segunda"
+      ],
+      "medios": 5,
+      "ts": 1790536322.268416
+    },
+    {
+      "firma": [
+        "costa",
+        "expreso",
+        "fallecido",
+        "heridos",
+        "menos",
+        "siniestro"
+      ],
+      "medios": 5,
+      "ts": 1790536322.2687023
+    },
+    {
+      "firma": [
+        "cjng",
+        "delincuencia",
+        "organizada",
+        "presunta",
+        "procesados",
+        "quienes",
+        "vinculada"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2693357
+    },
+    {
+      "firma": [
+        "2026",
+        "clima",
+        "domingo",
+        "ecuador",
+        "este",
+        "guayaquil",
+        "pronostico",
+        "septiembre",
+        "tiempo"
+      ],
+      "medios": 5,
+      "ts": 1790632249.3711958,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "bandera",
+        "civica",
+        "ibarra",
+        "jornada",
+        "juramento",
+        "vivio"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2698724
+    },
+    {
+      "firma": [
+        "accidente",
+        "balzar",
+        "camion",
+        "colisionan",
+        "dejan",
+        "heridos"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2701194
+    },
+    {
+      "firma": [
+        "alcanza",
+        "aprobacion",
+        "ciudadana",
+        "fortaleza",
+        "noboa",
+        "presidente",
+        "principal",
+        "seguridad"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2703683
+    },
+    {
+      "firma": [
+        "caidos",
+        "carbo",
+        "dejan",
+        "guayaquil",
+        "lluvias",
+        "pedro",
+        "postes",
+        "serpiente",
+        "techo"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2706275
+    },
+    {
+      "firma": [
+        "accidente",
+        "costa",
+        "deja",
+        "guayaquil",
+        "heridos",
+        "institucional",
+        "muerto",
+        "playas",
+        "sentido"
+      ],
+      "medios": 4,
+      "ts": 1790536322.2708974
+    },
+    {
+      "firma": [
+        "afuera",
+        "carpas",
+        "guayaquil",
+        "hallaron",
+        "hospital",
+        "monte",
+        "sinai"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2715511
+    },
+    {
+      "firma": [
+        "este",
+        "estudiante",
+        "guayaquil",
+        "jade",
+        "lasso",
+        "logro",
+        "mejor",
+        "padres",
+        "pediatra",
+        "suena",
+        "todo"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2718132
+    },
+    {
+      "firma": [
+        "afectadas",
+        "fallecieron",
+        "noche",
+        "personas",
+        "resultaron",
+        "rios",
+        "terror",
+        "tres"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2721052
+    },
+    {
+      "firma": [
+        "despliega",
+        "drones",
+        "ecuador",
+        "estados",
+        "hacer",
+        "hanx",
+        "pueden",
+        "unidos"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2723804
+    },
+    {
+      "firma": [
+        "contra",
+        "ecuador",
+        "gobierno",
+        "llaman",
+        "octubre",
+        "organizaciones",
+        "protestas",
+        "sociales"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2726595
+    },
+    {
+      "firma": [
+        "activos",
+        "controlados",
+        "ecuador",
+        "este",
+        "forestales",
+        "incendios",
+        "registra",
+        "sabado",
+        "septiembre"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2729423
+    },
+    {
+      "firma": [
+        "adultos",
+        "consejos",
+        "cuatro",
+        "fragilidad",
+        "mayores",
+        "profesionales",
+        "reducir",
+        "riesgo"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2732253
+    },
+    {
+      "firma": [
+        "alcaldesa",
+        "asegura",
+        "buen",
+        "esta",
+        "estado",
+        "guayaquil",
+        "parque",
+        "samanes"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2734966
+    },
+    {
+      "firma": [
+        "cerro",
+        "guayaquil",
+        "internacional",
+        "llevando",
+        "marca",
+        "peru",
+        "recorrido",
+        "union"
+      ],
+      "medios": 3,
+      "ts": 1790536322.273775
+    },
+    {
+      "firma": [
+        "anos",
+        "aprobacion",
+        "confianza",
+        "cuatro",
+        "paso",
+        "policia",
+        "ultimos"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2743115
+    },
+    {
+      "firma": [
+        "anos",
+        "contenido",
+        "contra",
+        "creador",
+        "delito",
+        "denuncia",
+        "dijo",
+        "esto",
+        "menor",
+        "presunto",
+        "responde",
+        "stiven"
+      ],
+      "medios": 3,
+      "ts": 1790536322.2745714
+    },
+    {
+      "firma": [
+        "2027",
+        "alcanza",
+        "construccion",
+        "hospital",
+        "junio",
+        "nuevo",
+        "operar",
+        "preve",
+        "samborondon",
+        "santiago"
+      ],
+      "medios": 2,
+      "ts": 1790536322.274921
+    },
+    {
+      "firma": [
+        "cuatro",
+        "despliegue",
+        "durante",
+        "mantendra",
+        "operativo",
+        "permanente",
+        "policia",
+        "provincias",
+        "queda",
+        "toque"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2752144
+    },
+    {
+      "firma": [
+        "apertura",
+        "ceibos",
+        "cumplir",
+        "horario",
+        "moradores",
+        "piden",
+        "reja",
+        "seguridad"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2755363
+    },
+    {
+      "firma": [
+        "2026",
+        "aspirantes",
+        "cuales",
+        "ecuador",
+        "ejercito",
+        "fisicas",
+        "medicas",
+        "pruebas",
+        "reclutamiento"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2758029
+    },
+    {
+      "firma": [
+        "cada",
+        "guayaquil",
+        "irse",
+        "jovenes",
+        "pais",
+        "piensan"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2760737
+    },
+    {
+      "firma": [
+        "abrir",
+        "guayarte",
+        "kennedy",
+        "obras",
+        "sigue",
+        "termina",
+        "zona"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2763307
+    },
+    {
+      "firma": [
+        "ahora",
+        "casi",
+        "deja",
+        "detenidos",
+        "ecuador",
+        "hasta",
+        "queda",
+        "toque"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2765899
+    },
+    {
+      "firma": [
+        "bolanos",
+        "fechas",
+        "precios",
+        "presenta",
+        "roberto",
+        "samborondon"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2768557
+    },
+    {
+      "firma": [
+        "burger",
+        "llenaron",
+        "manabi",
+        "personas",
+        "portoviejo",
+        "show"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2771077
+    },
+    {
+      "firma": [
+        "afectado",
+        "costar",
+        "cuanto",
+        "guayaquil",
+        "lluvias",
+        "puede",
+        "reparar",
+        "vehiculo"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2773578
+    },
+    {
+      "firma": [
+        "altura",
+        "chimborazo",
+        "extraviado",
+        "metros",
+        "nevado",
+        "rescate",
+        "turista"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2776659
+    },
+    {
+      "firma": [
+        "causas",
+        "dispara",
+        "ecuador",
+        "escasez",
+        "huevo",
+        "precio",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2779264
+    },
+    {
+      "firma": [
+        "bandera",
+        "cuenca",
+        "estudiantes",
+        "juran",
+        "lealtad",
+        "nacional"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2781882
+    },
+    {
+      "firma": [
+        "alista",
+        "amenaza",
+        "ante",
+        "gobierno",
+        "nacional",
+        "nino",
+        "personas",
+        "refugios"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2784472
+    },
+    {
+      "firma": [
+        "apagones",
+        "consumo",
+        "descarta",
+        "espectaculos",
+        "gobierno",
+        "hogares",
+        "pide",
+        "reducir"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2787213
+    },
+    {
+      "firma": [
+        "coronel",
+        "dice",
+        "guayaquil",
+        "palmeras",
+        "siembran",
+        "tatiana"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2790272
+    },
+    {
+      "firma": [
+        "desorientaron",
+        "emergencia",
+        "excursion",
+        "fueron",
+        "personas",
+        "quito",
+        "rescatadas",
+        "termina"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2793121
+    },
+    {
+      "firma": [
+        "agravan",
+        "ecuador",
+        "efectos",
+        "factores",
+        "influye",
+        "inundaciones",
+        "nino"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2795875
+    },
+    {
+      "firma": [
+        "acumulacion",
+        "agua",
+        "guayaquil",
+        "lluvias",
+        "puntos",
+        "registra"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2798564
+    },
+    {
+      "firma": [
+        "accidente",
+        "costa",
+        "dejo",
+        "fallecido",
+        "heridos",
+        "nuevo",
+        "ocurrio"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2801213
+    },
+    {
+      "firma": [
+        "busca",
+        "deterioro",
+        "evitar",
+        "golpe",
+        "loja",
+        "otro",
+        "turismo",
+        "vias"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2803938
+    },
+    {
+      "firma": [
+        "azogues",
+        "fotografia",
+        "intentar",
+        "muere",
+        "mujer",
+        "tomarse"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2806711
+    },
+    {
+      "firma": [
+        "alias",
+        "arma",
+        "comadre",
+        "decomisan",
+        "detienen",
+        "esmeraldas",
+        "fuego",
+        "operativo",
+        "rioverde"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2809308
+    },
+    {
+      "firma": [
+        "carcel",
+        "decomisa",
+        "ibarra",
+        "interviene",
+        "objetos",
+        "policia",
+        "prohibidos"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2812154
+    },
+    {
+      "firma": [
+        "diferencias",
+        "ecuador",
+        "elector",
+        "entre",
+        "mesa",
+        "miembros",
+        "multa",
+        "sancion",
+        "votar"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2814894
+    },
+    {
+      "firma": [
+        "alternas",
+        "cierres",
+        "desvios",
+        "empiezan",
+        "este",
+        "norte",
+        "nuevos",
+        "panamericana",
+        "quito",
+        "rutas",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2817836
+    },
+    {
+      "firma": [
+        "alojamientos",
+        "ante",
+        "ecuador",
+        "nino",
+        "personas",
+        "prepara"
+      ],
+      "medios": 5,
+      "ts": 1790630909.0187962,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "basura",
+        "colocan",
+        "guayaquil",
+        "horario",
+        "letreros",
+        "recoleccion",
+        "recordar"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2823646
+    },
+    {
+      "firma": [
+        "acuartelamiento",
+        "cupo",
+        "detras",
+        "guayaquil",
+        "historias",
+        "laboral",
+        "oportunidad",
+        "servir"
+      ],
+      "medios": 2,
+      "ts": 1790536322.282644
+    },
+    {
+      "firma": [
+        "alemania",
+        "alerta",
+        "antidrogas",
+        "cargamento",
+        "cocaina",
+        "desde",
+        "destapo",
+        "guayaquil",
+        "perro",
+        "rumbo"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2829335
+    },
+    {
+      "firma": [
+        "cierres",
+        "concierto",
+        "horarios",
+        "prince",
+        "quito",
+        "romeo",
+        "royce",
+        "santos",
+        "transporte",
+        "viales"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2832341
+    },
+    {
+      "firma": [
+        "centro",
+        "espacio",
+        "guayaquil",
+        "perdio",
+        "pleno",
+        "publico"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2835917
+    },
+    {
+      "firma": [
+        "acuerdo",
+        "aprobacion",
+        "asamblea",
+        "constitucional",
+        "corte",
+        "dictamina",
+        "inmunidades",
+        "interpol",
+        "privilegios",
+        "requiere"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2838712
+    },
+    {
+      "firma": [
+        "camaras",
+        "captan",
+        "centro",
+        "dentro",
+        "guayaquil",
+        "hotel",
+        "intento",
+        "sicariato"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2841833
+    },
+    {
+      "firma": [
+        "ecuador",
+        "luna",
+        "maiz",
+        "pasara",
+        "recibira",
+        "vera"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2844882
+    },
+    {
+      "firma": [
+        "acerca",
+        "cinco",
+        "deben",
+        "empresas",
+        "estos",
+        "nino",
+        "revisar",
+        "riesgos"
+      ],
+      "medios": 2,
+      "ts": 1790536322.284786
+    },
+    {
+      "firma": [
+        "cerca",
+        "condicion",
+        "costa",
+        "grave",
+        "heridos",
+        "trabajadores",
+        "volco"
+      ],
+      "medios": 2,
+      "ts": 1790536322.28508
+    },
+    {
+      "firma": [
+        "afectaria",
+        "alza",
+        "discapacidad",
+        "pasaje",
+        "personas",
+        "quito"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2854345
+    },
+    {
+      "firma": [
+        "electrica",
+        "guayaquil",
+        "novedades",
+        "reportan",
+        "sectores",
+        "tormenta"
+      ],
+      "medios": 2,
+      "ts": 1790536322.2857199
+    },
+    {
+      "firma": [
+        "aprehendidas",
+        "cuatro",
+        "durante",
+        "fueron",
+        "manta",
+        "militar",
+        "operativo",
+        "personas"
+      ],
+      "medios": 2,
+      "ts": 1790536322.286007
+    },
+    {
+      "firma": [
+        "aborto",
+        "despenalizacion",
+        "ecuador",
+        "movilizan",
+        "organizaciones",
+        "sociales"
+      ],
+      "medios": 3,
+      "ts": 1790537096.196398
+    },
+    {
+      "firma": [
+        "antorchas",
+        "bomberos",
+        "desfile",
+        "guayaquil",
+        "memoria",
+        "servicio",
+        "tradicion",
+        "unieron",
+        "vocacion"
+      ],
+      "medios": 9,
+      "ts": 1790626180.7231348
+    },
+    {
+      "firma": [
+        "alias",
+        "dijo",
+        "esposa",
+        "estaban",
+        "esto",
+        "fito",
+        "hija",
+        "john",
+        "reimberg",
+        "santander"
+      ],
+      "medios": 8,
+      "ts": 1790626181.0137572
+    },
+    {
+      "firma": [
+        "atendidas",
+        "durante",
+        "emergencias",
+        "fueron",
+        "inicio",
+        "lluvias",
+        "semana"
+      ],
+      "medios": 6,
+      "ts": 1790626181.3056686
+    },
+    {
+      "firma": [
+        "aviacion",
+        "beneficios",
+        "civil",
+        "ecuador",
+        "estos",
+        "nueva",
+        "plantea",
+        "regulaciones",
+        "usuarios"
+      ],
+      "medios": 6,
+      "ts": 1790626181.599677
+    },
+    {
+      "firma": [
+        "acumulacion",
+        "agua",
+        "alta",
+        "causa",
+        "guayaquil",
+        "marea"
+      ],
+      "medios": 6,
+      "ts": 1790626181.6001682
+    },
+    {
+      "firma": [
+        "alerta",
+        "crisis",
+        "deja",
+        "desplazados",
+        "humanitaria",
+        "huti",
+        "menos",
+        "muertos",
+        "ofensiva",
+        "yemen"
+      ],
+      "medios": 6,
+      "ts": 1790626181.6005986
+    },
+    {
+      "firma": [
+        "acumulados",
+        "estos",
+        "fueron",
+        "horas",
+        "lluvia",
+        "mayores",
+        "milimetros",
+        "samborondon",
+        "sectores",
+        "supero"
+      ],
+      "medios": 5,
+      "ts": 1790626181.6010578
+    },
+    {
+      "firma": [
+        "aparece",
+        "carbo",
+        "enorme",
+        "intensas",
+        "lluvias",
+        "pedro",
+        "serpiente",
+        "techos"
+      ],
+      "medios": 5,
+      "ts": 1790626181.601527
+    },
+    {
+      "firma": [
+        "bernardo",
+        "cordovez",
+        "daniel",
+        "desarrollo",
+        "economico",
+        "ministro",
+        "noboa",
+        "nombra",
+        "nuevo"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6019678
+    },
+    {
+      "firma": [
+        "camara",
+        "capto",
+        "casa",
+        "duran",
+        "iess",
+        "nutricionista",
+        "salir",
+        "secuestro"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6023817
+    },
+    {
+      "firma": [
+        "armas",
+        "droga",
+        "durante",
+        "incautan",
+        "operativo",
+        "queda",
+        "sociovivienda",
+        "toque",
+        "zona"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6027217
+    },
+    {
+      "firma": [
+        "afectadas",
+        "desbordados",
+        "ecuador",
+        "emergencias",
+        "estas",
+        "provincias",
+        "provocan",
+        "rios",
+        "siete",
+        "tres",
+        "zonas"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6030364
+    },
+    {
+      "firma": [
+        "alojamientos",
+        "ante",
+        "emergencias",
+        "guayaquil",
+        "identifica",
+        "nino",
+        "posibles",
+        "temporales"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6034827
+    },
+    {
+      "firma": [
+        "adultos",
+        "aereos",
+        "descuento",
+        "discapacidad",
+        "ecuador",
+        "esta",
+        "mayores",
+        "pasajes",
+        "personas",
+        "rebaja",
+        "tendran"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6039214
+    },
+    {
+      "firma": [
+        "baleada",
+        "bancaria",
+        "centro",
+        "despues",
+        "entidad",
+        "guayaquil",
+        "mujer",
+        "retirar"
+      ],
+      "medios": 6,
+      "ts": 1790637107.734664,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "aprehenden",
+        "metrovia",
+        "robos",
+        "sospechoso",
+        "varios"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6047947
+    },
+    {
+      "firma": [
+        "concierto",
+        "ecuador",
+        "gratis",
+        "hora",
+        "madrid",
+        "octubre",
+        "shakira",
+        "transmitira",
+        "verlo"
+      ],
+      "medios": 4,
+      "ts": 1790626181.6051953
+    },
+    {
+      "firma": [
+        "agentes",
+        "anthropic",
+        "control",
+        "incidentes",
+        "investigan",
+        "miles",
+        "openai",
+        "salen"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6056306
+    },
+    {
+      "firma": [
+        "detiene",
+        "droga",
+        "durante",
+        "hombre",
+        "manta",
+        "murcielago",
+        "operativo",
+        "policia",
+        "sector"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6060715
+    },
+    {
+      "firma": [
+        "asesinan",
+        "chiquita",
+        "cooperativa",
+        "esmeraldas",
+        "guayaquil",
+        "lineal",
+        "motociclista",
+        "parque"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6065102
+    },
+    {
+      "firma": [
+        "buscan",
+        "contra",
+        "cooperacion",
+        "ecuador",
+        "frontera",
+        "ilegal",
+        "mineria",
+        "peru",
+        "reforzar"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6069431
+    },
+    {
+      "firma": [
+        "anos",
+        "danos",
+        "edificios",
+        "guayaquil",
+        "lluvias",
+        "plena",
+        "presentan",
+        "temporada"
+      ],
+      "medios": 3,
+      "ts": 1790626181.607403
+    },
+    {
+      "firma": [
+        "asfixian",
+        "forestales",
+        "humo",
+        "incendios",
+        "indonesia",
+        "nube",
+        "provocan",
+        "region"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6078491
+    },
+    {
+      "firma": [
+        "2026",
+        "afecta",
+        "casos",
+        "durante",
+        "ecuador",
+        "menores",
+        "mitad",
+        "tosferina"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6083531
+    },
+    {
+      "firma": [
+        "acercaron",
+        "antiguas",
+        "cultura",
+        "india",
+        "musica",
+        "parque",
+        "sabores",
+        "tradiciones",
+        "urdesa",
+        "visitantes"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6087272
+    },
+    {
+      "firma": [
+        "accidente",
+        "alvia",
+        "carmen",
+        "chone",
+        "murio",
+        "porfirio",
+        "transito"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6090732
+    },
+    {
+      "firma": [
+        "arboles",
+        "avenida",
+        "nuevas",
+        "prepara",
+        "principal",
+        "samborondon",
+        "sumara",
+        "verdes",
+        "zonas"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6095088
+    },
+    {
+      "firma": [
+        "historica",
+        "jornada",
+        "lluvias",
+        "registra",
+        "samborondon"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6099913
+    },
+    {
+      "firma": [
+        "borbua",
+        "cuadro",
+        "historico",
+        "regreso",
+        "renan"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6104515
+    },
+    {
+      "firma": [
+        "centro",
+        "convirtio",
+        "cultura",
+        "guayaquil",
+        "historia",
+        "mundial",
+        "paseo",
+        "ruta",
+        "turismo"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6108255
+    },
+    {
+      "firma": [
+        "conductor",
+        "juez",
+        "martinich",
+        "monica",
+        "muerte",
+        "ordena",
+        "preventiva",
+        "prision",
+        "senalado"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6111453
+    },
+    {
+      "firma": [
+        "andrade",
+        "anos",
+        "cargo",
+        "carolina",
+        "quito",
+        "renuncia",
+        "secretaria",
+        "seguridad",
+        "tres"
+      ],
+      "medios": 3,
+      "ts": 1790626181.6114538
+    },
+    {
+      "firma": [
+        "cirujano",
+        "denuncian",
+        "fiebre",
+        "guayaquil",
+        "implantes",
+        "infecciones",
+        "mismo",
+        "pacientes",
+        "perdida",
+        "tres"
+      ],
+      "medios": 2,
+      "ts": 1790626181.611755
+    },
+    {
+      "firma": [
+        "boletas",
+        "captura",
+        "clandestina",
+        "clinica",
+        "encuentran",
+        "guayaquil",
+        "intervienen",
+        "personas",
+        "supuesta"
+      ],
+      "medios": 2,
+      "ts": 1790626181.612163
+    },
+    {
+      "firma": [
+        "despide",
+        "economicos",
+        "gobierno",
+        "hitos",
+        "moya",
+        "resaltando",
+        "sariha"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6126173
+    },
+    {
+      "firma": [
+        "abren",
+        "canales",
+        "dengue",
+        "desborde",
+        "guayaquil",
+        "puerta"
+      ],
+      "medios": 2,
+      "ts": 1790626181.613038
+    },
+    {
+      "firma": [
+        "amistoso",
+        "emelec",
+        "final",
+        "guayaquil",
+        "peru",
+        "piensa",
+        "queda",
+        "recta",
+        "temporada",
+        "viajara"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6134615
+    },
+    {
+      "firma": [
+        "camaras",
+        "casas",
+        "encontraron",
+        "policiales",
+        "socio",
+        "uniformes",
+        "vivienda"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6139207
+    },
+    {
+      "firma": [
+        "casas",
+        "citas",
+        "clandestinas",
+        "clausuradas",
+        "durante",
+        "fueron",
+        "operativo",
+        "quito"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6143556
+    },
+    {
+      "firma": [
+        "carcel",
+        "esto",
+        "fuga",
+        "presos",
+        "sabe",
+        "turi"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6148007
+    },
+    {
+      "firma": [
+        "atrincherado",
+        "bloque",
+        "camaras",
+        "droga",
+        "estaba",
+        "guayaquil",
+        "intervenido",
+        "juguetes",
+        "militares",
+        "prendas",
+        "sector",
+        "seguridad",
+        "vallas"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6152277
+    },
+    {
+      "firma": [
+        "aeropuerto",
+        "este",
+        "lunes",
+        "operaciones",
+        "quito",
+        "septiembre",
+        "suspende",
+        "temporalmente"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6157098
+    },
+    {
+      "firma": [
+        "alerta",
+        "centro",
+        "clandestino",
+        "clausura",
+        "guayaquil",
+        "llevo",
+        "rehabilitacion",
+        "secuestro"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6161737
+    },
+    {
+      "firma": [
+        "ahumada",
+        "ahumados",
+        "buseta",
+        "carne",
+        "chanchito",
+        "guayaquil",
+        "nacio"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6166282
+    },
+    {
+      "firma": [
+        "acerco",
+        "centro",
+        "china",
+        "comercio",
+        "cultura",
+        "dinamizo",
+        "festival",
+        "guayaquil",
+        "luna"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6170702
+    },
+    {
+      "firma": [
+        "costa",
+        "daule",
+        "estos",
+        "guayaquil",
+        "reportados",
+        "siniestros"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6175406
+    },
+    {
+      "firma": [
+        "2026",
+        "calendario",
+        "clases",
+        "dias",
+        "diciembre",
+        "octubre",
+        "puentes",
+        "quedan"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6179872
+    },
+    {
+      "firma": [
+        "asaltante",
+        "capturan",
+        "esto",
+        "guayaquil",
+        "metrovia",
+        "presunto",
+        "sabe"
+      ],
+      "medios": 5,
+      "ts": 1790642776.7297661,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "anos",
+        "creacion",
+        "cumple",
+        "entre",
+        "inseguridad",
+        "mantenimiento",
+        "nueve",
+        "parque",
+        "portoviejo",
+        "reclamos",
+        "rotonda"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6189024
+    },
+    {
+      "firma": [
+        "acercan",
+        "cacao",
+        "creatividad",
+        "historia",
+        "juego",
+        "ninos"
+      ],
+      "medios": 2,
+      "ts": 1790626181.6193879
+    },
+    {
+      "firma": [
+        "abrio",
+        "cartelera",
+        "conforman",
+        "directores",
+        "edoc",
+        "estos",
+        "festival",
+        "guayaquil",
+        "peliculas"
+      ],
+      "medios": 2,
+      "ts": 1790626289.1178257
+    },
+    {
+      "firma": [
+        "advierte",
+        "ecuador",
+        "fuertes",
+        "hasta",
+        "inamhi",
+        "lluvias",
+        "octubre",
+        "provincias"
+      ],
+      "medios": 2,
+      "ts": 1790626397.915318
+    },
+    {
+      "firma": [
+        "dejo",
+        "fallecido",
+        "hombres",
+        "oriente",
+        "prision",
+        "quito",
+        "robo",
+        "ruminahui"
+      ],
+      "medios": 3,
+      "ts": 1790626528.9716885
+    },
+    {
+      "firma": [
+        "camara",
+        "discurso",
+        "industrias",
+        "polemico",
+        "presidenta",
+        "renuncia"
+      ],
+      "medios": 3,
+      "ts": 1790626639.9977293
+    },
+    {
+      "firma": [
+        "alias",
+        "charlie",
+        "habria",
+        "ibarra",
+        "sepultado",
+        "sido"
+      ],
+      "medios": 2,
+      "ts": 1790626971.6058176
+    },
+    {
+      "firma": [
+        "comprobar",
+        "estos",
+        "ganadores",
+        "lunes",
+        "numeros",
+        "primitiva",
+        "septiembre"
+      ],
+      "medios": 7,
+      "ts": 1790627817.038066
+    },
+    {
+      "firma": [
+        "construccion",
+        "juan",
+        "limonal",
+        "lineal",
+        "pablo",
+        "parque",
+        "retoma",
+        "solucion",
+        "tecnica"
+      ],
+      "medios": 4,
+      "ts": 1790628038.6911697
+    },
+    {
+      "firma": [
+        "anularon",
+        "condenas",
+        "dictadura",
+        "durante",
+        "fiscal",
+        "juez",
+        "militar",
+        "parcialmente",
+        "secuestros"
+      ],
+      "medios": 3,
+      "ts": 1790628834.0016553
+    },
+    {
+      "firma": [
+        "alerta",
+        "cantones",
+        "guayas",
+        "lluvias",
+        "nino",
+        "ponen",
+        "siete"
+      ],
+      "medios": 4,
+      "ts": 1790629164.3032298
+    },
+    {
+      "firma": [
+        "alma",
+        "alvaro",
+        "bitacoras",
+        "guayaquil",
+        "latinoamericana",
+        "lleva",
+        "marquez",
+        "musica",
+        "poesia"
+      ],
+      "medios": 2,
+      "ts": 1790629385.1848967
+    },
+    {
+      "firma": [
+        "adultos",
+        "comercios",
+        "continuan",
+        "descuentos",
+        "incumpliendo",
+        "mayores",
+        "norma",
+        "otorga",
+        "panamenos"
+      ],
+      "medios": 4,
+      "ts": 1790629959.1149068
+    },
+    {
+      "firma": [
+        "escandalos",
+        "estados",
+        "euclides",
+        "martha",
+        "peralta",
+        "retiro",
+        "rodean",
+        "torres",
+        "unidos",
+        "visas"
+      ],
+      "medios": 4,
+      "ts": 1790630127.669269
+    },
+    {
+      "firma": [
+        "fuertes",
+        "lluvias",
+        "norte",
+        "quito",
+        "sectores",
+        "sienten",
+        "tormentas"
+      ],
+      "medios": 2,
+      "ts": 1790630127.947241
+    },
+    {
+      "firma": [
+        "alias",
+        "captura",
+        "colombia",
+        "desde",
+        "esposa",
+        "fito",
+        "guayaquil",
+        "hija",
+        "informe"
+      ],
+      "medios": 11,
+      "ts": 1790631575.0960138,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "bernardo",
+        "cinco",
+        "cordovez",
+        "desarrollo",
+        "economico",
+        "enfrenta",
+        "ministerio",
+        "retos"
+      ],
+      "medios": 5,
+      "ts": 1790631022.2017722
+    },
+    {
+      "firma": [
+        "2026",
+        "chancho",
+        "espectaculos",
+        "fest",
+        "gastronomicas",
+        "llevara",
+        "parque",
+        "propuestas",
+        "samanes"
+      ],
+      "medios": 3,
+      "ts": 1790631242.8371286
+    },
+    {
+      "firma": [
+        "cotizaciones",
+        "cuanto",
+        "dolar",
+        "este",
+        "lunes",
+        "minuto",
+        "operaron",
+        "septiembre",
+        "todas"
+      ],
+      "medios": 8,
+      "ts": 1790632377.6998782
+    },
+    {
+      "firma": [
+        "alerta",
+        "alta",
+        "criticas",
+        "cuales",
+        "guayaquil",
+        "horas",
+        "inundacion",
+        "marea",
+        "mayor",
+        "riesgo",
+        "zonas"
+      ],
+      "medios": 6,
+      "ts": 1790632377.9937017
+    },
+    {
+      "firma": [
+        "anos",
+        "canal",
+        "deja",
+        "ellos",
+        "entre",
+        "estampida",
+        "mancha",
+        "muertos",
+        "nino",
+        "patera"
+      ],
+      "medios": 6,
+      "ts": 1790632378.2838767
+    },
+    {
+      "firma": [
+        "armados",
+        "asaltos",
+        "atrapan",
+        "buses",
+        "ciudadanos",
+        "cometer",
+        "guayaquil",
+        "metrovia",
+        "solo",
+        "sospechoso",
+        "tres"
+      ],
+      "medios": 4,
+      "ts": 1790632378.5621457
+    },
+    {
+      "firma": [
+        "cuatro",
+        "dijo",
+        "esto",
+        "extendera",
+        "gobierno",
+        "ministra",
+        "provincias",
+        "queda",
+        "toque"
+      ],
+      "medios": 5,
+      "ts": 1790651084.6195056,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "arboles",
+        "caidos",
+        "danos",
+        "dejaron",
+        "guayaquil",
+        "lluvias",
+        "semana",
+        "sumideros"
+      ],
+      "medios": 3,
+      "ts": 1790632378.5633073
+    },
+    {
+      "firma": [
+        "casa",
+        "construccion",
+        "cuenca",
+        "estudiantil",
+        "formaliza",
+        "gobierno",
+        "nacional",
+        "residencia",
+        "universidad"
+      ],
+      "medios": 2,
+      "ts": 1790632378.5637946
+    },
+    {
+      "firma": [
+        "agua",
+        "costa",
+        "hidroelectricas",
+        "lluvias",
+        "menos",
+        "ocurrir",
+        "puede"
+      ],
+      "medios": 2,
+      "ts": 1790632378.5643067
+    },
+    {
+      "firma": [
+        "aeropuerto",
+        "cocaina",
+        "detenida",
+        "espanola",
+        "guayaquil",
+        "kilos",
+        "pasajera"
+      ],
+      "medios": 2,
+      "ts": 1790632378.5647793
+    },
+    {
+      "firma": [
+        "fueron",
+        "guayaquil",
+        "hallados",
+        "militares",
+        "policias",
+        "similares",
+        "socio",
+        "uniformes",
+        "vivienda"
+      ],
+      "medios": 2,
+      "ts": 1790632378.5652514
+    },
+    {
+      "firma": [
+        "accion",
+        "acumulacion",
+        "afectado",
+        "desechos",
+        "espacio",
+        "julio",
+        "municipal",
+        "publico",
+        "recupera"
+      ],
+      "medios": 2,
+      "ts": 1790632378.565609
+    },
+    {
+      "firma": [
+        "alcanza",
+        "avance",
+        "candidaturas",
+        "electoral",
+        "junta",
+        "manabi"
+      ],
+      "medios": 2,
+      "ts": 1790632378.565941
+    },
+    {
+      "firma": [
+        "2026",
+        "apoyo",
+        "campana",
+        "daniel",
+        "desgaste",
+        "impacto",
+        "noboa",
+        "puede",
+        "tener"
+      ],
+      "medios": 2,
+      "ts": 1790632462.133568
+    },
+    {
+      "firma": [
+        "aeropuertos",
+        "aviacion",
+        "cambia",
+        "civil",
+        "cuenca",
+        "guayaquil",
+        "quito"
+      ],
+      "medios": 2,
+      "ts": 1790633370.395632
+    },
+    {
+      "firma": [
+        "antirrabica",
+        "dosis",
+        "mascotas",
+        "millones",
+        "pais",
+        "recibiran",
+        "vacunacion"
+      ],
+      "medios": 2,
+      "ts": 1790633619.9712737
+    },
+    {
+      "firma": [
+        "cangrejo",
+        "dedicado",
+        "festival",
+        "gastronomico",
+        "samborondon",
+        "sede",
+        "sera"
+      ],
+      "medios": 2,
+      "ts": 1790633702.7481647
+    },
+    {
+      "firma": [
+        "drones",
+        "establece",
+        "hasta",
+        "multas",
+        "nueva"
+      ],
+      "medios": 2,
+      "ts": 1790633870.0971246
+    },
+    {
+      "firma": [
+        "horarios",
+        "mapa",
+        "martes",
+        "multas",
+        "pico",
+        "placa",
+        "quito",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790635593.0263913
+    },
+    {
+      "firma": [
+        "martes",
+        "periodicos",
+        "principales",
+        "septiembre",
+        "titulares"
+      ],
+      "medios": 2,
+      "ts": 1790635676.0116124
+    },
+    {
+      "firma": [
+        "asumira",
+        "cynthia",
+        "directorio",
+        "gellibert",
+        "iess",
+        "presidencia"
+      ],
+      "medios": 2,
+      "ts": 1790635841.2581656
+    },
+    {
+      "firma": [
+        "acumulacion",
+        "agua",
+        "golpean",
+        "lluvias",
+        "registraron",
+        "samborondon",
+        "zonas"
+      ],
+      "medios": 2,
+      "ts": 1790636088.8440402
+    },
+    {
+      "firma": [
+        "anos",
+        "armado",
+        "ataque",
+        "comerciante",
+        "daule",
+        "guayaquil",
+        "matan"
+      ],
+      "medios": 2,
+      "ts": 1790636261.1916397
+    },
+    {
+      "firma": [
+        "carcel",
+        "delitos",
+        "fugados",
+        "libertad",
+        "privados",
+        "prontuario",
+        "turi"
+      ],
+      "medios": 3,
+      "ts": 1790637524.9604867
+    },
+    {
+      "firma": [
+        "bandas",
+        "control",
+        "guayaquil",
+        "operativo",
+        "policial",
+        "retoman",
+        "socio",
+        "vivienda"
+      ],
+      "medios": 2,
+      "ts": 1790638634.2039943
+    },
+    {
+      "firma": [
+        "atraco",
+        "balean",
+        "centro",
+        "dolares",
+        "guayaquil",
+        "mujer",
+        "robarle",
+        "sacapintas"
+      ],
+      "medios": 6,
+      "ts": 1790640405.48675
+    },
+    {
+      "firma": [
+        "armado",
+        "ataque",
+        "comerciante",
+        "daule",
+        "disparos",
+        "muere",
+        "recibir",
+        "varios"
+      ],
+      "medios": 3,
+      "ts": 1790640405.7790954
+    },
+    {
+      "firma": [
+        "asume",
+        "desarrollo",
+        "diana",
+        "humano",
+        "ministerio",
+        "ramirez",
+        "trabajo",
+        "villacis"
+      ],
+      "medios": 3,
+      "ts": 1790640406.0780444
+    },
+    {
+      "firma": [
+        "acuerdo",
+        "anuncia",
+        "atencion",
+        "dializadora",
+        "ecuador",
+        "gobierno",
+        "mantener",
+        "pacientes",
+        "renales"
+      ],
+      "medios": 2,
+      "ts": 1790640406.383844
+    },
+    {
+      "firma": [
+        "cambiar",
+        "control",
+        "ecuador",
+        "estas",
+        "exportaciones",
+        "medidas",
+        "mineras",
+        "nuevas",
+        "vuelve"
+      ],
+      "medios": 2,
+      "ts": 1790640406.3846674
+    },
+    {
+      "firma": [
+        "autismo",
+        "autonomia",
+        "educacion",
+        "guayaquil",
+        "inclusiva",
+        "lograr",
+        "mayor",
+        "ninos",
+        "reto"
+      ],
+      "medios": 2,
+      "ts": 1790640406.385022
+    },
+    {
+      "firma": [
+        "ajusta",
+        "calderon",
+        "hacia",
+        "metro",
+        "mira",
+        "ofelia",
+        "quito",
+        "ruta"
+      ],
+      "medios": 2,
+      "ts": 1790640406.3853714
+    },
+    {
+      "firma": [
+        "cambios",
+        "gabinete",
+        "gobierno",
+        "ministerial",
+        "oficializa",
+        "tres"
+      ],
+      "medios": 2,
+      "ts": 1790641182.5152202
+    },
+    {
+      "firma": [
+        "daniel",
+        "diana",
+        "ecuador",
+        "ministra",
+        "noboa",
+        "nombra",
+        "nueva",
+        "ramirez",
+        "trabajo"
+      ],
+      "medios": 4,
+      "ts": 1790642235.459869
+    },
+    {
+      "firma": [
+        "donde",
+        "ecuador",
+        "fecha",
+        "hora",
+        "japon",
+        "partido"
+      ],
+      "medios": 2,
+      "ts": 1790643476.7304704
+    },
+    {
+      "firma": [
+        "breve",
+        "cynthia",
+        "ecuador",
+        "gellibert",
+        "ministra",
+        "nueva",
+        "periodo",
+        "termina",
+        "trabajo"
+      ],
+      "medios": 4,
+      "ts": 1790643780.1606145
+    },
+    {
+      "firma": [
+        "bajo",
+        "duran",
+        "esto",
+        "intervencion",
+        "medida",
+        "motivo",
+        "terminal",
+        "terrestre"
+      ],
+      "medios": 5,
+      "ts": 1790644454.2021186
+    },
+    {
+      "firma": [
+        "baldor",
+        "bermeo",
+        "contra",
+        "cuatro",
+        "otras",
+        "personas",
+        "preventiva",
+        "prision",
+        "ratifican"
+      ],
+      "medios": 2,
+      "ts": 1790644454.493533
+    },
+    {
+      "firma": [
+        "donde",
+        "estaban",
+        "fuego",
+        "guayaquil",
+        "habitacion",
+        "incendio",
+        "inicio",
+        "ninos",
+        "vivienda"
+      ],
+      "medios": 2,
+      "ts": 1790644824.9382577
+    },
+    {
+      "firma": [
+        "alta",
+        "domingo",
+        "este",
+        "guayaquil",
+        "llegara",
+        "marea",
+        "metros",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790645028.596977
+    },
+    {
+      "firma": [
+        "comunicacion",
+        "ecuador",
+        "embajador",
+        "exsecretario",
+        "nombra",
+        "peru",
+        "presidente"
+      ],
+      "medios": 2,
+      "ts": 1790645852.0661225
+    },
+    {
+      "firma": [
+        "banda",
+        "convirtio",
+        "cultural",
+        "encuentro",
+        "este",
+        "mercado",
+        "municipal",
+        "rutina"
+      ],
+      "medios": 2,
+      "ts": 1790647343.0595875
+    },
+    {
+      "firma": [
+        "cambios",
+        "gabinete",
+        "gobierno",
+        "noboa",
+        "nombramientos",
+        "nuevos",
+        "queda"
+      ],
+      "medios": 3,
+      "ts": 1790647538.0913363
+    },
+    {
+      "firma": [
+        "ecuador",
+        "fenomeno",
+        "hablarles",
+        "nada",
+        "nino",
+        "ninos",
+        "pasara",
+        "prometas"
+      ],
+      "medios": 2,
+      "ts": 1790648151.0869663
+    },
+    {
+      "firma": [
+        "clima",
+        "electricas",
+        "estara",
+        "este",
+        "guayaquil",
+        "lluvias",
+        "lunes",
+        "septiembre",
+        "tendra",
+        "tormentas"
+      ],
+      "medios": 5,
+      "ts": 1790649434.48078
+    },
+    {
+      "firma": [
+        "abatido",
+        "alias",
+        "aromo",
+        "charlie",
+        "identifican",
+        "quien",
+        "tercer"
+      ],
+      "medios": 2,
+      "ts": 1790649988.959614
+    },
+    {
+      "firma": [
+        "basura",
+        "casos",
+        "diarios",
+        "disposicion",
+        "guayaquil",
+        "mala",
+        "registra"
+      ],
+      "medios": 2,
+      "ts": 1790650423.0930758
+    },
+    {
+      "firma": [
+        "diana",
+        "estos",
+        "laborales",
+        "llega",
+        "ministerio",
+        "ramirez",
+        "recibe",
+        "temas",
+        "trabajo"
+      ],
+      "medios": 4,
+      "ts": 1790650809.892792
+    },
+    {
+      "firma": [
+        "abandono",
+        "cadaveres",
+        "capturan",
+        "carnicero",
+        "desmembrados",
+        "guatemala",
+        "presunto"
+      ],
+      "medios": 6,
+      "ts": 1790653150.0870314
+    },
+    {
+      "firma": [
+        "afectadas",
+        "alfaro",
+        "eloy",
+        "estan",
+        "fenomeno",
+        "inundaciones",
+        "nino",
+        "personas",
+        "unas"
+      ],
+      "medios": 8,
+      "ts": 1790704200.8360484
+    },
+    {
+      "firma": [
+        "acababa",
+        "atacada",
+        "cuando",
+        "dentro",
+        "escolar",
+        "expreso",
+        "mujer",
+        "salir",
+        "trabajar"
+      ],
+      "medios": 6,
+      "ts": 1790704201.1284015
+    },
+    {
+      "firma": [
+        "camioneta",
+        "esto",
+        "garzota",
+        "municiones",
+        "quien",
+        "sabe",
+        "tenia"
+      ],
+      "medios": 6,
+      "ts": 1790704201.4231958
+    },
+    {
+      "firma": [
+        "agua",
+        "guayaquil",
+        "horas",
+        "interagua",
+        "norte",
+        "servicio",
+        "suspendera"
+      ],
+      "medios": 8,
+      "ts": 1790725874.2232296,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "cuando",
+        "ecuador",
+        "guayaquil",
+        "hasta",
+        "otras",
+        "provincias",
+        "queda",
+        "toque"
+      ],
+      "medios": 5,
+      "ts": 1790704201.9221036
+    },
+    {
+      "firma": [
+        "adolescentes",
+        "aprehendidos",
+        "durante",
+        "fueron",
+        "operativo",
+        "pedernales",
+        "tres"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9225929
+    },
+    {
+      "firma": [
+        "cambia",
+        "daniel",
+        "ecuador",
+        "gabinete",
+        "ministerios",
+        "noboa",
+        "quedan",
+        "reglas"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9229405
+    },
+    {
+      "firma": [
+        "aplica",
+        "daniel",
+        "durante",
+        "feriado",
+        "noboa",
+        "octubre",
+        "quienes",
+        "reduce"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9233274
+    },
+    {
+      "firma": [
+        "alerta",
+        "costa",
+        "desbordados",
+        "fuertes",
+        "inamhi",
+        "lluvias",
+        "precipitaciones",
+        "preve",
+        "rios",
+        "siguen"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9236512
+    },
+    {
+      "firma": [
+        "ecuador",
+        "goyes",
+        "influencias",
+        "investigacion",
+        "presunto",
+        "prohibido",
+        "salir",
+        "solanda",
+        "tiene",
+        "trafico"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9239912
+    },
+    {
+      "firma": [
+        "activa",
+        "albergues",
+        "fenomeno",
+        "guayaquil",
+        "municipio",
+        "nino"
+      ],
+      "medios": 4,
+      "ts": 1790704201.924339
+    },
+    {
+      "firma": [
+        "cargo",
+        "ecuador",
+        "embajada",
+        "izurieta",
+        "llega",
+        "nuevo",
+        "peru",
+        "retos",
+        "roberto",
+        "tendra"
+      ],
+      "medios": 4,
+      "ts": 1790704201.9246476
+    },
+    {
+      "firma": [
+        "asegura",
+        "atencion",
+        "continua",
+        "dialisis",
+        "estabilidad",
+        "garantiza",
+        "gobierno",
+        "pacientes",
+        "salud",
+        "sistema"
+      ],
+      "medios": 3,
+      "ts": 1790704201.9249926
+    },
+    {
+      "firma": [
+        "deportacion",
+        "despues",
+        "familia",
+        "independiente",
+        "jose",
+        "pide",
+        "serrano",
+        "visita"
+      ],
+      "medios": 3,
+      "ts": 1790704201.92534
+    },
+    {
+      "firma": [
+        "bendicion",
+        "cuando",
+        "donde",
+        "guayaquil",
+        "mascotas",
+        "sera"
+      ],
+      "medios": 3,
+      "ts": 1790704201.9256618
+    },
+    {
+      "firma": [
+        "este",
+        "guayaquil",
+        "hasta",
+        "lloviznas",
+        "lluvias",
+        "martes",
+        "temperaturas",
+        "tendra"
+      ],
+      "medios": 3,
+      "ts": 1790704201.9259694
+    },
+    {
+      "firma": [
+        "carro",
+        "crimen",
+        "decomisan",
+        "golpe",
+        "guayaquil",
+        "ocultos",
+        "organizado"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9263098
+    },
+    {
+      "firma": [
+        "asesinan",
+        "discoteca",
+        "futbolista",
+        "salinas",
+        "salir"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9266365
+    },
+    {
+      "firma": [
+        "cada",
+        "drogas",
+        "interacciones",
+        "mayores",
+        "peligrosas",
+        "personas",
+        "riesgo"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9269392
+    },
+    {
+      "firma": [
+        "anos",
+        "despues",
+        "internacional",
+        "justicia",
+        "nuremberg",
+        "queda"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9272637
+    },
+    {
+      "firma": [
+        "ante",
+        "armados",
+        "atracos",
+        "despliega",
+        "incremento",
+        "operativo",
+        "policia",
+        "usaquen"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9275782
+    },
+    {
+      "firma": [
+        "azuay",
+        "electrica",
+        "gobierno",
+        "infraestructura",
+        "invierte",
+        "millones",
+        "reforzar"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9279194
+    },
+    {
+      "firma": [
+        "aplicar",
+        "bionegocios",
+        "ecuador",
+        "financiamiento",
+        "pueden",
+        "quienes",
+        "reciben"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9282434
+    },
+    {
+      "firma": [
+        "dialisis",
+        "ecuador",
+        "protestar",
+        "seguir",
+        "viviendo"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9285734
+    },
+    {
+      "firma": [
+        "denuncian",
+        "falta",
+        "guayaquil",
+        "hospital",
+        "insumos",
+        "monte",
+        "pacientes",
+        "sinai"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9288824
+    },
+    {
+      "firma": [
+        "alertas",
+        "antes",
+        "cantones",
+        "cinco",
+        "guayas",
+        "hasta",
+        "horas",
+        "inundacion",
+        "nino",
+        "tendran"
+      ],
+      "medios": 2,
+      "ts": 1790704201.929225
+    },
+    {
+      "firma": [
+        "actividades",
+        "bajara",
+        "durante",
+        "feriado",
+        "octubre",
+        "turisticas"
+      ],
+      "medios": 7,
+      "ts": 1790710369.401951,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "bienes",
+        "blanqueo",
+        "caso",
+        "compras",
+        "efectivo",
+        "financiero",
+        "fito",
+        "giros",
+        "inda",
+        "macias",
+        "michelle",
+        "millones",
+        "nexos",
+        "penarrieta",
+        "sistema"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9299078
+    },
+    {
+      "firma": [
+        "bahia",
+        "caraquez",
+        "cerca",
+        "ecuador",
+        "este",
+        "magnitud",
+        "martes",
+        "registro",
+        "sismo"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9302852
+    },
+    {
+      "firma": [
+        "carro",
+        "comandos",
+        "frontera",
+        "guayaquil",
+        "hallan",
+        "relacionado"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9306347
+    },
+    {
+      "firma": [
+        "abastecer",
+        "acueducto",
+        "agua",
+        "duran",
+        "moradores",
+        "potable",
+        "reparar",
+        "trabajos"
+      ],
+      "medios": 2,
+      "ts": 1790704201.930957
+    },
+    {
+      "firma": [
+        "2027",
+        "boleteria",
+        "creyentes",
+        "estereo",
+        "fechas",
+        "festival",
+        "picnic",
+        "precios"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9312935
+    },
+    {
+      "firma": [
+        "auto",
+        "descubierto",
+        "dolares",
+        "guayaquil",
+        "operativo"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9316297
+    },
+    {
+      "firma": [
+        "atencion",
+        "emergencias",
+        "este",
+        "evacuaciones",
+        "guayaquil",
+        "rescates",
+        "sera",
+        "simulacro",
+        "sismo",
+        "viernes"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9319377
+    },
+    {
+      "firma": [
+        "asesinado",
+        "colimes",
+        "comerciante",
+        "guayaquil",
+        "mientras",
+        "realizaba",
+        "tramites"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9323018
+    },
+    {
+      "firma": [
+        "bolsillos",
+        "botas",
+        "centro",
+        "comercio",
+        "encauchados",
+        "guayaquil",
+        "lluvias",
+        "mueven",
+        "paraguas",
+        "ponchos",
+        "todos"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9326296
+    },
+    {
+      "firma": [
+        "2026",
+        "conciertos",
+        "ecuador",
+        "guia",
+        "iron",
+        "maiden",
+        "strokes"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9329882
+    },
+    {
+      "firma": [
+        "ante",
+        "bajo",
+        "docena",
+        "feminicidios",
+        "policia",
+        "presion",
+        "resolver",
+        "sudafrica"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9333155
+    },
+    {
+      "firma": [
+        "aguas",
+        "ciudad",
+        "colector",
+        "construccion",
+        "inicia",
+        "lluvias",
+        "norte"
+      ],
+      "medios": 2,
+      "ts": 1790704201.9336572
+    },
+    {
+      "firma": [
+        "2026",
+        "congrega",
+        "fest",
+        "gastronomico",
+        "guayaquil",
+        "horeca",
+        "hotelero",
+        "sector"
+      ],
+      "medios": 4,
+      "ts": 1790711172.2861092,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "corazon",
+        "deterioro",
+        "hasta",
+        "hijos",
+        "hipertension",
+        "necesitar",
+        "pense",
+        "trasplante",
+        "vivir",
+        "volveria"
+      ],
+      "medios": 2,
+      "ts": 1790704739.1167881
+    },
+    {
+      "firma": [
+        "aprehendido",
+        "dejo",
+        "hecho",
+        "herido",
+        "manabi",
+        "muertos",
+        "violento"
+      ],
+      "medios": 2,
+      "ts": 1790704869.1524286
+    },
+    {
+      "firma": [
+        "analiza",
+        "arabes",
+        "carne",
+        "cerdo",
+        "china",
+        "ecuador",
+        "emiratos",
+        "exportacion",
+        "pollo",
+        "prepara"
+      ],
+      "medios": 2,
+      "ts": 1790704869.581154
+    },
+    {
+      "firma": [
+        "ante",
+        "autoritarismo",
+        "camara",
+        "cuestionar",
+        "deja",
+        "empresariado",
+        "industrias",
+        "jervis",
+        "maria",
+        "silencio"
+      ],
+      "medios": 4,
+      "ts": 1790705022.7589557
+    },
+    {
+      "firma": [
+        "feriado",
+        "gobierno",
+        "octubre",
+        "reduce",
+        "sector",
+        "turistico"
+      ],
+      "medios": 6,
+      "ts": 1790707837.177663,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "alcaldia",
+        "cynthia",
+        "encuestadora",
+        "favorita",
+        "guayaquil",
+        "perfila",
+        "segun",
+        "viteri",
+        "votantes"
+      ],
+      "medios": 2,
+      "ts": 1790705176.2738976
+    },
+    {
+      "firma": [
+        "antes",
+        "enero",
+        "evitar",
+        "gratuito",
+        "hacer",
+        "multas",
+        "recargos",
+        "recomienda",
+        "tramite"
+      ],
+      "medios": 2,
+      "ts": 1790705176.7991633
+    },
+    {
+      "firma": [
+        "alias",
+        "cantuna",
+        "contra",
+        "decomisan",
+        "durante",
+        "efectivo",
+        "guayaquil",
+        "operativo"
+      ],
+      "medios": 2,
+      "ts": 1790705306.0194275
+    },
+    {
+      "firma": [
+        "2026",
+        "ahorro",
+        "campana",
+        "ecuador",
+        "empezo",
+        "energia",
+        "este",
+        "hogares",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790707385.977965
+    },
+    {
+      "firma": [
+        "burlaron",
+        "busqueda",
+        "carcel",
+        "consejo",
+        "reclusos",
+        "seguridad",
+        "suma",
+        "turi"
+      ],
+      "medios": 3,
+      "ts": 1790707837.7022998
+    },
+    {
+      "firma": [
+        "2026",
+        "artistas",
+        "dias",
+        "dinamita",
+        "fechas",
+        "feria",
+        "horarios",
+        "mole",
+        "nacional",
+        "platanito",
+        "pocos",
+        "programa",
+        "show",
+        "sonora"
+      ],
+      "medios": 2,
+      "ts": 1790708152.516867
+    },
+    {
+      "firma": [
+        "centros",
+        "delincuentes",
+        "dialisis",
+        "pacientes",
+        "protestan",
+        "quito",
+        "somos",
+        "usuarios"
+      ],
+      "medios": 2,
+      "ts": 1790708153.075147
+    },
+    {
+      "firma": [
+        "deja",
+        "detenidos",
+        "fenix",
+        "gran",
+        "lobos",
+        "manabi",
+        "operacion",
+        "vinculados"
+      ],
+      "medios": 3,
+      "ts": 1790708310.439731
+    },
+    {
+      "firma": [
+        "ampliacion",
+        "aportan",
+        "calderon",
+        "datos",
+        "estudiar",
+        "geotecnicas",
+        "hacia",
+        "metro",
+        "perforaciones"
+      ],
+      "medios": 3,
+      "ts": 1790708452.423011
+    },
+    {
+      "firma": [
+        "constitucionales",
+        "dejaran",
+        "esquema",
+        "garantias",
+        "jueces",
+        "nuevo",
+        "penales",
+        "quito",
+        "tramitar"
+      ],
+      "medios": 2,
+      "ts": 1790708452.9012318
+    },
+    {
+      "firma": [
+        "barrio",
+        "bellavista",
+        "corredor",
+        "crearon",
+        "quito",
+        "vecinos",
+        "verde"
+      ],
+      "medios": 2,
+      "ts": 1790708453.3954937
+    },
+    {
+      "firma": [
+        "casos",
+        "crimen",
+        "deja",
+        "detenidos",
+        "golpe",
+        "lobos",
+        "manabi",
+        "operativo",
+        "pacifico",
+        "policia",
+        "varios"
+      ],
+      "medios": 4,
+      "ts": 1790709056.26244
+    },
+    {
+      "firma": [
+        "aplicarlas",
+        "extiende",
+        "gobierno",
+        "opciones",
+        "pasa",
+        "pasos",
+        "queda",
+        "toque"
+      ],
+      "medios": 2,
+      "ts": 1790709056.558135
+    },
+    {
+      "firma": [
+        "agua",
+        "barrios",
+        "cerca",
+        "cortes",
+        "este",
+        "quito",
+        "septiembre",
+        "servicio",
+        "tienen"
+      ],
+      "medios": 2,
+      "ts": 1790709056.8464098
+    },
+    {
+      "firma": [
+        "anos",
+        "arctica",
+        "celebro",
+        "concierto",
+        "fotos",
+        "guayaquil",
+        "mejores",
+        "sonata"
+      ],
+      "medios": 2,
+      "ts": 1790709057.1453366
+    },
+    {
+      "firma": [
+        "cafeterias",
+        "donde",
+        "entre",
+        "estan",
+        "mejores",
+        "quedan",
+        "samborondon",
+        "sudamerica"
+      ],
+      "medios": 2,
+      "ts": 1790709057.1460598
+    },
+    {
+      "firma": [
+        "enfrentar",
+        "estas",
+        "motociclistas",
+        "multas",
+        "paralizaron",
+        "podrian",
+        "quito",
+        "transito"
+      ],
+      "medios": 3,
+      "ts": 1790709299.6876085
+    },
+    {
+      "firma": [
+        "asesinado",
+        "ataque",
+        "carcelen",
+        "detalles",
+        "hipotesis",
+        "maneja",
+        "policia",
+        "revela",
+        "taxista"
+      ],
+      "medios": 2,
+      "ts": 1790709300.228565
+    },
+    {
+      "firma": [
+        "bendicion",
+        "cambia",
+        "este",
+        "fecha",
+        "francisco",
+        "mascotas",
+        "plaza",
+        "quito"
+      ],
+      "medios": 2,
+      "ts": 1790709300.7547698
+    },
+    {
+      "firma": [
+        "esto",
+        "interior",
+        "juan",
+        "motociclistas",
+        "ocurrio",
+        "quito",
+        "tunel"
+      ],
+      "medios": 2,
+      "ts": 1790709300.7553833
+    },
+    {
+      "firma": [
+        "multa",
+        "paso",
+        "rojo",
+        "semaforo",
+        "urdesa"
+      ],
+      "medios": 2,
+      "ts": 1790709459.6896122
+    },
+    {
+      "firma": [
+        "agua",
+        "cartagena",
+        "corte",
+        "esta",
+        "horas",
+        "razon",
+        "servicio"
+      ],
+      "medios": 8,
+      "ts": 1790710488.7219145
+    },
+    {
+      "firma": [
+        "calzada",
+        "estos",
+        "guayaquil",
+        "lluvias",
+        "mojada",
+        "reportados",
+        "sectores"
+      ],
+      "medios": 2,
+      "ts": 1790710953.952485
+    },
+    {
+      "firma": [
+        "esposa",
+        "finanzas",
+        "fito",
+        "hija",
+        "papel",
+        "reimberg",
+        "revela"
+      ],
+      "medios": 5,
+      "ts": 1790711171.9943125
+    },
+    {
+      "firma": [
+        "banco",
+        "boletos",
+        "cdmx",
+        "fechas",
+        "fuerza",
+        "precios",
+        "preventa",
+        "regida",
+        "tendra"
+      ],
+      "medios": 3,
+      "ts": 1790711172.5659943
+    },
+    {
+      "firma": [
+        "agosto",
+        "dominicana",
+        "entre",
+        "entregaron",
+        "justicia",
+        "personas",
+        "republica",
+        "requeridas",
+        "septiembre",
+        "voluntariamente"
+      ],
+      "medios": 2,
+      "ts": 1790711172.8737304
+    },
+    {
+      "firma": [
+        "clima",
+        "este",
+        "lluvias",
+        "martes",
+        "piura",
+        "pronostico",
+        "rafagas",
+        "septiembre",
+        "viento"
+      ],
+      "medios": 2,
+      "ts": 1790711172.874647
+    },
+    {
+      "firma": [
+        "acusada",
+        "arrancan",
+        "contra",
+        "dias",
+        "fiscal",
+        "goyes",
+        "influencias",
+        "instruccion",
+        "solanda",
+        "trafico"
+      ],
+      "medios": 2,
+      "ts": 1790711172.875243
+    },
+    {
+      "firma": [
+        "elecciones",
+        "esta",
+        "foto",
+        "multa",
+        "noviembre",
+        "papeleta",
+        "tomas"
+      ],
+      "medios": 2,
+      "ts": 1790711172.875686
+    },
+    {
+      "firma": [
+        "administracion",
+        "cambia",
+        "duran",
+        "incumplimientos",
+        "terminal"
+      ],
+      "medios": 2,
+      "ts": 1790711172.8761322
+    },
+    {
+      "firma": [
+        "comedia",
+        "estreno",
+        "familiar",
+        "fecha",
+        "loreto",
+        "mauricio",
+        "nueva",
+        "ochmann",
+        "partido",
+        "peralta",
+        "protagonizan",
+        "trailer"
+      ],
+      "medios": 2,
+      "ts": 1790711172.8766775
+    },
+    {
+      "firma": [
+        "aprehendido",
+        "cuantas",
+        "este",
+        "finaliza",
+        "personas",
+        "queda",
+        "septiembre",
+        "toque"
+      ],
+      "medios": 6,
+      "ts": 1790720106.3262205,
+      "crecio": true
+    },
+    {
+      "firma": [
+        "escasea",
+        "hoja",
+        "precio",
+        "riesgo",
+        "sequias",
+        "sube",
+        "tamal",
+        "tolimense"
+      ],
+      "medios": 2,
+      "ts": 1790711499.6497812
+    },
+    {
+      "firma": [
+        "adolescentes",
+        "aprehendidos",
+        "fueron",
+        "metrovia",
+        "presunto",
+        "robo",
+        "seis"
+      ],
+      "medios": 2,
+      "ts": 1790712155.0371451
+    },
+    {
+      "firma": [
+        "asesinado",
+        "carcelen",
+        "crimen",
+        "norte",
+        "quito",
+        "sabe",
+        "taxista"
+      ],
+      "medios": 2,
+      "ts": 1790712814.9448185
+    },
+    {
+      "firma": [
+        "aprueba",
+        "asamblea",
+        "contra",
+        "crimen",
+        "menores",
+        "organizado",
+        "reclutamiento"
+      ],
+      "medios": 2,
+      "ts": 1790714321.4445403
+    },
+    {
+      "firma": [
+        "afectados",
+        "anegadas",
+        "calles",
+        "guayaquil",
+        "inundaciones",
+        "sectores",
+        "septiembre"
+      ],
+      "medios": 2,
+      "ts": 1790714321.7383354
+    },
+    {
+      "firma": [
+        "actividades",
+        "anos",
+        "aprobada",
+        "armadas",
+        "carcel",
+        "delictivas",
+        "fija",
+        "menores",
+        "quienes",
+        "usen"
+      ],
+      "medios": 2,
+      "ts": 1790714322.040077
+    },
+    {
+      "firma": [
+        "alerta",
+        "creditos",
+        "ecuador",
+        "entidades",
+        "falsos",
+        "fantasma",
+        "financieras",
+        "operan"
+      ],
+      "medios": 2,
+      "ts": 1790714322.3312845
+    },
+    {
+      "firma": [
+        "anos",
+        "armado",
+        "ataque",
+        "colegio",
+        "estudiante",
+        "huaquillas",
+        "muere",
+        "salir"
+      ],
+      "medios": 2,
+      "ts": 1790715638.8664517
+    },
+    {
+      "firma": [
+        "americas",
+        "avenida",
+        "complican",
+        "generan",
+        "guayaquil",
+        "hacia",
+        "inundaciones",
+        "lluvias",
+        "norte",
+        "transito"
+      ],
+      "medios": 2,
+      "ts": 1790716135.1066637
+    },
+    {
+      "firma": [
+        "adicionales",
+        "desde",
+        "electrico",
+        "gobierno",
+        "guayaquil",
+        "incorporara",
+        "megavatios",
+        "reforzar",
+        "sistema"
+      ],
+      "medios": 2,
+      "ts": 1790716135.4126024
+    },
+    {
+      "firma": [
+        "bloque",
+        "ejecuto",
+        "florida",
+        "guayaquil",
+        "operativo",
+        "sector",
+        "seguridad"
+      ],
+      "medios": 2,
+      "ts": 1790716135.6973133
+    },
+    {
+      "firma": [
+        "azuay",
+        "electrico",
+        "gobierno",
+        "invierte",
+        "mejorar",
+        "millones",
+        "servicio"
+      ],
+      "medios": 2,
+      "ts": 1790717623.6835127
+    },
+    {
+      "firma": [
+        "describen",
+        "ecuador",
+        "especies",
+        "investigadores",
+        "nuevas",
+        "orquideas"
+      ],
+      "medios": 2,
+      "ts": 1790717623.9919043
+    },
+    {
+      "firma": [
+        "2026",
+        "alertas",
+        "dejan",
+        "desbordados",
+        "ecuador",
+        "este",
+        "lluvias",
+        "nuevas",
+        "rios",
+        "septiembre"
+      ],
+      "medios": 3,
+      "ts": 1790719204.8910658
+    },
+    {
+      "firma": [
+        "asesinado",
+        "carcelen",
+        "conocoto",
+        "crimen",
+        "fuga",
+        "otro",
+        "policia",
+        "taxista",
+        "vehiculo",
+        "vincula"
+      ],
+      "medios": 3,
+      "ts": 1790719368.9427419
+    },
+    {
+      "firma": [
+        "ecuador",
+        "hablando",
+        "huevadas",
+        "quienes",
+        "regresa"
+      ],
+      "medios": 2,
+      "ts": 1790719369.2213945
+    },
+    {
+      "firma": [
+        "anibal",
+        "desde",
+        "ecuador",
+        "generacion",
+        "reincorpora",
+        "santos",
+        "termica",
+        "trinitaria"
+      ],
+      "medios": 2,
+      "ts": 1790719817.274892
+    },
+    {
+      "firma": [
+        "desaparecio",
+        "esto",
+        "familia",
+        "killa",
+        "mudaba",
+        "sabe",
+        "sisa",
+        "zambiza"
+      ],
+      "medios": 2,
+      "ts": 1790719817.5822873
+    },
+    {
+      "firma": [
+        "cuatro",
+        "dictan",
+        "extorsivo",
+        "presunto",
+        "preventiva",
+        "prision",
+        "procesados",
+        "samborondon",
+        "secuestro"
+      ],
+      "medios": 2,
+      "ts": 1790719992.1976168
+    },
+    {
+      "firma": [
+        "asesinada",
+        "dentro",
+        "escolar",
+        "expreso",
+        "guayaquil",
+        "lote",
+        "mucho",
+        "mujer"
+      ],
+      "medios": 8,
+      "ts": 1790720695.7697837
+    },
+    {
+      "firma": [
+        "armado",
+        "ataque",
+        "elena",
+        "hombres",
+        "libertad",
+        "murieron",
+        "santa"
+      ],
+      "medios": 3,
+      "ts": 1790720696.0821557
+    },
+    {
+      "firma": [
+        "agentes",
+        "audiencia",
+        "cuatro",
+        "cuenca",
+        "fuga",
+        "indagan",
+        "libertad",
+        "personas",
+        "privadas"
+      ],
+      "medios": 2,
+      "ts": 1790720696.3775592
+    },
+    {
+      "firma": [
+        "aprehendidos",
+        "edad",
+        "guayaquil",
+        "menores",
+        "metrovia",
+        "presuntos",
+        "robos",
+        "seis",
+        "siete",
+        "usuarios"
+      ],
+      "medios": 4,
+      "ts": 1790720872.739773
+    },
+    {
+      "firma": [
+        "admitir",
+        "delito",
+        "hurto",
+        "policia",
+        "preventiva",
+        "prision",
+        "procesado"
+      ],
+      "medios": 3,
+      "ts": 1790722080.481287
+    },
+    {
+      "firma": [
+        "autoridades",
+        "jochas",
+        "mama",
+        "negra",
+        "operativo",
+        "preparan",
+        "salto",
+        "seguridad"
+      ],
+      "medios": 3,
+      "ts": 1790722080.8066041
+    },
+    {
+      "firma": [
+        "alejadas",
+        "atencion",
+        "camionetas",
+        "entregara",
+        "fortalecer",
+        "gobierno",
+        "salud",
+        "zonas"
+      ],
+      "medios": 2,
+      "ts": 1790722081.1091702
+    },
+    {
+      "firma": [
+        "calificacion",
+        "candidaturas",
+        "concluir",
+        "cotopaxi",
+        "esta",
+        "jpec",
+        "preve",
+        "semana"
+      ],
+      "medios": 2,
+      "ts": 1790722081.1096535
+    },
+    {
+      "firma": [
+        "anos",
+        "aprueba",
+        "carcel",
+        "ecuador",
+        "hasta",
+        "menores",
+        "reclutamiento",
+        "sanciona"
+      ],
+      "medios": 2,
+      "ts": 1790722081.1100721
+    },
+    {
+      "firma": [
+        "guerrero",
+        "magnitud",
+        "registra",
+        "sismo"
+      ],
+      "medios": 2,
+      "ts": 1790722081.1104374
+    },
+    {
+      "firma": [
+        "aprehendidos",
+        "guayaquil",
+        "metrovia",
+        "presunto",
+        "robo",
+        "siete",
+        "usuario"
+      ],
+      "medios": 7,
+      "ts": 1790725874.5380468
+    },
+    {
+      "firma": [
+        "anos",
+        "crimen",
+        "ecuador",
+        "edad",
+        "eleva",
+        "hasta",
+        "menores",
+        "nueva",
+        "organizado",
+        "penas"
+      ],
+      "medios": 4,
+      "ts": 1790725874.8309748
+    },
+    {
+      "firma": [
+        "consejo",
+        "cynthia",
+        "directivo",
+        "gellibert",
+        "iess",
+        "mujer",
+        "presidir",
+        "primera"
+      ],
+      "medios": 2,
+      "ts": 1790725875.1198838
+    },
+    {
+      "firma": [
+        "celec",
+        "guayaquil",
+        "recupera",
+        "termoelectricas"
+      ],
+      "medios": 2,
+      "ts": 1790725875.120407
+    },
+    {
+      "firma": [
+        "acceder",
+        "beneficio",
+        "cundinamarca",
+        "descuento",
+        "intereses",
+        "ofrece",
+        "puede",
+        "tributarios"
+      ],
+      "medios": 2,
+      "ts": 1790725875.120652
+    },
+    {
+      "firma": [
+        "arbol",
+        "caido",
+        "dano",
+        "este",
+        "estructura",
+        "guayaquil",
+        "lluvias",
+        "martes",
+        "septiembre",
+        "tarde"
+      ],
+      "medios": 4,
+      "ts": 1790726056.9792745
+    },
+    {
+      "firma": [
+        "esta",
+        "impulsa",
+        "inmobiliaria",
+        "millones",
+        "proyectos",
+        "samborondon"
+      ],
+      "medios": 2,
+      "ts": 1790726057.2773557
+    },
+    {
+      "firma": [
+        "fallecio",
+        "forestal",
+        "incendio",
+        "persona",
+        "sigsig"
+      ],
+      "medios": 2,
+      "ts": 1790726238.1892793
+    },
+    {
+      "firma": [
+        "cuando",
+        "ejercicios",
+        "guayaquil",
+        "ocurrira",
+        "realizaran",
+        "simulacro",
+        "sismo"
+      ],
+      "medios": 4,
+      "ts": 1790726418.4883041
+    },
+    {
+      "firma": [
+        "agricola",
+        "anuncia",
+        "camionetas",
+        "daniel",
+        "entrega",
+        "noboa",
+        "sector",
+        "tractores"
+      ],
+      "medios": 2,
+      "ts": 1790726508.2346883
+    },
+    {
+      "firma": [
+        "ecuador",
+        "feriado",
+        "guayaquil",
+        "nacional",
+        "octubre",
+        "solo"
+      ],
+      "medios": 2,
+      "ts": 1790727048.1785638
+    },
+    {
+      "firma": [
+        "agua",
+        "completa",
+        "corte",
+        "esta",
+        "guayaquil",
+        "lista",
+        "semana",
+        "servicio",
+        "zonas"
+      ],
+      "medios": 4,
+      "ts": 1790727141.0203767
+    },
+    {
+      "firma": [
+        "duran",
+        "guayaquil",
+        "intensas",
+        "inundar",
+        "lluvias",
+        "parte",
+        "samborondon",
+        "vuelven"
+      ],
+      "medios": 2,
+      "ts": 1790727141.3136077
+    },
+    {
+      "firma": [
+        "daniel",
+        "estados",
+        "estas",
+        "extradicion",
+        "herrera",
+        "mantiene",
+        "pedir",
+        "pruebas",
+        "ronald",
+        "salcedo",
+        "unidos"
+      ],
+      "medios": 2,
+      "ts": 1790728173.6076386
+    }
+  ],
+  "temas": {
+    "brecha:Empleo": 1790112606.6588984,
+    "brecha:Educacion": 1790122208.8124316,
+    "brecha:Impuestos": 1790173563.1029294,
+    "pico:Policia/Militar": 1790369726.6013029,
+    "pico:Crimen/Violencia": 1790722669.9499989,
+    "pico:Justicia/Corrupcion": 1790707542.1402757,
+    "pico:Carceles": 1790710489.0091481,
+    "pico:Precios/Costo de vida": 1790722080.169569,
+    "pico:Cultura/Comunidad": 1790361038.4803882,
+    "pico:Migracion": 1790709459.180489,
+    "pico:Fiscal/Presupuesto": 1790705722.1855273,
+    "pico:Petroleo/Energia": 1790361039.094386,
+    "pico:Educacion": 1790709299.1484797,
+    "pico:Empleo": 1790705932.7534587,
+    "pico:Asamblea/Leyes": 1790188516.895458,
+    "pico:Ambiente": 1790629164.0115926,
+    "pico:Elecciones": 1790361038.1635852,
+    "pico:Salud": 1790362892.081329,
+    "pico:Comercio/Inversion": 1790710792.9398806,
+    "pico:Narcotrafico": 1790631575.3865461,
+    "pico:Impuestos": 1790704201.9263062,
+    "pico:Ejecutivo": 1790286468.6525822
+  },
+  "muestras": [
+    {
+      "ts": 1790112606.658442,
+      "c": {
+        "Asamblea/Leyes": 21,
+        "Ejecutivo": 28,
+        "Policia/Militar": 11,
+        "Empleo": 2,
+        "Petroleo/Energia": 3,
+        "Precios/Costo de vida": 5,
+        "Justicia/Corrupcion": 5,
+        "Elecciones": 7,
+        "Crimen/Violencia": 2,
+        "Educacion": 1,
+        "Impuestos": 1,
+        "Salud": 4,
+        "Comercio/Inversion": 2,
+        "Ambiente": 3,
+        "Cultura/Comunidad": 2,
+        "Fiscal/Presupuesto": 1,
+        "Carceles": 2,
+        "Narcotrafico": 1
+      }
+    },
+    {
+      "ts": 1790116247.7386181,
+      "c": {
+        "Asamblea/Leyes": 25,
+        "Ejecutivo": 30,
+        "Policia/Militar": 10,
+        "Justicia/Corrupcion": 4,
+        "Petroleo/Energia": 2,
+        "Precios/Costo de vida": 4,
+        "Elecciones": 6,
+        "Empleo": 2,
+        "Educacion": 1,
+        "Impuestos": 2,
+        "Salud": 4,
+        "Comercio/Inversion": 2,
+        "Crimen/Violencia": 2,
+        "Migracion": 1,
+        "Narcotrafico": 3,
+        "Ambiente": 3,
+        "Fiscal/Presupuesto": 1,
+        "Cultura/Comunidad": 1,
+        "Carceles": 2
+      }
+    },
+    {
+      "ts": 1790119955.770091,
+      "c": {
+        "Asamblea/Leyes": 21,
+        "Ejecutivo": 28,
+        "Policia/Militar": 9,
+        "Justicia/Corrupcion": 4,
+        "Petroleo/Energia": 2,
+        "Precios/Costo de vida": 5,
+        "Salud": 7,
+        "Elecciones": 6,
+        "Empleo": 1,
+        "Educacion": 2,
+        "Impuestos": 2,
+        "Comercio/Inversion": 1,
+        "Crimen/Violencia": 2,
+        "Migracion": 2,
+        "Narcotrafico": 2,
+        "Ambiente": 3,
+        "Fiscal/Presupuesto": 5,
+        "Cultura/Comunidad": 3
+      }
+    },
+    {
+      "ts": 1790123668.1408236,
+      "c": {
+        "Asamblea/Leyes": 18,
+        "Ejecutivo": 27,
+        "Policia/Militar": 8,
+        "Petroleo/Energia": 2,
+        "Precios/Costo de vida": 4,
+        "Salud": 6,
+        "Justicia/Corrupcion": 3,
+        "Elecciones": 7,
+        "Comercio/Inversion": 2,
+        "Migracion": 2,
+        "Impuestos": 1,
+        "Empleo": 1,
+        "Fiscal/Presupuesto": 5,
+        "Crimen/Violencia": 3,
+        "Narcotrafico": 2,
+        "Cultura/Comunidad": 2,
+        "Ambiente": 1
+      }
+    },
+    {
+      "ts": 1790127271.3980474,
+      "c": {
+        "Policia/Militar": 7,
+        "Ejecutivo": 26,
+        "Petroleo/Energia": 2,
+        "Precios/Costo de vida": 5,
+        "Salud": 5,
+        "Justicia/Corrupcion": 3,
+        "Asamblea/Leyes": 17,
+        "Comercio/Inversion": 2,
+        "Migracion": 2,
+        "Impuestos": 1,
+        "Elecciones": 5,
+        "Empleo": 1,
+        "Fiscal/Presupuesto": 6,
+        "Educacion": 1,
+        "Narcotrafico": 2,
+        "Cultura/Comunidad": 3,
+        "Ambiente": 2,
+        "Carceles": 1,
+        "Crimen/Violencia": 2
+      }
+    },
+    {
+      "ts": 1790130873.2612216,
+      "c": {
+        "Asamblea/Leyes": 13,
+        "Policia/Militar": 4,
+        "Petroleo/Energia": 1,
+        "Precios/Costo de vida": 4,
+        "Justicia/Corrupcion": 5,
+        "Ejecutivo": 23,
+        "Salud": 5,
+        "Elecciones": 5,
+        "Comercio/Inversion": 5,
+        "Migracion": 2,
+        "Impuestos": 1,
+        "Empleo": 1,
+        "Fiscal/Presupuesto": 5,
+        "Educacion": 1,
+        "Narcotrafico": 2,
+        "Cultura/Comunidad": 3,
+        "Ambiente": 1,
+        "Carceles": 1,
+        "Crimen/Violencia": 2
+      }
+    },
+    {
+      "ts": 1790134581.0949895,
+      "c": {
+        "Asamblea/Leyes": 11,
+        "Policia/Militar": 6,
+        "Justicia/Corrupcion": 5,
+        "Ejecutivo": 24,
+        "Salud": 6,
+        "Migracion": 2,
+        "Elecciones": 4,
+        "Comercio/Inversion": 5,
+        "Impuestos": 1,
+        "Precios/Costo de vida": 5,
+        "Fiscal/Presupuesto": 4,
+        "Educacion": 2,
+        "Crimen/Violencia": 3,
+        "Narcotrafico": 1,
+        "Ambiente": 2,
+        "Petroleo/Energia": 1,
+        "Cultura/Comunidad": 3,
+        "Carceles": 1
+      }
+    },
+    {
+      "ts": 1790173562.6730766,
+      "c": {
+        "Asamblea/Leyes": 12,
+        "Ejecutivo": 33,
+        "Justicia/Corrupcion": 5,
+        "Policia/Militar": 8,
+        "Ambiente": 5,
+        "Petroleo/Energia": 6,
+        "Educacion": 1,
+        "Salud": 3,
+        "Precios/Costo de vida": 7,
+        "Elecciones": 9,
+        "Comercio/Inversion": 3,
+        "Fiscal/Presupuesto": 3,
+        "Crimen/Violencia": 4,
+        "Empleo": 3,
+        "Narcotrafico": 4,
+        "Migracion": 1,
+        "Cultura/Comunidad": 2,
+        "Carceles": 2
+      }
+    },
+    {
+      "ts": 1790177281.1404498,
+      "c": {
+        "Asamblea/Leyes": 15,
+        "Ejecutivo": 29,
+        "Justicia/Corrupcion": 4,
+        "Crimen/Violencia": 5,
+        "Policia/Militar": 9,
+        "Educacion": 3,
+        "Salud": 3,
+        "Precios/Costo de vida": 7,
+        "Elecciones": 10,
+        "Comercio/Inversion": 4,
+        "Fiscal/Presupuesto": 3,
+        "Petroleo/Energia": 5,
+        "Empleo": 2,
+        "Migracion": 5,
+        "Ambiente": 4,
+        "Narcotrafico": 4,
+        "Cultura/Comunidad": 1,
+        "Carceles": 4
+      }
+    },
+    {
+      "ts": 1790180996.89631,
+      "c": {
+        "Ejecutivo": 105,
+        "Justicia/Corrupcion": 15,
+        "Salud": 13,
+        "Crimen/Violencia": 16,
+        "Policia/Militar": 32,
+        "Asamblea/Leyes": 32,
+        "Elecciones": 26,
+        "Migracion": 11,
+        "Carceles": 12,
+        "Comercio/Inversion": 18,
+        "Petroleo/Energia": 13,
+        "Precios/Costo de vida": 16,
+        "Ambiente": 18,
+        "Fiscal/Presupuesto": 9,
+        "Educacion": 11,
+        "Narcotrafico": 7,
+        "Cultura/Comunidad": 16,
+        "Empleo": 4,
+        "Impuestos": 4
+      }
+    },
+    {
+      "ts": 1790184612.7963374,
+      "c": {
+        "Ambiente": 20,
+        "Asamblea/Leyes": 35,
+        "Carceles": 14,
+        "Ejecutivo": 102,
+        "Elecciones": 22,
+        "Petroleo/Energia": 13,
+        "Salud": 17,
+        "Cultura/Comunidad": 17,
+        "Migracion": 12,
+        "Comercio/Inversion": 11,
+        "Crimen/Violencia": 20,
+        "Precios/Costo de vida": 16,
+        "Justicia/Corrupcion": 22,
+        "Policia/Militar": 40,
+        "Fiscal/Presupuesto": 8,
+        "Empleo": 6,
+        "Educacion": 11,
+        "Impuestos": 3,
+        "Narcotrafico": 7
+      }
+    },
+    {
+      "ts": 1790188255.697546,
+      "c": {
+        "Asamblea/Leyes": 38,
+        "Carceles": 15,
+        "Ejecutivo": 92,
+        "Elecciones": 21,
+        "Fiscal/Presupuesto": 11,
+        "Petroleo/Energia": 10,
+        "Comercio/Inversion": 11,
+        "Crimen/Violencia": 24,
+        "Precios/Costo de vida": 16,
+        "Justicia/Corrupcion": 22,
+        "Salud": 14,
+        "Policia/Militar": 39,
+        "Ambiente": 10,
+        "Educacion": 9,
+        "Cultura/Comunidad": 15,
+        "Migracion": 13,
+        "Empleo": 7,
+        "Narcotrafico": 6,
+        "Impuestos": 3
+      }
+    },
+    {
+      "ts": 1790191905.457683,
+      "c": {
+        "Asamblea/Leyes": 41,
+        "Crimen/Violencia": 21,
+        "Justicia/Corrupcion": 25,
+        "Ejecutivo": 81,
+        "Fiscal/Presupuesto": 11,
+        "Salud": 14,
+        "Petroleo/Energia": 9,
+        "Precios/Costo de vida": 16,
+        "Policia/Militar": 44,
+        "Ambiente": 8,
+        "Elecciones": 19,
+        "Educacion": 13,
+        "Cultura/Comunidad": 12,
+        "Narcotrafico": 6,
+        "Migracion": 11,
+        "Empleo": 6,
+        "Carceles": 6,
+        "Comercio/Inversion": 13,
+        "Impuestos": 2
+      }
+    },
+    {
+      "ts": 1790195516.0367308,
+      "c": {
+        "Ejecutivo": 98,
+        "Asamblea/Leyes": 43,
+        "Crimen/Violencia": 23,
+        "Elecciones": 16,
+        "Empleo": 13,
+        "Policia/Militar": 47,
+        "Educacion": 10,
+        "Cultura/Comunidad": 13,
+        "Narcotrafico": 6,
+        "Salud": 17,
+        "Precios/Costo de vida": 11,
+        "Carceles": 5,
+        "Petroleo/Energia": 11,
+        "Justicia/Corrupcion": 29,
+        "Ambiente": 9,
+        "Comercio/Inversion": 12,
+        "Fiscal/Presupuesto": 9,
+        "Migracion": 9
+      }
+    },
+    {
+      "ts": 1790199186.1541195,
+      "c": {
+        "Ejecutivo": 95,
+        "Crimen/Violencia": 23,
+        "Asamblea/Leyes": 38,
+        "Policia/Militar": 43,
+        "Elecciones": 15,
+        "Precios/Costo de vida": 9,
+        "Comercio/Inversion": 11,
+        "Educacion": 12,
+        "Narcotrafico": 8,
+        "Carceles": 6,
+        "Petroleo/Energia": 8,
+        "Justicia/Corrupcion": 25,
+        "Salud": 17,
+        "Empleo": 9,
+        "Migracion": 7,
+        "Cultura/Comunidad": 8,
+        "Fiscal/Presupuesto": 8,
+        "Ambiente": 7
+      }
+    },
+    {
+      "ts": 1790202857.5336854,
+      "c": {
+        "Ejecutivo": 103,
+        "Asamblea/Leyes": 43,
+        "Elecciones": 14,
+        "Migracion": 9,
+        "Justicia/Corrupcion": 27,
+        "Crimen/Violencia": 20,
+        "Empleo": 9,
+        "Precios/Costo de vida": 14,
+        "Policia/Militar": 39,
+        "Educacion": 13,
+        "Carceles": 5,
+        "Petroleo/Energia": 7,
+        "Ambiente": 8,
+        "Salud": 20,
+        "Comercio/Inversion": 12,
+        "Narcotrafico": 7,
+        "Cultura/Comunidad": 8,
+        "Fiscal/Presupuesto": 8,
+        "Impuestos": 1
+      }
+    },
+    {
+      "ts": 1790211966.3908293,
+      "c": {
+        "Comercio/Inversion": 12,
+        "Ejecutivo": 87,
+        "Policia/Militar": 31,
+        "Asamblea/Leyes": 40,
+        "Elecciones": 16,
+        "Migracion": 7,
+        "Cultura/Comunidad": 15,
+        "Crimen/Violencia": 17,
+        "Narcotrafico": 7,
+        "Justicia/Corrupcion": 25,
+        "Salud": 23,
+        "Petroleo/Energia": 11,
+        "Empleo": 6,
+        "Precios/Costo de vida": 14,
+        "Ambiente": 8,
+        "Fiscal/Presupuesto": 7,
+        "Impuestos": 2,
+        "Educacion": 14,
+        "Carceles": 8
+      }
+    },
+    {
+      "ts": 1790215602.3814363,
+      "c": {
+        "Comercio/Inversion": 14,
+        "Ejecutivo": 89,
+        "Justicia/Corrupcion": 24,
+        "Salud": 24,
+        "Asamblea/Leyes": 43,
+        "Elecciones": 21,
+        "Policia/Militar": 41,
+        "Crimen/Violencia": 16,
+        "Narcotrafico": 10,
+        "Cultura/Comunidad": 15,
+        "Fiscal/Presupuesto": 6,
+        "Migracion": 7,
+        "Petroleo/Energia": 11,
+        "Precios/Costo de vida": 17,
+        "Ambiente": 10,
+        "Empleo": 9,
+        "Impuestos": 2,
+        "Carceles": 7,
+        "Educacion": 12
+      }
+    },
+    {
+      "ts": 1790219210.3309157,
+      "c": {
+        "Ejecutivo": 84,
+        "Justicia/Corrupcion": 21,
+        "Salud": 25,
+        "Comercio/Inversion": 15,
+        "Policia/Militar": 35,
+        "Asamblea/Leyes": 29,
+        "Crimen/Violencia": 15,
+        "Narcotrafico": 8,
+        "Ambiente": 20,
+        "Cultura/Comunidad": 15,
+        "Carceles": 6,
+        "Elecciones": 17,
+        "Petroleo/Energia": 10,
+        "Precios/Costo de vida": 13,
+        "Impuestos": 3,
+        "Empleo": 10,
+        "Migracion": 3,
+        "Fiscal/Presupuesto": 11,
+        "Educacion": 10
+      }
+    },
+    {
+      "ts": 1790286468.218078,
+      "c": {
+        "Ejecutivo": 127,
+        "Asamblea/Leyes": 54,
+        "Comercio/Inversion": 23,
+        "Impuestos": 9,
+        "Justicia/Corrupcion": 29,
+        "Cultura/Comunidad": 17,
+        "Elecciones": 35,
+        "Policia/Militar": 43,
+        "Salud": 21,
+        "Ambiente": 13,
+        "Crimen/Violencia": 14,
+        "Migracion": 12,
+        "Empleo": 12,
+        "Carceles": 19,
+        "Petroleo/Energia": 10,
+        "Educacion": 22,
+        "Narcotrafico": 14,
+        "Precios/Costo de vida": 17,
+        "Fiscal/Presupuesto": 8
+      }
+    },
+    {
+      "ts": 1790304893.1038458,
+      "c": {
+        "Ejecutivo": 90,
+        "Comercio/Inversion": 17,
+        "Impuestos": 10,
+        "Justicia/Corrupcion": 18,
+        "Cultura/Comunidad": 11,
+        "Educacion": 21,
+        "Crimen/Violencia": 20,
+        "Asamblea/Leyes": 32,
+        "Elecciones": 20,
+        "Policia/Militar": 39,
+        "Migracion": 8,
+        "Carceles": 10,
+        "Narcotrafico": 9,
+        "Petroleo/Energia": 7,
+        "Salud": 19,
+        "Ambiente": 17,
+        "Precios/Costo de vida": 10,
+        "Empleo": 12,
+        "Fiscal/Presupuesto": 4
+      }
+    },
+    {
+      "ts": 1790308503.127906,
+      "c": {
+        "Ejecutivo": 77,
+        "Asamblea/Leyes": 26,
+        "Justicia/Corrupcion": 15,
+        "Cultura/Comunidad": 12,
+        "Educacion": 19,
+        "Migracion": 9,
+        "Comercio/Inversion": 15,
+        "Elecciones": 14,
+        "Policia/Militar": 42,
+        "Ambiente": 21,
+        "Petroleo/Energia": 6,
+        "Precios/Costo de vida": 7,
+        "Carceles": 7,
+        "Narcotrafico": 6,
+        "Salud": 22,
+        "Crimen/Violencia": 16,
+        "Impuestos": 6,
+        "Empleo": 6,
+        "Fiscal/Presupuesto": 3
+      }
+    },
+    {
+      "ts": 1790312109.2810292,
+      "c": {
+        "Ejecutivo": 73,
+        "Comercio/Inversion": 18,
+        "Impuestos": 6,
+        "Asamblea/Leyes": 26,
+        "Policia/Militar": 41,
+        "Elecciones": 16,
+        "Ambiente": 21,
+        "Petroleo/Energia": 8,
+        "Precios/Costo de vida": 11,
+        "Carceles": 7,
+        "Justicia/Corrupcion": 20,
+        "Migracion": 9,
+        "Cultura/Comunidad": 13,
+        "Educacion": 18,
+        "Salud": 22,
+        "Narcotrafico": 6,
+        "Crimen/Violencia": 15,
+        "Fiscal/Presupuesto": 5,
+        "Empleo": 6
+      }
+    },
+    {
+      "ts": 1790361037.4663281,
+      "c": {
+        "Asamblea/Leyes": 23,
+        "Ejecutivo": 93,
+        "Cultura/Comunidad": 27,
+        "Educacion": 16,
+        "Elecciones": 34,
+        "Justicia/Corrupcion": 27,
+        "Ambiente": 16,
+        "Petroleo/Energia": 17,
+        "Precios/Costo de vida": 14,
+        "Policia/Militar": 45,
+        "Comercio/Inversion": 21,
+        "Migracion": 13,
+        "Fiscal/Presupuesto": 5,
+        "Carceles": 10,
+        "Empleo": 8,
+        "Salud": 22,
+        "Crimen/Violencia": 13,
+        "Narcotrafico": 12,
+        "Impuestos": 8
+      }
+    },
+    {
+      "ts": 1790364711.2062294,
+      "c": {
+        "Asamblea/Leyes": 24,
+        "Ejecutivo": 112,
+        "Educacion": 20,
+        "Elecciones": 39,
+        "Cultura/Comunidad": 26,
+        "Justicia/Corrupcion": 30,
+        "Precios/Costo de vida": 14,
+        "Policia/Militar": 50,
+        "Migracion": 15,
+        "Fiscal/Presupuesto": 6,
+        "Comercio/Inversion": 24,
+        "Carceles": 16,
+        "Petroleo/Energia": 14,
+        "Empleo": 10,
+        "Salud": 33,
+        "Ambiente": 17,
+        "Crimen/Violencia": 20,
+        "Impuestos": 8,
+        "Narcotrafico": 15
+      }
+    },
+    {
+      "ts": 1790368332.8406022,
+      "c": {
+        "Asamblea/Leyes": 31,
+        "Ejecutivo": 118,
+        "Educacion": 20,
+        "Elecciones": 40,
+        "Cultura/Comunidad": 33,
+        "Justicia/Corrupcion": 40,
+        "Precios/Costo de vida": 15,
+        "Policia/Militar": 57,
+        "Carceles": 23,
+        "Migracion": 14,
+        "Fiscal/Presupuesto": 9,
+        "Comercio/Inversion": 26,
+        "Petroleo/Energia": 16,
+        "Ambiente": 21,
+        "Crimen/Violencia": 24,
+        "Salud": 44,
+        "Impuestos": 8,
+        "Narcotrafico": 18,
+        "Empleo": 8
+      }
+    },
+    {
+      "ts": 1790371992.1913605,
+      "c": {
+        "Asamblea/Leyes": 30,
+        "Ejecutivo": 119,
+        "Educacion": 28,
+        "Elecciones": 40,
+        "Carceles": 21,
+        "Comercio/Inversion": 28,
+        "Petroleo/Energia": 15,
+        "Precios/Costo de vida": 20,
+        "Policia/Militar": 57,
+        "Justicia/Corrupcion": 39,
+        "Migracion": 15,
+        "Fiscal/Presupuesto": 11,
+        "Crimen/Violencia": 27,
+        "Ambiente": 21,
+        "Empleo": 9,
+        "Cultura/Comunidad": 36,
+        "Salud": 43,
+        "Impuestos": 7,
+        "Narcotrafico": 20
+      }
+    },
+    {
+      "ts": 1790375637.7604694,
+      "c": {
+        "Asamblea/Leyes": 33,
+        "Ejecutivo": 127,
+        "Educacion": 28,
+        "Elecciones": 40,
+        "Carceles": 24,
+        "Comercio/Inversion": 26,
+        "Petroleo/Energia": 14,
+        "Policia/Militar": 67,
+        "Precios/Costo de vida": 23,
+        "Justicia/Corrupcion": 47,
+        "Migracion": 17,
+        "Fiscal/Presupuesto": 11,
+        "Crimen/Violencia": 41,
+        "Ambiente": 23,
+        "Empleo": 13,
+        "Cultura/Comunidad": 46,
+        "Salud": 45,
+        "Narcotrafico": 20,
+        "Impuestos": 8
+      }
+    },
+    {
+      "ts": 1790379261.634038,
+      "c": {
+        "Asamblea/Leyes": 35,
+        "Ejecutivo": 124,
+        "Carceles": 24,
+        "Comercio/Inversion": 24,
+        "Elecciones": 38,
+        "Petroleo/Energia": 15,
+        "Educacion": 30,
+        "Policia/Militar": 72,
+        "Ambiente": 22,
+        "Justicia/Corrupcion": 53,
+        "Migracion": 15,
+        "Narcotrafico": 21,
+        "Fiscal/Presupuesto": 11,
+        "Crimen/Violencia": 44,
+        "Salud": 47,
+        "Precios/Costo de vida": 23,
+        "Empleo": 13,
+        "Cultura/Comunidad": 47,
+        "Impuestos": 6
+      }
+    },
+    {
+      "ts": 1790382873.9625006,
+      "c": {
+        "Asamblea/Leyes": 31,
+        "Ejecutivo": 111,
+        "Carceles": 22,
+        "Comercio/Inversion": 23,
+        "Elecciones": 31,
+        "Petroleo/Energia": 15,
+        "Educacion": 26,
+        "Ambiente": 20,
+        "Policia/Militar": 66,
+        "Justicia/Corrupcion": 51,
+        "Migracion": 12,
+        "Narcotrafico": 22,
+        "Crimen/Violencia": 45,
+        "Salud": 43,
+        "Empleo": 13,
+        "Cultura/Comunidad": 44,
+        "Precios/Costo de vida": 22,
+        "Fiscal/Presupuesto": 11,
+        "Impuestos": 4
+      }
+    },
+    {
+      "ts": 1790386527.336241,
+      "c": {
+        "Asamblea/Leyes": 33,
+        "Ejecutivo": 109,
+        "Carceles": 22,
+        "Comercio/Inversion": 22,
+        "Elecciones": 28,
+        "Petroleo/Energia": 16,
+        "Ambiente": 20,
+        "Policia/Militar": 62,
+        "Justicia/Corrupcion": 48,
+        "Migracion": 10,
+        "Narcotrafico": 23,
+        "Crimen/Violencia": 42,
+        "Salud": 37,
+        "Educacion": 26,
+        "Empleo": 13,
+        "Cultura/Comunidad": 42,
+        "Precios/Costo de vida": 19,
+        "Fiscal/Presupuesto": 9,
+        "Impuestos": 3
+      }
+    },
+    {
+      "ts": 1790390146.9781914,
+      "c": {
+        "Asamblea/Leyes": 28,
+        "Carceles": 18,
+        "Comercio/Inversion": 21,
+        "Ejecutivo": 105,
+        "Elecciones": 29,
+        "Petroleo/Energia": 13,
+        "Ambiente": 16,
+        "Policia/Militar": 52,
+        "Salud": 26,
+        "Narcotrafico": 18,
+        "Crimen/Violencia": 37,
+        "Justicia/Corrupcion": 38,
+        "Educacion": 24,
+        "Empleo": 10,
+        "Migracion": 8,
+        "Cultura/Comunidad": 36,
+        "Precios/Costo de vida": 15,
+        "Fiscal/Presupuesto": 6,
+        "Impuestos": 1
+      }
+    },
+    {
+      "ts": 1790395997.0648525,
+      "c": {
+        "Cultura/Comunidad": 12,
+        "Educacion": 12,
+        "Ejecutivo": 62,
+        "Elecciones": 24,
+        "Migracion": 6,
+        "Policia/Militar": 26,
+        "Asamblea/Leyes": 23,
+        "Comercio/Inversion": 26,
+        "Petroleo/Energia": 9,
+        "Carceles": 13,
+        "Impuestos": 2,
+        "Justicia/Corrupcion": 24,
+        "Narcotrafico": 12,
+        "Crimen/Violencia": 18,
+        "Ambiente": 14,
+        "Fiscal/Presupuesto": 3,
+        "Salud": 25,
+        "Precios/Costo de vida": 12,
+        "Empleo": 7
+      }
+    },
+    {
+      "ts": 1790412867.537,
+      "c": {
+        "Asamblea/Leyes": 26,
+        "Comercio/Inversion": 17,
+        "Ejecutivo": 60,
+        "Petroleo/Energia": 13,
+        "Elecciones": 17,
+        "Educacion": 11,
+        "Justicia/Corrupcion": 15,
+        "Ambiente": 18,
+        "Policia/Militar": 20,
+        "Fiscal/Presupuesto": 7,
+        "Cultura/Comunidad": 14,
+        "Salud": 23,
+        "Empleo": 8,
+        "Crimen/Violencia": 12,
+        "Precios/Costo de vida": 11,
+        "Carceles": 13,
+        "Migracion": 11,
+        "Narcotrafico": 5,
+        "Impuestos": 4
+      }
+    },
+    {
+      "ts": 1790416493.712074,
+      "c": {
+        "Cultura/Comunidad": 13,
+        "Educacion": 11,
+        "Ejecutivo": 64,
+        "Elecciones": 22,
+        "Migracion": 14,
+        "Policia/Militar": 20,
+        "Asamblea/Leyes": 19,
+        "Comercio/Inversion": 19,
+        "Petroleo/Energia": 16,
+        "Carceles": 12,
+        "Justicia/Corrupcion": 13,
+        "Precios/Costo de vida": 11,
+        "Crimen/Violencia": 8,
+        "Empleo": 7,
+        "Salud": 20,
+        "Fiscal/Presupuesto": 6,
+        "Ambiente": 12,
+        "Impuestos": 4,
+        "Narcotrafico": 4
+      }
+    },
+    {
+      "ts": 1790483102.442658,
+      "c": {
+        "Cultura/Comunidad": 15,
+        "Educacion": 7,
+        "Ejecutivo": 54,
+        "Elecciones": 17,
+        "Migracion": 5,
+        "Policia/Militar": 23,
+        "Asamblea/Leyes": 21,
+        "Carceles": 7,
+        "Comercio/Inversion": 10,
+        "Petroleo/Energia": 8,
+        "Crimen/Violencia": 11,
+        "Justicia/Corrupcion": 10,
+        "Ambiente": 20,
+        "Empleo": 9,
+        "Salud": 11,
+        "Precios/Costo de vida": 7,
+        "Narcotrafico": 8,
+        "Impuestos": 2,
+        "Fiscal/Presupuesto": 2
+      }
+    },
+    {
+      "ts": 1790486795.404605,
+      "c": {
+        "Asamblea/Leyes": 19,
+        "Carceles": 7,
+        "Comercio/Inversion": 10,
+        "Ejecutivo": 49,
+        "Elecciones": 17,
+        "Petroleo/Energia": 9,
+        "Policia/Militar": 21,
+        "Crimen/Violencia": 10,
+        "Educacion": 7,
+        "Justicia/Corrupcion": 8,
+        "Cultura/Comunidad": 14,
+        "Ambiente": 20,
+        "Salud": 12,
+        "Precios/Costo de vida": 8,
+        "Impuestos": 2,
+        "Migracion": 3,
+        "Narcotrafico": 8,
+        "Empleo": 8,
+        "Fiscal/Presupuesto": 2
+      }
+    },
+    {
+      "ts": 1790536320.9862325,
+      "c": {
+        "Comercio/Inversion": 7,
+        "Petroleo/Energia": 6,
+        "Policia/Militar": 35,
+        "Ejecutivo": 55,
+        "Elecciones": 19,
+        "Cultura/Comunidad": 7,
+        "Educacion": 8,
+        "Carceles": 6,
+        "Asamblea/Leyes": 13,
+        "Crimen/Violencia": 14,
+        "Precios/Costo de vida": 8,
+        "Empleo": 6,
+        "Ambiente": 9,
+        "Salud": 12,
+        "Narcotrafico": 4,
+        "Justicia/Corrupcion": 5,
+        "Migracion": 6,
+        "Impuestos": 4,
+        "Fiscal/Presupuesto": 4
+      }
+    },
+    {
+      "ts": 1790626180.0451467,
+      "c": {
+        "Cultura/Comunidad": 17,
+        "Migracion": 12,
+        "Comercio/Inversion": 22,
+        "Petroleo/Energia": 17,
+        "Policia/Militar": 53,
+        "Ambiente": 21,
+        "Asamblea/Leyes": 22,
+        "Crimen/Violencia": 25,
+        "Educacion": 24,
+        "Ejecutivo": 100,
+        "Empleo": 12,
+        "Fiscal/Presupuesto": 10,
+        "Justicia/Corrupcion": 27,
+        "Elecciones": 30,
+        "Precios/Costo de vida": 23,
+        "Carceles": 16,
+        "Narcotrafico": 16,
+        "Salud": 27,
+        "Impuestos": 8
+      }
+    },
+    {
+      "ts": 1790629831.1437826,
+      "c": {
+        "Cultura/Comunidad": 22,
+        "Migracion": 12,
+        "Comercio/Inversion": 25,
+        "Petroleo/Energia": 16,
+        "Policia/Militar": 60,
+        "Ejecutivo": 114,
+        "Elecciones": 35,
+        "Asamblea/Leyes": 28,
+        "Educacion": 26,
+        "Empleo": 15,
+        "Justicia/Corrupcion": 30,
+        "Narcotrafico": 16,
+        "Precios/Costo de vida": 24,
+        "Ambiente": 26,
+        "Crimen/Violencia": 25,
+        "Fiscal/Presupuesto": 9,
+        "Carceles": 19,
+        "Salud": 22,
+        "Impuestos": 11
+      }
+    },
+    {
+      "ts": 1790633451.8228393,
+      "c": {
+        "Carceles": 19,
+        "Justicia/Corrupcion": 26,
+        "Narcotrafico": 16,
+        "Policia/Militar": 48,
+        "Ejecutivo": 91,
+        "Ambiente": 23,
+        "Comercio/Inversion": 20,
+        "Precios/Costo de vida": 23,
+        "Migracion": 7,
+        "Asamblea/Leyes": 23,
+        "Educacion": 19,
+        "Cultura/Comunidad": 21,
+        "Elecciones": 32,
+        "Crimen/Violencia": 23,
+        "Empleo": 15,
+        "Petroleo/Energia": 14,
+        "Salud": 23,
+        "Fiscal/Presupuesto": 10,
+        "Impuestos": 7
+      }
+    },
+    {
+      "ts": 1790637107.2563386,
+      "c": {
+        "Carceles": 17,
+        "Justicia/Corrupcion": 30,
+        "Narcotrafico": 13,
+        "Policia/Militar": 51,
+        "Crimen/Violencia": 31,
+        "Ejecutivo": 105,
+        "Ambiente": 23,
+        "Asamblea/Leyes": 27,
+        "Educacion": 20,
+        "Precios/Costo de vida": 25,
+        "Comercio/Inversion": 26,
+        "Empleo": 21,
+        "Migracion": 9,
+        "Cultura/Comunidad": 23,
+        "Elecciones": 30,
+        "Petroleo/Energia": 16,
+        "Salud": 29,
+        "Fiscal/Presupuesto": 12,
+        "Impuestos": 9
+      }
+    },
+    {
+      "ts": 1790640749.9106703,
+      "c": {
+        "Justicia/Corrupcion": 32,
+        "Narcotrafico": 11,
+        "Policia/Militar": 53,
+        "Crimen/Violencia": 35,
+        "Ejecutivo": 106,
+        "Ambiente": 22,
+        "Comercio/Inversion": 26,
+        "Precios/Costo de vida": 25,
+        "Educacion": 19,
+        "Cultura/Comunidad": 22,
+        "Elecciones": 31,
+        "Empleo": 25,
+        "Salud": 28,
+        "Migracion": 9,
+        "Asamblea/Leyes": 24,
+        "Petroleo/Energia": 16,
+        "Impuestos": 9,
+        "Carceles": 13,
+        "Fiscal/Presupuesto": 9
+      }
+    },
+    {
+      "ts": 1790644397.1737797,
+      "c": {
+        "Policia/Militar": 51,
+        "Justicia/Corrupcion": 31,
+        "Narcotrafico": 10,
+        "Ejecutivo": 92,
+        "Crimen/Violencia": 34,
+        "Cultura/Comunidad": 20,
+        "Precios/Costo de vida": 24,
+        "Elecciones": 33,
+        "Educacion": 14,
+        "Salud": 27,
+        "Ambiente": 20,
+        "Comercio/Inversion": 23,
+        "Empleo": 24,
+        "Impuestos": 6,
+        "Asamblea/Leyes": 20,
+        "Petroleo/Energia": 15,
+        "Migracion": 6,
+        "Carceles": 9,
+        "Fiscal/Presupuesto": 9
+      }
+    },
+    {
+      "ts": 1790648150.7339873,
+      "c": {
+        "Policia/Militar": 46,
+        "Ejecutivo": 99,
+        "Justicia/Corrupcion": 34,
+        "Narcotrafico": 11,
+        "Crimen/Violencia": 35,
+        "Cultura/Comunidad": 21,
+        "Precios/Costo de vida": 20,
+        "Elecciones": 31,
+        "Comercio/Inversion": 24,
+        "Educacion": 13,
+        "Salud": 25,
+        "Ambiente": 17,
+        "Empleo": 22,
+        "Impuestos": 6,
+        "Asamblea/Leyes": 21,
+        "Petroleo/Energia": 14,
+        "Migracion": 5,
+        "Fiscal/Presupuesto": 12,
+        "Carceles": 9
+      }
+    },
+    {
+      "ts": 1790651922.1088512,
+      "c": {
+        "Policia/Militar": 44,
+        "Ejecutivo": 100,
+        "Justicia/Corrupcion": 32,
+        "Narcotrafico": 10,
+        "Cultura/Comunidad": 20,
+        "Crimen/Violencia": 32,
+        "Educacion": 13,
+        "Precios/Costo de vida": 12,
+        "Salud": 24,
+        "Ambiente": 18,
+        "Elecciones": 29,
+        "Comercio/Inversion": 23,
+        "Empleo": 18,
+        "Impuestos": 8,
+        "Asamblea/Leyes": 21,
+        "Fiscal/Presupuesto": 11,
+        "Petroleo/Energia": 12,
+        "Migracion": 5,
+        "Carceles": 6
+      }
+    },
+    {
+      "ts": 1790655659.9333534,
+      "c": {
+        "Ejecutivo": 91,
+        "Justicia/Corrupcion": 32,
+        "Narcotrafico": 7,
+        "Policia/Militar": 43,
+        "Educacion": 10,
+        "Crimen/Violencia": 26,
+        "Precios/Costo de vida": 11,
+        "Salud": 27,
+        "Ambiente": 17,
+        "Asamblea/Leyes": 19,
+        "Comercio/Inversion": 24,
+        "Elecciones": 26,
+        "Empleo": 16,
+        "Petroleo/Energia": 13,
+        "Migracion": 8,
+        "Fiscal/Presupuesto": 6,
+        "Impuestos": 9,
+        "Cultura/Comunidad": 16,
+        "Carceles": 7
+      }
+    },
+    {
+      "ts": 1790704200.3821387,
+      "c": {
+        "Crimen/Violencia": 28,
+        "Educacion": 20,
+        "Ambiente": 17,
+        "Ejecutivo": 110,
+        "Policia/Militar": 57,
+        "Justicia/Corrupcion": 33,
+        "Comercio/Inversion": 22,
+        "Empleo": 17,
+        "Asamblea/Leyes": 32,
+        "Precios/Costo de vida": 13,
+        "Cultura/Comunidad": 20,
+        "Narcotrafico": 5,
+        "Elecciones": 28,
+        "Petroleo/Energia": 14,
+        "Impuestos": 9,
+        "Salud": 26,
+        "Fiscal/Presupuesto": 14,
+        "Carceles": 16,
+        "Migracion": 16
+      }
+    },
+    {
+      "ts": 1790707836.4953763,
+      "c": {
+        "Policia/Militar": 65,
+        "Justicia/Corrupcion": 48,
+        "Narcotrafico": 8,
+        "Crimen/Violencia": 33,
+        "Precios/Costo de vida": 19,
+        "Ejecutivo": 142,
+        "Ambiente": 18,
+        "Asamblea/Leyes": 40,
+        "Elecciones": 36,
+        "Fiscal/Presupuesto": 17,
+        "Cultura/Comunidad": 24,
+        "Impuestos": 12,
+        "Empleo": 22,
+        "Migracion": 15,
+        "Petroleo/Energia": 14,
+        "Salud": 36,
+        "Educacion": 23,
+        "Comercio/Inversion": 24,
+        "Carceles": 19
+      }
+    },
+    {
+      "ts": 1790711499.284243,
+      "c": {
+        "Crimen/Violencia": 25,
+        "Ejecutivo": 112,
+        "Justicia/Corrupcion": 34,
+        "Narcotrafico": 4,
+        "Policia/Militar": 56,
+        "Ambiente": 13,
+        "Asamblea/Leyes": 29,
+        "Cultura/Comunidad": 15,
+        "Impuestos": 7,
+        "Empleo": 15,
+        "Elecciones": 32,
+        "Precios/Costo de vida": 21,
+        "Carceles": 20,
+        "Educacion": 21,
+        "Comercio/Inversion": 26,
+        "Fiscal/Presupuesto": 15,
+        "Salud": 21,
+        "Petroleo/Energia": 12,
+        "Migracion": 17
+      }
+    },
+    {
+      "ts": 1790715193.2446997,
+      "c": {
+        "Ejecutivo": 132,
+        "Justicia/Corrupcion": 45,
+        "Narcotrafico": 10,
+        "Ambiente": 18,
+        "Crimen/Violencia": 34,
+        "Policia/Militar": 60,
+        "Asamblea/Leyes": 38,
+        "Cultura/Comunidad": 21,
+        "Impuestos": 8,
+        "Elecciones": 38,
+        "Empleo": 23,
+        "Comercio/Inversion": 30,
+        "Carceles": 22,
+        "Precios/Costo de vida": 25,
+        "Educacion": 26,
+        "Fiscal/Presupuesto": 13,
+        "Migracion": 21,
+        "Petroleo/Energia": 14,
+        "Salud": 23
+      }
+    },
+    {
+      "ts": 1790719204.4549985,
+      "c": {
+        "Asamblea/Leyes": 45,
+        "Cultura/Comunidad": 24,
+        "Ejecutivo": 142,
+        "Impuestos": 14,
+        "Justicia/Corrupcion": 50,
+        "Narcotrafico": 12,
+        "Ambiente": 20,
+        "Policia/Militar": 73,
+        "Crimen/Violencia": 36,
+        "Empleo": 25,
+        "Elecciones": 37,
+        "Comercio/Inversion": 33,
+        "Carceles": 21,
+        "Precios/Costo de vida": 24,
+        "Migracion": 19,
+        "Educacion": 32,
+        "Fiscal/Presupuesto": 11,
+        "Salud": 27,
+        "Petroleo/Energia": 12
+      }
+    },
+    {
+      "ts": 1790725873.8561149,
+      "c": {
+        "Crimen/Violencia": 47,
+        "Educacion": 39,
+        "Empleo": 30,
+        "Narcotrafico": 14,
+        "Policia/Militar": 76,
+        "Asamblea/Leyes": 52,
+        "Cultura/Comunidad": 28,
+        "Ejecutivo": 146,
+        "Impuestos": 12,
+        "Ambiente": 24,
+        "Justicia/Corrupcion": 63,
+        "Carceles": 22,
+        "Comercio/Inversion": 36,
+        "Elecciones": 43,
+        "Precios/Costo de vida": 35,
+        "Migracion": 21,
+        "Fiscal/Presupuesto": 12,
+        "Salud": 37,
+        "Petroleo/Energia": 16
+      }
+    }
+  ],
+  "nota_nueva_horaria": {
+    "hora": "2026-09-30T00",
+    "n": 0
+  }
+}

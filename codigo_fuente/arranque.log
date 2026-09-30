@@ -1,0 +1,1769 @@
+[18:50:58.555] === arranque (exe compilado) ===  HERE=C:\Users\elped\DOWNLO~1\DASHBO~1\CODIGO~1  argv=[]
+[18:50:58.557] serve: puerto 8000 bindeado
+[18:50:58.558] serve: ventana nativa creada, mostrando el dashboard existente mientras se actualiza
+[18:50:58.559] _arrancar_backend: primera pasada del feed (rapida, no espera a la IA)...
+[18:51:00.039] servidor: primera respuesta HTTP (GET /dashboard.html)
+[18:51:03.474] collect: feeds mas lentos -> Busqueda: Samborondon=3.70s(ok); Busqueda: Guayaquil=3.59s(ok); Busqueda: Duran EC=3.38s(ok); Extra=2.86s(ok); SCMP=2.73s(ok)
+[18:51:03.474] collect: 2 feed(s) con error/timeout -> Wambra=1.06s(HTTP 429); The Japan Times=1.32s(HTTP 404)
+[18:51:03.475] collect: 54 feeds en 4.90s (paralelo, max 20 hilos)
+[18:51:03.612] cluster: agrupando 1739 articulos contra el registro persistente...
+[18:51:29.631] run_fast: 1739 articulos -> 1542 historias | collect=5.01s cluster=9.93s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.11s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.94s | TOTAL=31.04s
+[18:51:29.636] _arrancar_backend: primera pasada terminada (31.08s) -- dashboard actualizado
+[18:51:29.733] enrich_pass: arranca con 1542 historias publicadas
+[18:51:29.735] INICIO embed_pendientes_registro
+[18:51:29.837] FIN    embed_pendientes_registro (0.10s)
+[18:51:29.837] INICIO embed_multilingue_pendientes_registro
+[18:51:30.260] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:51:30.260] INICIO coherencia_pendientes_registro
+[18:51:30.438] FIN    coherencia_pendientes_registro (0.18s)
+[18:51:30.438] INICIO alertas_recolectar_senales
+[18:51:37.241] FIN    alertas_recolectar_senales (6.80s)
+[18:51:37.241] INICIO redes_pasada
+[18:51:37.248] FIN    redes_pasada (0.01s)
+[18:51:37.249] INICIO demanda_gdelt_sercop
+[18:51:55.542] FIN    demanda_gdelt_sercop (18.29s)
+[18:51:55.542] INICIO oficial_actualizar
+[18:51:55.546] FIN    oficial_actualizar (0.00s)
+[18:51:55.546] INICIO get_ia
+[18:51:55.623] FIN    get_ia (0.08s)
+[18:51:55.623] INICIO get_geo_evidencia
+[18:51:55.624] FIN    get_geo_evidencia (0.00s)
+[18:51:55.625] INICIO get_contexto
+[18:51:55.774] FIN    get_contexto (0.15s)
+[18:51:55.774] INICIO get_factcheck
+[18:52:01.042] FIN    get_factcheck (5.27s)
+[18:52:01.042] INICIO get_veredicto
+[18:52:01.149] FIN    get_veredicto (0.11s)
+[18:52:01.149] INICIO get_declaraciones
+[18:52:01.161] FIN    get_declaraciones (0.01s)
+[18:52:01.161] INICIO get_social
+[18:52:13.341] FIN    get_social (12.18s)
+[18:52:13.341] INICIO get_social_historias
+[18:52:19.682] FIN    get_social_historias (6.34s)
+[18:52:19.786] enrich_pass: arranca con 1542 historias publicadas
+[18:52:19.787] INICIO embed_pendientes_registro
+[18:52:19.878] FIN    embed_pendientes_registro (0.09s)
+[18:52:19.879] INICIO embed_multilingue_pendientes_registro
+[18:52:20.286] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:52:20.286] INICIO coherencia_pendientes_registro
+[18:52:20.454] FIN    coherencia_pendientes_registro (0.17s)
+[18:52:20.454] INICIO alertas_recolectar_senales
+[18:52:23.568] FIN    alertas_recolectar_senales (3.11s)
+[18:52:23.569] INICIO redes_pasada
+[18:52:23.578] FIN    redes_pasada (0.01s)
+[18:52:23.579] INICIO demanda_gdelt_sercop
+[18:52:23.594] FIN    demanda_gdelt_sercop (0.01s)
+[18:52:23.594] INICIO oficial_actualizar
+[18:52:23.597] FIN    oficial_actualizar (0.00s)
+[18:52:23.598] INICIO get_ia
+[18:52:23.674] FIN    get_ia (0.08s)
+[18:52:23.675] INICIO get_geo_evidencia
+[18:52:23.676] FIN    get_geo_evidencia (0.00s)
+[18:52:23.676] INICIO get_contexto
+[18:52:23.817] FIN    get_contexto (0.14s)
+[18:52:23.818] INICIO get_factcheck
+[18:52:28.621] FIN    get_factcheck (4.80s)
+[18:52:28.622] INICIO get_veredicto
+[18:52:28.942] FIN    get_veredicto (0.32s)
+[18:52:28.942] INICIO get_declaraciones
+[18:52:28.953] FIN    get_declaraciones (0.01s)
+[18:52:28.954] INICIO get_social
+[18:52:28.956] FIN    get_social (0.00s)
+[18:52:28.957] INICIO get_social_historias
+[18:52:28.960] FIN    get_social_historias (0.00s)
+[18:52:29.062] enrich_pass: arranca con 1542 historias publicadas
+[18:52:29.063] INICIO embed_pendientes_registro
+[18:52:29.167] FIN    embed_pendientes_registro (0.10s)
+[18:52:29.168] INICIO embed_multilingue_pendientes_registro
+[18:52:29.575] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:52:29.576] INICIO coherencia_pendientes_registro
+[18:52:29.779] FIN    coherencia_pendientes_registro (0.20s)
+[18:52:29.779] INICIO alertas_recolectar_senales
+[18:52:33.954] collect: feeds mas lentos -> Busqueda: Guayaquil=3.37s(ok); Busqueda: Duran EC=3.05s(ok); Busqueda: Samborondon=2.94s(ok); Clarin=2.72s(ok (304 sin cambios)); Municipio de Guayaquil=2.23s(ok (304 sin cambios))
+[18:52:33.955] collect: 2 feed(s) con error/timeout -> Wambra=0.85s(HTTP 429); The Japan Times=1.69s(HTTP 404)
+[18:52:33.956] collect: 54 feeds en 4.28s (paralelo, max 20 hilos)
+[18:52:34.166] cluster: agrupando 1738 articulos contra el registro persistente...
+[18:52:34.740] FIN    alertas_recolectar_senales (4.96s)
+[18:52:34.795] INICIO redes_pasada
+[18:52:35.149] FIN    redes_pasada (0.35s)
+[18:52:35.193] INICIO demanda_gdelt_sercop
+[18:52:35.567] FIN    demanda_gdelt_sercop (0.37s)
+[18:52:35.646] INICIO oficial_actualizar
+[18:52:35.843] FIN    oficial_actualizar (0.20s)
+[18:52:35.852] INICIO get_ia
+[18:52:36.066] FIN    get_ia (0.21s)
+[18:52:36.210] INICIO get_geo_evidencia
+[18:52:36.291] FIN    get_geo_evidencia (0.08s)
+[18:52:36.337] INICIO get_contexto
+[18:52:41.702] FIN    get_contexto (5.36s)
+[18:52:41.760] INICIO get_factcheck
+[18:52:48.253] FIN    get_factcheck (6.49s)
+[18:52:48.376] INICIO get_veredicto
+[18:53:01.010] run_fast: 1738 articulos -> 1544 historias | collect=4.46s cluster=10.62s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.13s get_geo_evidencia=0.00s get_contexto=0.03s get_contracts=0.02s get_factcheck=0.01s get_veredicto=0.12s get_declaraciones=0.03s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.92s | TOTAL=31.34s
+[18:53:01.410] FIN    get_veredicto (13.03s)
+[18:53:01.410] INICIO get_declaraciones
+[18:53:01.433] FIN    get_declaraciones (0.02s)
+[18:53:01.434] INICIO get_social
+[18:53:01.439] FIN    get_social (0.00s)
+[18:53:01.441] INICIO get_social_historias
+[18:53:01.449] FIN    get_social_historias (0.01s)
+[18:53:01.578] enrich_pass: arranca con 1544 historias publicadas
+[18:53:01.581] INICIO embed_pendientes_registro
+[18:53:01.734] FIN    embed_pendientes_registro (0.15s)
+[18:53:01.734] INICIO embed_multilingue_pendientes_registro
+[18:53:02.212] FIN    embed_multilingue_pendientes_registro (0.48s)
+[18:53:02.213] INICIO coherencia_pendientes_registro
+[18:53:02.393] FIN    coherencia_pendientes_registro (0.18s)
+[18:53:02.393] INICIO alertas_recolectar_senales
+[18:53:05.105] FIN    alertas_recolectar_senales (2.71s)
+[18:53:05.106] INICIO redes_pasada
+[18:53:05.113] FIN    redes_pasada (0.01s)
+[18:53:05.114] INICIO demanda_gdelt_sercop
+[18:53:05.134] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:05.134] INICIO oficial_actualizar
+[18:53:05.138] FIN    oficial_actualizar (0.00s)
+[18:53:05.138] INICIO get_ia
+[18:53:05.222] FIN    get_ia (0.08s)
+[18:53:05.223] INICIO get_geo_evidencia
+[18:53:05.224] FIN    get_geo_evidencia (0.00s)
+[18:53:05.224] INICIO get_contexto
+[18:53:05.379] FIN    get_contexto (0.15s)
+[18:53:05.380] INICIO get_factcheck
+[18:53:10.986] FIN    get_factcheck (5.61s)
+[18:53:10.988] INICIO get_veredicto
+[18:53:11.370] FIN    get_veredicto (0.38s)
+[18:53:11.370] INICIO get_declaraciones
+[18:53:11.386] FIN    get_declaraciones (0.02s)
+[18:53:11.386] INICIO get_social
+[18:53:11.389] FIN    get_social (0.00s)
+[18:53:11.390] INICIO get_social_historias
+[18:53:11.395] FIN    get_social_historias (0.00s)
+[18:53:11.512] enrich_pass: arranca con 1544 historias publicadas
+[18:53:11.513] INICIO embed_pendientes_registro
+[18:53:11.618] FIN    embed_pendientes_registro (0.10s)
+[18:53:11.619] INICIO embed_multilingue_pendientes_registro
+[18:53:12.034] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:53:12.035] INICIO coherencia_pendientes_registro
+[18:53:12.216] FIN    coherencia_pendientes_registro (0.18s)
+[18:53:12.217] INICIO alertas_recolectar_senales
+[18:53:14.881] FIN    alertas_recolectar_senales (2.66s)
+[18:53:14.882] INICIO redes_pasada
+[18:53:14.889] FIN    redes_pasada (0.01s)
+[18:53:14.890] INICIO demanda_gdelt_sercop
+[18:53:14.905] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:14.906] INICIO oficial_actualizar
+[18:53:14.909] FIN    oficial_actualizar (0.00s)
+[18:53:14.910] INICIO get_ia
+[18:53:14.992] FIN    get_ia (0.08s)
+[18:53:14.993] INICIO get_geo_evidencia
+[18:53:14.994] FIN    get_geo_evidencia (0.00s)
+[18:53:14.994] INICIO get_contexto
+[18:53:15.158] FIN    get_contexto (0.16s)
+[18:53:15.158] INICIO get_factcheck
+[18:53:20.076] FIN    get_factcheck (4.92s)
+[18:53:20.077] INICIO get_veredicto
+[18:53:20.485] FIN    get_veredicto (0.41s)
+[18:53:20.486] INICIO get_declaraciones
+[18:53:20.499] FIN    get_declaraciones (0.01s)
+[18:53:20.499] INICIO get_social
+[18:53:20.501] FIN    get_social (0.00s)
+[18:53:20.502] INICIO get_social_historias
+[18:53:20.506] FIN    get_social_historias (0.00s)
+[18:53:20.623] enrich_pass: arranca con 1544 historias publicadas
+[18:53:20.624] INICIO embed_pendientes_registro
+[18:53:20.733] FIN    embed_pendientes_registro (0.11s)
+[18:53:20.733] INICIO embed_multilingue_pendientes_registro
+[18:53:21.149] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:53:21.150] INICIO coherencia_pendientes_registro
+[18:53:21.326] FIN    coherencia_pendientes_registro (0.18s)
+[18:53:21.327] INICIO alertas_recolectar_senales
+[18:53:24.448] FIN    alertas_recolectar_senales (3.12s)
+[18:53:24.449] INICIO redes_pasada
+[18:53:24.457] FIN    redes_pasada (0.01s)
+[18:53:24.457] INICIO demanda_gdelt_sercop
+[18:53:24.475] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:24.476] INICIO oficial_actualizar
+[18:53:24.479] FIN    oficial_actualizar (0.00s)
+[18:53:24.480] INICIO get_ia
+[18:53:24.571] FIN    get_ia (0.09s)
+[18:53:24.572] INICIO get_geo_evidencia
+[18:53:24.573] FIN    get_geo_evidencia (0.00s)
+[18:53:24.573] INICIO get_contexto
+[18:53:24.739] FIN    get_contexto (0.17s)
+[18:53:24.739] INICIO get_factcheck
+[18:53:30.475] FIN    get_factcheck (5.74s)
+[18:53:30.475] INICIO get_veredicto
+[18:53:30.846] FIN    get_veredicto (0.37s)
+[18:53:30.846] INICIO get_declaraciones
+[18:53:30.860] FIN    get_declaraciones (0.01s)
+[18:53:30.860] INICIO get_social
+[18:53:30.863] FIN    get_social (0.00s)
+[18:53:30.863] INICIO get_social_historias
+[18:53:30.867] FIN    get_social_historias (0.00s)
+[18:53:30.981] enrich_pass: arranca con 1544 historias publicadas
+[18:53:30.982] INICIO embed_pendientes_registro
+[18:53:31.097] FIN    embed_pendientes_registro (0.11s)
+[18:53:31.098] INICIO embed_multilingue_pendientes_registro
+[18:53:31.529] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:53:31.530] INICIO coherencia_pendientes_registro
+[18:53:31.751] FIN    coherencia_pendientes_registro (0.22s)
+[18:53:31.752] INICIO alertas_recolectar_senales
+[18:53:34.647] FIN    alertas_recolectar_senales (2.90s)
+[18:53:34.648] INICIO redes_pasada
+[18:53:34.657] FIN    redes_pasada (0.01s)
+[18:53:34.657] INICIO demanda_gdelt_sercop
+[18:53:34.675] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:34.675] INICIO oficial_actualizar
+[18:53:34.679] FIN    oficial_actualizar (0.00s)
+[18:53:34.679] INICIO get_ia
+[18:53:34.762] FIN    get_ia (0.08s)
+[18:53:34.762] INICIO get_geo_evidencia
+[18:53:34.764] FIN    get_geo_evidencia (0.00s)
+[18:53:34.764] INICIO get_contexto
+[18:53:34.933] FIN    get_contexto (0.17s)
+[18:53:34.934] INICIO get_factcheck
+[18:53:40.440] FIN    get_factcheck (5.51s)
+[18:53:40.441] INICIO get_veredicto
+[18:53:40.923] FIN    get_veredicto (0.48s)
+[18:53:40.923] INICIO get_declaraciones
+[18:53:40.938] FIN    get_declaraciones (0.01s)
+[18:53:40.938] INICIO get_social
+[18:53:40.941] FIN    get_social (0.00s)
+[18:53:40.942] INICIO get_social_historias
+[18:53:40.945] FIN    get_social_historias (0.00s)
+[18:53:41.064] enrich_pass: arranca con 1544 historias publicadas
+[18:53:41.066] INICIO embed_pendientes_registro
+[18:53:41.171] FIN    embed_pendientes_registro (0.11s)
+[18:53:41.172] INICIO embed_multilingue_pendientes_registro
+[18:53:41.603] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:53:41.604] INICIO coherencia_pendientes_registro
+[18:53:41.780] FIN    coherencia_pendientes_registro (0.18s)
+[18:53:41.781] INICIO alertas_recolectar_senales
+[18:53:44.867] FIN    alertas_recolectar_senales (3.09s)
+[18:53:44.867] INICIO redes_pasada
+[18:53:44.877] FIN    redes_pasada (0.01s)
+[18:53:44.877] INICIO demanda_gdelt_sercop
+[18:53:44.893] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:44.894] INICIO oficial_actualizar
+[18:53:44.897] FIN    oficial_actualizar (0.00s)
+[18:53:44.898] INICIO get_ia
+[18:53:44.973] FIN    get_ia (0.08s)
+[18:53:44.973] INICIO get_geo_evidencia
+[18:53:44.974] FIN    get_geo_evidencia (0.00s)
+[18:53:44.975] INICIO get_contexto
+[18:53:45.116] FIN    get_contexto (0.14s)
+[18:53:45.117] INICIO get_factcheck
+[18:53:50.117] FIN    get_factcheck (5.00s)
+[18:53:50.119] INICIO get_veredicto
+[18:53:50.565] FIN    get_veredicto (0.45s)
+[18:53:50.565] INICIO get_declaraciones
+[18:53:50.582] FIN    get_declaraciones (0.02s)
+[18:53:50.583] INICIO get_social
+[18:53:50.586] FIN    get_social (0.00s)
+[18:53:50.586] INICIO get_social_historias
+[18:53:50.591] FIN    get_social_historias (0.00s)
+[18:53:50.719] enrich_pass: arranca con 1544 historias publicadas
+[18:53:50.721] INICIO embed_pendientes_registro
+[18:53:50.826] FIN    embed_pendientes_registro (0.10s)
+[18:53:50.827] INICIO embed_multilingue_pendientes_registro
+[18:53:51.251] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:53:51.251] INICIO coherencia_pendientes_registro
+[18:53:51.425] FIN    coherencia_pendientes_registro (0.17s)
+[18:53:51.426] INICIO alertas_recolectar_senales
+[18:53:54.258] FIN    alertas_recolectar_senales (2.83s)
+[18:53:54.259] INICIO redes_pasada
+[18:53:54.267] FIN    redes_pasada (0.01s)
+[18:53:54.267] INICIO demanda_gdelt_sercop
+[18:53:54.285] FIN    demanda_gdelt_sercop (0.02s)
+[18:53:54.286] INICIO oficial_actualizar
+[18:53:54.290] FIN    oficial_actualizar (0.00s)
+[18:53:54.291] INICIO get_ia
+[18:53:54.384] FIN    get_ia (0.09s)
+[18:53:54.385] INICIO get_geo_evidencia
+[18:53:54.386] FIN    get_geo_evidencia (0.00s)
+[18:53:54.387] INICIO get_contexto
+[18:53:54.559] FIN    get_contexto (0.17s)
+[18:53:54.560] INICIO get_factcheck
+[18:53:59.325] FIN    get_factcheck (4.77s)
+[18:53:59.326] INICIO get_veredicto
+[18:53:59.651] FIN    get_veredicto (0.33s)
+[18:53:59.652] INICIO get_declaraciones
+[18:53:59.666] FIN    get_declaraciones (0.01s)
+[18:53:59.667] INICIO get_social
+[18:53:59.670] FIN    get_social (0.00s)
+[18:53:59.671] INICIO get_social_historias
+[18:53:59.675] FIN    get_social_historias (0.00s)
+[18:53:59.803] enrich_pass: arranca con 1544 historias publicadas
+[18:53:59.805] INICIO embed_pendientes_registro
+[18:53:59.931] FIN    embed_pendientes_registro (0.13s)
+[18:53:59.932] INICIO embed_multilingue_pendientes_registro
+[18:54:00.365] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:54:00.366] INICIO coherencia_pendientes_registro
+[18:54:00.544] FIN    coherencia_pendientes_registro (0.18s)
+[18:54:00.545] INICIO alertas_recolectar_senales
+[18:54:05.067] FIN    alertas_recolectar_senales (4.52s)
+[18:54:05.272] INICIO redes_pasada
+[18:54:05.298] FIN    redes_pasada (0.03s)
+[18:54:05.304] INICIO demanda_gdelt_sercop
+[18:54:05.305] collect: feeds mas lentos -> Busqueda: Guayaquil=4.15s(ok); Busqueda: Duran EC=4.07s(ok); Busqueda: Samborondon=4.04s(ok); Expreso=2.56s(ok); Municipio de Guayaquil=2.39s(ok (304 sin cambios))
+[18:54:05.306] collect: 2 feed(s) con error/timeout -> Wambra=0.92s(HTTP 429); The Japan Times=1.25s(HTTP 404)
+[18:54:05.324] collect: 54 feeds en 4.28s (paralelo, max 20 hilos)
+[18:54:05.325] FIN    demanda_gdelt_sercop (0.02s)
+[18:54:05.325] INICIO oficial_actualizar
+[18:54:05.367] FIN    oficial_actualizar (0.04s)
+[18:54:05.371] INICIO get_ia
+[18:54:05.533] cluster: agrupando 1738 articulos contra el registro persistente...
+[18:54:05.560] FIN    get_ia (0.19s)
+[18:54:05.628] INICIO get_geo_evidencia
+[18:54:05.768] FIN    get_geo_evidencia (0.14s)
+[18:54:05.799] INICIO get_contexto
+[18:54:10.633] FIN    get_contexto (4.83s)
+[18:54:10.738] INICIO get_factcheck
+[18:54:17.741] FIN    get_factcheck (7.00s)
+[18:54:17.862] INICIO get_veredicto
+[18:54:32.532] run_fast: 1738 articulos -> 1547 historias | collect=4.44s cluster=10.77s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.14s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.08s | TOTAL=31.49s
+[18:54:32.745] FIN    get_veredicto (14.88s)
+[18:54:32.745] INICIO get_declaraciones
+[18:54:32.762] FIN    get_declaraciones (0.02s)
+[18:54:32.763] INICIO get_social
+[18:54:32.766] FIN    get_social (0.00s)
+[18:54:32.767] INICIO get_social_historias
+[18:54:32.772] FIN    get_social_historias (0.01s)
+[18:54:32.883] enrich_pass: arranca con 1547 historias publicadas
+[18:54:32.885] INICIO embed_pendientes_registro
+[18:54:32.991] FIN    embed_pendientes_registro (0.11s)
+[18:54:32.991] INICIO embed_multilingue_pendientes_registro
+[18:54:33.399] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:54:33.400] INICIO coherencia_pendientes_registro
+[18:54:33.580] FIN    coherencia_pendientes_registro (0.18s)
+[18:54:33.581] INICIO alertas_recolectar_senales
+[18:54:36.309] FIN    alertas_recolectar_senales (2.73s)
+[18:54:36.310] INICIO redes_pasada
+[18:54:36.317] FIN    redes_pasada (0.01s)
+[18:54:36.317] INICIO demanda_gdelt_sercop
+[18:54:36.333] FIN    demanda_gdelt_sercop (0.02s)
+[18:54:36.333] INICIO oficial_actualizar
+[18:54:36.337] FIN    oficial_actualizar (0.00s)
+[18:54:36.337] INICIO get_ia
+[18:54:36.413] FIN    get_ia (0.08s)
+[18:54:36.413] INICIO get_geo_evidencia
+[18:54:36.414] FIN    get_geo_evidencia (0.00s)
+[18:54:36.414] INICIO get_contexto
+[18:54:36.566] FIN    get_contexto (0.15s)
+[18:54:36.566] INICIO get_factcheck
+[18:54:41.362] FIN    get_factcheck (4.80s)
+[18:54:41.362] INICIO get_veredicto
+[18:54:41.814] FIN    get_veredicto (0.45s)
+[18:54:41.815] INICIO get_declaraciones
+[18:54:41.829] FIN    get_declaraciones (0.01s)
+[18:54:41.830] INICIO get_social
+[18:54:41.833] FIN    get_social (0.00s)
+[18:54:41.833] INICIO get_social_historias
+[18:54:41.838] FIN    get_social_historias (0.00s)
+[18:54:41.958] enrich_pass: arranca con 1547 historias publicadas
+[18:54:41.959] INICIO embed_pendientes_registro
+[18:54:42.063] FIN    embed_pendientes_registro (0.10s)
+[18:54:42.064] INICIO embed_multilingue_pendientes_registro
+[18:54:42.480] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:54:42.480] INICIO coherencia_pendientes_registro
+[18:54:42.662] FIN    coherencia_pendientes_registro (0.18s)
+[18:54:42.663] INICIO alertas_recolectar_senales
+[18:54:45.361] FIN    alertas_recolectar_senales (2.70s)
+[18:54:45.361] INICIO redes_pasada
+[18:54:45.369] FIN    redes_pasada (0.01s)
+[18:54:45.369] INICIO demanda_gdelt_sercop
+[18:54:45.384] FIN    demanda_gdelt_sercop (0.01s)
+[18:54:45.384] INICIO oficial_actualizar
+[18:54:45.387] FIN    oficial_actualizar (0.00s)
+[18:54:45.387] INICIO get_ia
+[18:54:45.461] FIN    get_ia (0.07s)
+[18:54:45.462] INICIO get_geo_evidencia
+[18:54:45.463] FIN    get_geo_evidencia (0.00s)
+[18:54:45.463] INICIO get_contexto
+[18:54:45.603] FIN    get_contexto (0.14s)
+[18:54:45.604] INICIO get_factcheck
+[18:54:50.078] FIN    get_factcheck (4.47s)
+[18:54:50.079] INICIO get_veredicto
+[18:54:50.431] FIN    get_veredicto (0.35s)
+[18:54:50.431] INICIO get_declaraciones
+[18:54:50.443] FIN    get_declaraciones (0.01s)
+[18:54:50.443] INICIO get_social
+[18:54:50.446] FIN    get_social (0.00s)
+[18:54:50.446] INICIO get_social_historias
+[18:54:50.451] FIN    get_social_historias (0.00s)
+[18:54:50.554] enrich_pass: arranca con 1547 historias publicadas
+[18:54:50.556] INICIO embed_pendientes_registro
+[18:54:50.675] FIN    embed_pendientes_registro (0.12s)
+[18:54:50.676] INICIO embed_multilingue_pendientes_registro
+[18:54:51.089] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:54:51.090] INICIO coherencia_pendientes_registro
+[18:54:51.258] FIN    coherencia_pendientes_registro (0.17s)
+[18:54:51.259] INICIO alertas_recolectar_senales
+[18:54:53.934] FIN    alertas_recolectar_senales (2.68s)
+[18:54:53.935] INICIO redes_pasada
+[18:54:53.941] FIN    redes_pasada (0.01s)
+[18:54:53.942] INICIO demanda_gdelt_sercop
+[18:54:53.957] FIN    demanda_gdelt_sercop (0.02s)
+[18:54:53.957] INICIO oficial_actualizar
+[18:54:53.961] FIN    oficial_actualizar (0.00s)
+[18:54:53.961] INICIO get_ia
+[18:54:54.037] FIN    get_ia (0.08s)
+[18:54:54.037] INICIO get_geo_evidencia
+[18:54:54.038] FIN    get_geo_evidencia (0.00s)
+[18:54:54.039] INICIO get_contexto
+[18:54:54.177] FIN    get_contexto (0.14s)
+[18:54:54.178] INICIO get_factcheck
+[18:54:59.265] FIN    get_factcheck (5.09s)
+[18:54:59.266] INICIO get_veredicto
+[18:54:59.562] FIN    get_veredicto (0.30s)
+[18:54:59.563] INICIO get_declaraciones
+[18:54:59.577] FIN    get_declaraciones (0.01s)
+[18:54:59.578] INICIO get_social
+[18:54:59.581] FIN    get_social (0.00s)
+[18:54:59.581] INICIO get_social_historias
+[18:54:59.585] FIN    get_social_historias (0.00s)
+[18:54:59.687] enrich_pass: arranca con 1547 historias publicadas
+[18:54:59.689] INICIO embed_pendientes_registro
+[18:54:59.781] FIN    embed_pendientes_registro (0.09s)
+[18:54:59.781] INICIO embed_multilingue_pendientes_registro
+[18:55:00.196] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:55:00.196] INICIO coherencia_pendientes_registro
+[18:55:00.371] FIN    coherencia_pendientes_registro (0.17s)
+[18:55:00.371] INICIO alertas_recolectar_senales
+[18:55:03.201] FIN    alertas_recolectar_senales (2.83s)
+[18:55:03.202] INICIO redes_pasada
+[18:55:03.208] FIN    redes_pasada (0.01s)
+[18:55:03.209] INICIO demanda_gdelt_sercop
+[18:55:03.224] FIN    demanda_gdelt_sercop (0.02s)
+[18:55:03.225] INICIO oficial_actualizar
+[18:55:03.228] FIN    oficial_actualizar (0.00s)
+[18:55:03.228] INICIO get_ia
+[18:55:03.306] FIN    get_ia (0.08s)
+[18:55:03.306] INICIO get_geo_evidencia
+[18:55:03.307] FIN    get_geo_evidencia (0.00s)
+[18:55:03.307] INICIO get_contexto
+[18:55:03.447] FIN    get_contexto (0.14s)
+[18:55:03.447] INICIO get_factcheck
+[18:55:08.266] FIN    get_factcheck (4.82s)
+[18:55:08.267] INICIO get_veredicto
+[18:55:08.567] FIN    get_veredicto (0.30s)
+[18:55:08.568] INICIO get_declaraciones
+[18:55:08.578] FIN    get_declaraciones (0.01s)
+[18:55:08.578] INICIO get_social
+[18:55:08.582] FIN    get_social (0.00s)
+[18:55:08.582] INICIO get_social_historias
+[18:55:08.586] FIN    get_social_historias (0.00s)
+[18:55:08.690] enrich_pass: arranca con 1547 historias publicadas
+[18:55:08.691] INICIO embed_pendientes_registro
+[18:55:08.785] FIN    embed_pendientes_registro (0.09s)
+[18:55:08.786] INICIO embed_multilingue_pendientes_registro
+[18:55:09.196] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:55:09.197] INICIO coherencia_pendientes_registro
+[18:55:09.378] FIN    coherencia_pendientes_registro (0.18s)
+[18:55:09.379] INICIO alertas_recolectar_senales
+[18:55:12.355] FIN    alertas_recolectar_senales (2.98s)
+[18:55:12.356] INICIO redes_pasada
+[18:55:12.362] FIN    redes_pasada (0.01s)
+[18:55:12.363] INICIO demanda_gdelt_sercop
+[18:55:12.378] FIN    demanda_gdelt_sercop (0.01s)
+[18:55:12.378] INICIO oficial_actualizar
+[18:55:12.381] FIN    oficial_actualizar (0.00s)
+[18:55:12.382] INICIO get_ia
+[18:55:12.456] FIN    get_ia (0.07s)
+[18:55:12.456] INICIO get_geo_evidencia
+[18:55:12.457] FIN    get_geo_evidencia (0.00s)
+[18:55:12.458] INICIO get_contexto
+[18:55:12.598] FIN    get_contexto (0.14s)
+[18:55:12.598] INICIO get_factcheck
+[18:55:17.129] FIN    get_factcheck (4.53s)
+[18:55:17.129] INICIO get_veredicto
+[18:55:17.426] FIN    get_veredicto (0.30s)
+[18:55:17.427] INICIO get_declaraciones
+[18:55:17.438] FIN    get_declaraciones (0.01s)
+[18:55:17.438] INICIO get_social
+[18:55:17.441] FIN    get_social (0.00s)
+[18:55:17.442] INICIO get_social_historias
+[18:55:17.446] FIN    get_social_historias (0.00s)
+[18:55:17.549] enrich_pass: arranca con 1547 historias publicadas
+[18:55:17.550] INICIO embed_pendientes_registro
+[18:55:17.845] FIN    embed_pendientes_registro (0.30s)
+[18:55:17.846] INICIO embed_multilingue_pendientes_registro
+[18:55:18.256] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:55:18.256] INICIO coherencia_pendientes_registro
+[18:55:18.429] FIN    coherencia_pendientes_registro (0.17s)
+[18:55:18.430] INICIO alertas_recolectar_senales
+[18:55:21.119] FIN    alertas_recolectar_senales (2.69s)
+[18:55:21.119] INICIO redes_pasada
+[18:55:21.125] FIN    redes_pasada (0.01s)
+[18:55:21.125] INICIO demanda_gdelt_sercop
+[18:55:21.140] FIN    demanda_gdelt_sercop (0.01s)
+[18:55:21.140] INICIO oficial_actualizar
+[18:55:21.143] FIN    oficial_actualizar (0.00s)
+[18:55:21.144] INICIO get_ia
+[18:55:21.220] FIN    get_ia (0.08s)
+[18:55:21.221] INICIO get_geo_evidencia
+[18:55:21.222] FIN    get_geo_evidencia (0.00s)
+[18:55:21.222] INICIO get_contexto
+[18:55:21.361] FIN    get_contexto (0.14s)
+[18:55:21.362] INICIO get_factcheck
+[18:55:25.952] FIN    get_factcheck (4.59s)
+[18:55:25.952] INICIO get_veredicto
+[18:55:26.309] FIN    get_veredicto (0.36s)
+[18:55:26.309] INICIO get_declaraciones
+[18:55:26.323] FIN    get_declaraciones (0.01s)
+[18:55:26.324] INICIO get_social
+[18:55:26.326] FIN    get_social (0.00s)
+[18:55:26.327] INICIO get_social_historias
+[18:55:26.331] FIN    get_social_historias (0.00s)
+[18:55:26.433] enrich_pass: arranca con 1547 historias publicadas
+[18:55:26.435] INICIO embed_pendientes_registro
+[18:55:26.527] FIN    embed_pendientes_registro (0.09s)
+[18:55:26.527] INICIO embed_multilingue_pendientes_registro
+[18:55:26.940] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:55:26.941] INICIO coherencia_pendientes_registro
+[18:55:27.113] FIN    coherencia_pendientes_registro (0.17s)
+[18:55:27.113] INICIO alertas_recolectar_senales
+[18:55:30.335] FIN    alertas_recolectar_senales (3.22s)
+[18:55:30.336] INICIO redes_pasada
+[18:55:30.343] FIN    redes_pasada (0.01s)
+[18:55:30.343] INICIO demanda_gdelt_sercop
+[18:55:30.358] FIN    demanda_gdelt_sercop (0.01s)
+[18:55:30.358] INICIO oficial_actualizar
+[18:55:30.362] FIN    oficial_actualizar (0.00s)
+[18:55:30.362] INICIO get_ia
+[18:55:30.440] FIN    get_ia (0.08s)
+[18:55:30.441] INICIO get_geo_evidencia
+[18:55:30.442] FIN    get_geo_evidencia (0.00s)
+[18:55:30.442] INICIO get_contexto
+[18:55:30.587] FIN    get_contexto (0.14s)
+[18:55:30.587] INICIO get_factcheck
+[18:55:36.414] FIN    get_factcheck (5.83s)
+[18:55:36.414] INICIO get_veredicto
+[18:55:36.799] FIN    get_veredicto (0.38s)
+[18:55:36.800] INICIO get_declaraciones
+[18:55:36.811] FIN    get_declaraciones (0.01s)
+[18:55:36.812] INICIO get_social
+[18:55:36.814] FIN    get_social (0.00s)
+[18:55:36.815] INICIO get_social_historias
+[18:55:36.818] FIN    get_social_historias (0.00s)
+[18:55:36.926] enrich_pass: arranca con 1547 historias publicadas
+[18:55:36.927] INICIO embed_pendientes_registro
+[18:55:37.020] FIN    embed_pendientes_registro (0.09s)
+[18:55:37.021] INICIO embed_multilingue_pendientes_registro
+[18:55:37.429] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:55:37.430] INICIO coherencia_pendientes_registro
+[18:55:37.597] FIN    coherencia_pendientes_registro (0.17s)
+[18:55:37.598] INICIO alertas_recolectar_senales
+[18:55:37.828] collect: feeds mas lentos -> SCMP=4.07s(ok (304 sin cambios)); The Japan Times=3.43s(HTTP 404); Busqueda: Guayaquil=3.08s(ok); Busqueda: Samborondon=2.76s(ok); El Comercio=2.59s(ok (304 sin cambios))
+[18:55:37.829] collect: 2 feed(s) con error/timeout -> Wambra=0.74s(HTTP 429); The Japan Times=3.43s(HTTP 404)
+[18:55:37.829] collect: 54 feeds en 5.27s (paralelo, max 20 hilos)
+[18:55:37.968] cluster: agrupando 1738 articulos contra el registro persistente...
+[18:55:42.136] FIN    alertas_recolectar_senales (4.54s)
+[18:55:42.230] INICIO redes_pasada
+[18:55:42.699] FIN    redes_pasada (0.47s)
+[18:55:42.752] INICIO demanda_gdelt_sercop
+[18:55:43.052] FIN    demanda_gdelt_sercop (0.30s)
+[18:55:43.132] INICIO oficial_actualizar
+[18:55:43.451] FIN    oficial_actualizar (0.32s)
+[18:55:43.552] INICIO get_ia
+[18:55:44.339] FIN    get_ia (0.79s)
+[18:55:44.377] INICIO get_geo_evidencia
+[18:55:44.432] FIN    get_geo_evidencia (0.05s)
+[18:55:44.477] INICIO get_contexto
+[18:55:47.727] FIN    get_contexto (3.25s)
+[18:55:47.727] INICIO get_factcheck
+[18:55:54.398] FIN    get_factcheck (6.67s)
+[18:55:54.492] INICIO get_veredicto
+[18:56:03.325] run_fast: 1738 articulos -> 1548 historias | collect=5.38s cluster=9.57s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.12s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.01s get_social=0.01s get_social_historias=0.01s revisar_casos_avisos=0.00s write_outputs=15.59s | TOTAL=30.75s
+[18:56:03.634] FIN    get_veredicto (9.14s)
+[18:56:03.634] INICIO get_declaraciones
+[18:56:03.649] FIN    get_declaraciones (0.01s)
+[18:56:03.650] INICIO get_social
+[18:56:03.653] FIN    get_social (0.00s)
+[18:56:03.654] INICIO get_social_historias
+[18:56:03.658] FIN    get_social_historias (0.00s)
+[18:56:03.839] enrich_pass: arranca con 1548 historias publicadas
+[18:56:03.841] INICIO embed_pendientes_registro
+[18:56:03.982] FIN    embed_pendientes_registro (0.14s)
+[18:56:03.983] INICIO embed_multilingue_pendientes_registro
+[18:56:04.622] FIN    embed_multilingue_pendientes_registro (0.64s)
+[18:56:04.622] INICIO coherencia_pendientes_registro
+[18:56:04.849] FIN    coherencia_pendientes_registro (0.23s)
+[18:56:04.849] INICIO alertas_recolectar_senales
+[18:56:07.575] FIN    alertas_recolectar_senales (2.73s)
+[18:56:07.576] INICIO redes_pasada
+[18:56:07.585] FIN    redes_pasada (0.01s)
+[18:56:07.586] INICIO demanda_gdelt_sercop
+[18:56:07.605] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:07.605] INICIO oficial_actualizar
+[18:56:07.609] FIN    oficial_actualizar (0.00s)
+[18:56:07.611] INICIO get_ia
+[18:56:07.692] FIN    get_ia (0.08s)
+[18:56:07.692] INICIO get_geo_evidencia
+[18:56:07.694] FIN    get_geo_evidencia (0.00s)
+[18:56:07.694] INICIO get_contexto
+[18:56:07.847] FIN    get_contexto (0.15s)
+[18:56:07.847] INICIO get_factcheck
+[18:56:11.180] FIN    get_factcheck (3.33s)
+[18:56:11.181] INICIO get_veredicto
+[18:56:11.569] FIN    get_veredicto (0.39s)
+[18:56:11.570] INICIO get_declaraciones
+[18:56:11.582] FIN    get_declaraciones (0.01s)
+[18:56:11.583] INICIO get_social
+[18:56:11.586] FIN    get_social (0.00s)
+[18:56:11.586] INICIO get_social_historias
+[18:56:11.590] FIN    get_social_historias (0.00s)
+[18:56:11.700] enrich_pass: arranca con 1548 historias publicadas
+[18:56:11.701] INICIO embed_pendientes_registro
+[18:56:11.809] FIN    embed_pendientes_registro (0.11s)
+[18:56:11.810] INICIO embed_multilingue_pendientes_registro
+[18:56:12.242] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:56:12.243] INICIO coherencia_pendientes_registro
+[18:56:12.470] FIN    coherencia_pendientes_registro (0.23s)
+[18:56:12.471] INICIO alertas_recolectar_senales
+[18:56:15.024] FIN    alertas_recolectar_senales (2.55s)
+[18:56:15.025] INICIO redes_pasada
+[18:56:15.037] FIN    redes_pasada (0.01s)
+[18:56:15.038] INICIO demanda_gdelt_sercop
+[18:56:15.065] FIN    demanda_gdelt_sercop (0.03s)
+[18:56:15.066] INICIO oficial_actualizar
+[18:56:15.071] FIN    oficial_actualizar (0.00s)
+[18:56:15.072] INICIO get_ia
+[18:56:15.165] FIN    get_ia (0.09s)
+[18:56:15.166] INICIO get_geo_evidencia
+[18:56:15.167] FIN    get_geo_evidencia (0.00s)
+[18:56:15.168] INICIO get_contexto
+[18:56:15.351] FIN    get_contexto (0.18s)
+[18:56:15.352] INICIO get_factcheck
+[18:56:15.395] FIN    get_factcheck (0.04s)
+[18:56:15.396] INICIO get_veredicto
+[18:56:15.799] FIN    get_veredicto (0.40s)
+[18:56:15.800] INICIO get_declaraciones
+[18:56:15.815] FIN    get_declaraciones (0.02s)
+[18:56:15.816] INICIO get_social
+[18:56:15.818] FIN    get_social (0.00s)
+[18:56:15.818] INICIO get_social_historias
+[18:56:15.822] FIN    get_social_historias (0.00s)
+[18:56:15.929] enrich_pass: arranca con 1548 historias publicadas
+[18:56:15.931] INICIO embed_pendientes_registro
+[18:56:16.045] FIN    embed_pendientes_registro (0.11s)
+[18:56:16.046] INICIO embed_multilingue_pendientes_registro
+[18:56:16.476] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:56:16.477] INICIO coherencia_pendientes_registro
+[18:56:16.655] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:16.656] INICIO alertas_recolectar_senales
+[18:56:19.713] FIN    alertas_recolectar_senales (3.06s)
+[18:56:19.713] INICIO redes_pasada
+[18:56:19.721] FIN    redes_pasada (0.01s)
+[18:56:19.721] INICIO demanda_gdelt_sercop
+[18:56:19.738] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:19.738] INICIO oficial_actualizar
+[18:56:19.741] FIN    oficial_actualizar (0.00s)
+[18:56:19.742] INICIO get_ia
+[18:56:19.822] FIN    get_ia (0.08s)
+[18:56:19.823] INICIO get_geo_evidencia
+[18:56:19.824] FIN    get_geo_evidencia (0.00s)
+[18:56:19.825] INICIO get_contexto
+[18:56:19.986] FIN    get_contexto (0.16s)
+[18:56:19.987] INICIO get_factcheck
+[18:56:20.018] FIN    get_factcheck (0.03s)
+[18:56:20.018] INICIO get_veredicto
+[18:56:20.368] FIN    get_veredicto (0.35s)
+[18:56:20.369] INICIO get_declaraciones
+[18:56:20.381] FIN    get_declaraciones (0.01s)
+[18:56:20.381] INICIO get_social
+[18:56:20.384] FIN    get_social (0.00s)
+[18:56:20.384] INICIO get_social_historias
+[18:56:20.388] FIN    get_social_historias (0.00s)
+[18:56:20.494] enrich_pass: arranca con 1548 historias publicadas
+[18:56:20.495] INICIO embed_pendientes_registro
+[18:56:20.594] FIN    embed_pendientes_registro (0.10s)
+[18:56:20.594] INICIO embed_multilingue_pendientes_registro
+[18:56:21.047] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:56:21.048] INICIO coherencia_pendientes_registro
+[18:56:21.240] FIN    coherencia_pendientes_registro (0.19s)
+[18:56:21.241] INICIO alertas_recolectar_senales
+[18:56:24.239] FIN    alertas_recolectar_senales (3.00s)
+[18:56:24.240] INICIO redes_pasada
+[18:56:24.249] FIN    redes_pasada (0.01s)
+[18:56:24.250] INICIO demanda_gdelt_sercop
+[18:56:24.266] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:24.266] INICIO oficial_actualizar
+[18:56:24.270] FIN    oficial_actualizar (0.00s)
+[18:56:24.271] INICIO get_ia
+[18:56:24.349] FIN    get_ia (0.08s)
+[18:56:24.350] INICIO get_geo_evidencia
+[18:56:24.351] FIN    get_geo_evidencia (0.00s)
+[18:56:24.351] INICIO get_contexto
+[18:56:24.504] FIN    get_contexto (0.15s)
+[18:56:24.504] INICIO get_factcheck
+[18:56:24.534] FIN    get_factcheck (0.03s)
+[18:56:24.534] INICIO get_veredicto
+[18:56:24.866] FIN    get_veredicto (0.33s)
+[18:56:24.867] INICIO get_declaraciones
+[18:56:24.878] FIN    get_declaraciones (0.01s)
+[18:56:24.879] INICIO get_social
+[18:56:24.882] FIN    get_social (0.00s)
+[18:56:24.882] INICIO get_social_historias
+[18:56:24.886] FIN    get_social_historias (0.00s)
+[18:56:24.995] enrich_pass: arranca con 1548 historias publicadas
+[18:56:24.996] INICIO embed_pendientes_registro
+[18:56:25.098] FIN    embed_pendientes_registro (0.10s)
+[18:56:25.099] INICIO embed_multilingue_pendientes_registro
+[18:56:25.542] FIN    embed_multilingue_pendientes_registro (0.44s)
+[18:56:25.542] INICIO coherencia_pendientes_registro
+[18:56:25.724] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:25.725] INICIO alertas_recolectar_senales
+[18:56:28.824] FIN    alertas_recolectar_senales (3.10s)
+[18:56:28.824] INICIO redes_pasada
+[18:56:28.833] FIN    redes_pasada (0.01s)
+[18:56:28.833] INICIO demanda_gdelt_sercop
+[18:56:28.851] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:28.852] INICIO oficial_actualizar
+[18:56:28.855] FIN    oficial_actualizar (0.00s)
+[18:56:28.856] INICIO get_ia
+[18:56:28.937] FIN    get_ia (0.08s)
+[18:56:28.938] INICIO get_geo_evidencia
+[18:56:28.939] FIN    get_geo_evidencia (0.00s)
+[18:56:28.939] INICIO get_contexto
+[18:56:29.084] FIN    get_contexto (0.14s)
+[18:56:29.085] INICIO get_factcheck
+[18:56:29.117] FIN    get_factcheck (0.03s)
+[18:56:29.117] INICIO get_veredicto
+[18:56:29.453] FIN    get_veredicto (0.34s)
+[18:56:29.454] INICIO get_declaraciones
+[18:56:29.468] FIN    get_declaraciones (0.01s)
+[18:56:29.468] INICIO get_social
+[18:56:29.471] FIN    get_social (0.00s)
+[18:56:29.472] INICIO get_social_historias
+[18:56:29.476] FIN    get_social_historias (0.00s)
+[18:56:29.582] enrich_pass: arranca con 1548 historias publicadas
+[18:56:29.584] INICIO embed_pendientes_registro
+[18:56:29.690] FIN    embed_pendientes_registro (0.11s)
+[18:56:29.690] INICIO embed_multilingue_pendientes_registro
+[18:56:30.126] FIN    embed_multilingue_pendientes_registro (0.44s)
+[18:56:30.126] INICIO coherencia_pendientes_registro
+[18:56:30.304] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:30.304] INICIO alertas_recolectar_senales
+[18:56:33.279] FIN    alertas_recolectar_senales (2.97s)
+[18:56:33.280] INICIO redes_pasada
+[18:56:33.289] FIN    redes_pasada (0.01s)
+[18:56:33.289] INICIO demanda_gdelt_sercop
+[18:56:33.308] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:33.309] INICIO oficial_actualizar
+[18:56:33.312] FIN    oficial_actualizar (0.00s)
+[18:56:33.312] INICIO get_ia
+[18:56:33.393] FIN    get_ia (0.08s)
+[18:56:33.394] INICIO get_geo_evidencia
+[18:56:33.395] FIN    get_geo_evidencia (0.00s)
+[18:56:33.395] INICIO get_contexto
+[18:56:33.553] FIN    get_contexto (0.16s)
+[18:56:33.554] INICIO get_factcheck
+[18:56:33.585] FIN    get_factcheck (0.03s)
+[18:56:33.585] INICIO get_veredicto
+[18:56:33.950] FIN    get_veredicto (0.36s)
+[18:56:33.951] INICIO get_declaraciones
+[18:56:33.964] FIN    get_declaraciones (0.01s)
+[18:56:33.964] INICIO get_social
+[18:56:33.967] FIN    get_social (0.00s)
+[18:56:33.968] INICIO get_social_historias
+[18:56:33.972] FIN    get_social_historias (0.00s)
+[18:56:34.080] enrich_pass: arranca con 1548 historias publicadas
+[18:56:34.082] INICIO embed_pendientes_registro
+[18:56:34.184] FIN    embed_pendientes_registro (0.10s)
+[18:56:34.185] INICIO embed_multilingue_pendientes_registro
+[18:56:34.616] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:56:34.617] INICIO coherencia_pendientes_registro
+[18:56:34.800] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:34.801] INICIO alertas_recolectar_senales
+[18:56:37.874] FIN    alertas_recolectar_senales (3.07s)
+[18:56:37.875] INICIO redes_pasada
+[18:56:37.884] FIN    redes_pasada (0.01s)
+[18:56:37.884] INICIO demanda_gdelt_sercop
+[18:56:37.903] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:37.903] INICIO oficial_actualizar
+[18:56:37.907] FIN    oficial_actualizar (0.00s)
+[18:56:37.908] INICIO get_ia
+[18:56:37.988] FIN    get_ia (0.08s)
+[18:56:37.989] INICIO get_geo_evidencia
+[18:56:37.990] FIN    get_geo_evidencia (0.00s)
+[18:56:37.991] INICIO get_contexto
+[18:56:38.161] FIN    get_contexto (0.17s)
+[18:56:38.162] INICIO get_factcheck
+[18:56:38.204] FIN    get_factcheck (0.04s)
+[18:56:38.205] INICIO get_veredicto
+[18:56:38.626] FIN    get_veredicto (0.42s)
+[18:56:38.627] INICIO get_declaraciones
+[18:56:38.641] FIN    get_declaraciones (0.01s)
+[18:56:38.642] INICIO get_social
+[18:56:38.645] FIN    get_social (0.00s)
+[18:56:38.646] INICIO get_social_historias
+[18:56:38.651] FIN    get_social_historias (0.00s)
+[18:56:38.758] enrich_pass: arranca con 1548 historias publicadas
+[18:56:38.759] INICIO embed_pendientes_registro
+[18:56:38.867] FIN    embed_pendientes_registro (0.11s)
+[18:56:38.867] INICIO embed_multilingue_pendientes_registro
+[18:56:39.313] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:56:39.314] INICIO coherencia_pendientes_registro
+[18:56:39.499] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:39.499] INICIO alertas_recolectar_senales
+[18:56:42.399] FIN    alertas_recolectar_senales (2.90s)
+[18:56:42.400] INICIO redes_pasada
+[18:56:42.408] FIN    redes_pasada (0.01s)
+[18:56:42.409] INICIO demanda_gdelt_sercop
+[18:56:42.427] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:42.427] INICIO oficial_actualizar
+[18:56:42.431] FIN    oficial_actualizar (0.00s)
+[18:56:42.432] INICIO get_ia
+[18:56:42.519] FIN    get_ia (0.09s)
+[18:56:42.519] INICIO get_geo_evidencia
+[18:56:42.520] FIN    get_geo_evidencia (0.00s)
+[18:56:42.521] INICIO get_contexto
+[18:56:42.664] FIN    get_contexto (0.14s)
+[18:56:42.664] INICIO get_factcheck
+[18:56:42.696] FIN    get_factcheck (0.03s)
+[18:56:42.696] INICIO get_veredicto
+[18:56:43.022] FIN    get_veredicto (0.33s)
+[18:56:43.023] INICIO get_declaraciones
+[18:56:43.035] FIN    get_declaraciones (0.01s)
+[18:56:43.035] INICIO get_social
+[18:56:43.038] FIN    get_social (0.00s)
+[18:56:43.039] INICIO get_social_historias
+[18:56:43.044] FIN    get_social_historias (0.01s)
+[18:56:43.150] enrich_pass: arranca con 1548 historias publicadas
+[18:56:43.152] INICIO embed_pendientes_registro
+[18:56:43.257] FIN    embed_pendientes_registro (0.10s)
+[18:56:43.257] INICIO embed_multilingue_pendientes_registro
+[18:56:43.700] FIN    embed_multilingue_pendientes_registro (0.44s)
+[18:56:43.701] INICIO coherencia_pendientes_registro
+[18:56:43.879] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:43.880] INICIO alertas_recolectar_senales
+[18:56:47.152] FIN    alertas_recolectar_senales (3.27s)
+[18:56:47.153] INICIO redes_pasada
+[18:56:47.160] FIN    redes_pasada (0.01s)
+[18:56:47.160] INICIO demanda_gdelt_sercop
+[18:56:47.176] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:47.177] INICIO oficial_actualizar
+[18:56:47.179] FIN    oficial_actualizar (0.00s)
+[18:56:47.180] INICIO get_ia
+[18:56:47.258] FIN    get_ia (0.08s)
+[18:56:47.259] INICIO get_geo_evidencia
+[18:56:47.260] FIN    get_geo_evidencia (0.00s)
+[18:56:47.260] INICIO get_contexto
+[18:56:47.413] FIN    get_contexto (0.15s)
+[18:56:47.413] INICIO get_factcheck
+[18:56:47.445] FIN    get_factcheck (0.03s)
+[18:56:47.446] INICIO get_veredicto
+[18:56:47.782] FIN    get_veredicto (0.34s)
+[18:56:47.783] INICIO get_declaraciones
+[18:56:47.796] FIN    get_declaraciones (0.01s)
+[18:56:47.797] INICIO get_social
+[18:56:47.799] FIN    get_social (0.00s)
+[18:56:47.800] INICIO get_social_historias
+[18:56:47.805] FIN    get_social_historias (0.01s)
+[18:56:47.909] enrich_pass: arranca con 1548 historias publicadas
+[18:56:47.911] INICIO embed_pendientes_registro
+[18:56:48.012] FIN    embed_pendientes_registro (0.10s)
+[18:56:48.013] INICIO embed_multilingue_pendientes_registro
+[18:56:48.467] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:56:48.468] INICIO coherencia_pendientes_registro
+[18:56:48.642] FIN    coherencia_pendientes_registro (0.17s)
+[18:56:48.643] INICIO alertas_recolectar_senales
+[18:56:51.424] FIN    alertas_recolectar_senales (2.78s)
+[18:56:51.425] INICIO redes_pasada
+[18:56:51.434] FIN    redes_pasada (0.01s)
+[18:56:51.435] INICIO demanda_gdelt_sercop
+[18:56:51.461] FIN    demanda_gdelt_sercop (0.03s)
+[18:56:51.462] INICIO oficial_actualizar
+[18:56:51.468] FIN    oficial_actualizar (0.01s)
+[18:56:51.469] INICIO get_ia
+[18:56:51.573] FIN    get_ia (0.10s)
+[18:56:51.574] INICIO get_geo_evidencia
+[18:56:51.575] FIN    get_geo_evidencia (0.00s)
+[18:56:51.575] INICIO get_contexto
+[18:56:51.742] FIN    get_contexto (0.17s)
+[18:56:51.743] INICIO get_factcheck
+[18:56:51.774] FIN    get_factcheck (0.03s)
+[18:56:51.774] INICIO get_veredicto
+[18:56:52.253] FIN    get_veredicto (0.48s)
+[18:56:52.254] INICIO get_declaraciones
+[18:56:52.270] FIN    get_declaraciones (0.02s)
+[18:56:52.270] INICIO get_social
+[18:56:52.272] FIN    get_social (0.00s)
+[18:56:52.273] INICIO get_social_historias
+[18:56:52.277] FIN    get_social_historias (0.00s)
+[18:56:52.389] enrich_pass: arranca con 1548 historias publicadas
+[18:56:52.390] INICIO embed_pendientes_registro
+[18:56:52.493] FIN    embed_pendientes_registro (0.10s)
+[18:56:52.494] INICIO embed_multilingue_pendientes_registro
+[18:56:52.910] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:56:52.911] INICIO coherencia_pendientes_registro
+[18:56:53.097] FIN    coherencia_pendientes_registro (0.19s)
+[18:56:53.097] INICIO alertas_recolectar_senales
+[18:56:55.881] FIN    alertas_recolectar_senales (2.78s)
+[18:56:55.881] INICIO redes_pasada
+[18:56:55.890] FIN    redes_pasada (0.01s)
+[18:56:55.891] INICIO demanda_gdelt_sercop
+[18:56:55.908] FIN    demanda_gdelt_sercop (0.02s)
+[18:56:55.909] INICIO oficial_actualizar
+[18:56:55.911] FIN    oficial_actualizar (0.00s)
+[18:56:55.912] INICIO get_ia
+[18:56:56.006] FIN    get_ia (0.09s)
+[18:56:56.007] INICIO get_geo_evidencia
+[18:56:56.009] FIN    get_geo_evidencia (0.00s)
+[18:56:56.011] INICIO get_contexto
+[18:56:56.224] FIN    get_contexto (0.21s)
+[18:56:56.225] INICIO get_factcheck
+[18:56:56.259] FIN    get_factcheck (0.03s)
+[18:56:56.260] INICIO get_veredicto
+[18:56:56.618] FIN    get_veredicto (0.36s)
+[18:56:56.618] INICIO get_declaraciones
+[18:56:56.630] FIN    get_declaraciones (0.01s)
+[18:56:56.630] INICIO get_social
+[18:56:56.633] FIN    get_social (0.00s)
+[18:56:56.633] INICIO get_social_historias
+[18:56:56.639] FIN    get_social_historias (0.01s)
+[18:56:56.748] enrich_pass: arranca con 1548 historias publicadas
+[18:56:56.749] INICIO embed_pendientes_registro
+[18:56:56.855] FIN    embed_pendientes_registro (0.11s)
+[18:56:56.856] INICIO embed_multilingue_pendientes_registro
+[18:56:57.293] FIN    embed_multilingue_pendientes_registro (0.44s)
+[18:56:57.294] INICIO coherencia_pendientes_registro
+[18:56:57.470] FIN    coherencia_pendientes_registro (0.18s)
+[18:56:57.470] INICIO alertas_recolectar_senales
+[18:57:00.087] FIN    alertas_recolectar_senales (2.62s)
+[18:57:00.087] INICIO redes_pasada
+[18:57:00.094] FIN    redes_pasada (0.01s)
+[18:57:00.094] INICIO demanda_gdelt_sercop
+[18:57:00.111] FIN    demanda_gdelt_sercop (0.02s)
+[18:57:00.111] INICIO oficial_actualizar
+[18:57:00.115] FIN    oficial_actualizar (0.00s)
+[18:57:00.116] INICIO get_ia
+[18:57:00.200] FIN    get_ia (0.08s)
+[18:57:00.201] INICIO get_geo_evidencia
+[18:57:00.202] FIN    get_geo_evidencia (0.00s)
+[18:57:00.203] INICIO get_contexto
+[18:57:00.351] FIN    get_contexto (0.15s)
+[18:57:00.352] INICIO get_factcheck
+[18:57:00.382] FIN    get_factcheck (0.03s)
+[18:57:00.383] INICIO get_veredicto
+[18:57:00.720] FIN    get_veredicto (0.34s)
+[18:57:00.721] INICIO get_declaraciones
+[18:57:00.735] FIN    get_declaraciones (0.01s)
+[18:57:00.736] INICIO get_social
+[18:57:00.738] FIN    get_social (0.00s)
+[18:57:00.739] INICIO get_social_historias
+[18:57:00.744] FIN    get_social_historias (0.00s)
+[18:57:00.847] enrich_pass: arranca con 1548 historias publicadas
+[18:57:00.849] INICIO embed_pendientes_registro
+[18:57:00.946] FIN    embed_pendientes_registro (0.10s)
+[18:57:00.947] INICIO embed_multilingue_pendientes_registro
+[18:57:01.381] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:57:01.382] INICIO coherencia_pendientes_registro
+[18:57:01.589] FIN    coherencia_pendientes_registro (0.21s)
+[18:57:01.589] INICIO alertas_recolectar_senales
+[18:57:04.664] FIN    alertas_recolectar_senales (3.07s)
+[18:57:04.665] INICIO redes_pasada
+[18:57:05.693] FIN    redes_pasada (1.03s)
+[18:57:05.719] INICIO demanda_gdelt_sercop
+[18:57:05.946] FIN    demanda_gdelt_sercop (0.23s)
+[18:57:05.990] INICIO oficial_actualizar
+[18:57:06.039] FIN    oficial_actualizar (0.05s)
+[18:57:06.395] INICIO get_ia
+[18:57:06.764] FIN    get_ia (0.37s)
+[18:57:06.786] INICIO get_geo_evidencia
+[18:57:06.815] FIN    get_geo_evidencia (0.03s)
+[18:57:06.837] INICIO get_contexto
+[18:57:07.692] collect: feeds mas lentos -> Busqueda: Guayaquil=4.06s(ok); Busqueda: Samborondon=3.51s(ok); Busqueda: Duran EC=3.13s(ok); Der Standard=2.36s(ok); Infobae=2.27s(ok)
+[18:57:07.693] collect: 2 feed(s) con error/timeout -> Wambra=0.90s(HTTP 429); The Japan Times=0.79s(HTTP 404)
+[18:57:07.694] collect: 54 feeds en 4.33s (paralelo, max 20 hilos)
+[18:57:07.851] cluster: agrupando 1737 articulos contra el registro persistente...
+[18:57:08.078] FIN    get_contexto (1.24s)
+[18:57:08.190] INICIO get_factcheck
+[18:57:08.541] FIN    get_factcheck (0.35s)
+[18:57:08.625] INICIO get_veredicto
+[18:57:18.176] FIN    get_veredicto (9.55s)
+[18:57:18.177] INICIO get_declaraciones
+[18:57:18.189] FIN    get_declaraciones (0.01s)
+[18:57:18.196] INICIO get_social
+[18:57:18.199] FIN    get_social (0.00s)
+[18:57:18.241] INICIO get_social_historias
+[18:57:18.474] FIN    get_social_historias (0.23s)
+[18:57:18.692] enrich_pass: arranca con 1548 historias publicadas
+[18:57:18.791] INICIO embed_pendientes_registro
+[18:57:30.735] FIN    embed_pendientes_registro (11.94s)
+[18:57:30.857] INICIO embed_multilingue_pendientes_registro
+[18:57:33.279] FIN    embed_multilingue_pendientes_registro (2.42s)
+[18:57:33.280] INICIO coherencia_pendientes_registro
+[18:57:33.418] run_fast: 1737 articulos -> 1551 historias | collect=4.46s cluster=9.64s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.12s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.77s | TOTAL=30.04s
+[18:57:33.544] FIN    coherencia_pendientes_registro (0.26s)
+[18:57:33.545] INICIO alertas_recolectar_senales
+[18:57:36.289] FIN    alertas_recolectar_senales (2.74s)
+[18:57:36.290] INICIO redes_pasada
+[18:58:18.292] FIN    redes_pasada (42.00s)
+[18:58:18.293] INICIO demanda_gdelt_sercop
+[18:58:18.308] FIN    demanda_gdelt_sercop (0.01s)
+[18:58:18.308] INICIO oficial_actualizar
+[18:58:19.157] FIN    oficial_actualizar (0.85s)
+[18:58:19.158] INICIO get_ia
+[18:58:19.238] FIN    get_ia (0.08s)
+[18:58:19.239] INICIO get_geo_evidencia
+[18:58:19.240] FIN    get_geo_evidencia (0.00s)
+[18:58:19.240] INICIO get_contexto
+[18:58:19.411] FIN    get_contexto (0.17s)
+[18:58:19.412] INICIO get_factcheck
+[18:58:19.450] FIN    get_factcheck (0.04s)
+[18:58:19.450] INICIO get_veredicto
+[18:58:19.788] FIN    get_veredicto (0.34s)
+[18:58:19.789] INICIO get_declaraciones
+[18:58:19.802] FIN    get_declaraciones (0.01s)
+[18:58:19.803] INICIO get_social
+[18:58:19.805] FIN    get_social (0.00s)
+[18:58:19.805] INICIO get_social_historias
+[18:58:19.810] FIN    get_social_historias (0.00s)
+[18:58:19.915] enrich_pass: arranca con 1551 historias publicadas
+[18:58:19.917] INICIO embed_pendientes_registro
+[18:58:20.013] FIN    embed_pendientes_registro (0.10s)
+[18:58:20.013] INICIO embed_multilingue_pendientes_registro
+[18:58:20.428] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:58:20.429] INICIO coherencia_pendientes_registro
+[18:58:20.599] FIN    coherencia_pendientes_registro (0.17s)
+[18:58:20.600] INICIO alertas_recolectar_senales
+[18:58:23.303] FIN    alertas_recolectar_senales (2.70s)
+[18:58:23.304] INICIO redes_pasada
+[18:58:23.310] FIN    redes_pasada (0.01s)
+[18:58:23.311] INICIO demanda_gdelt_sercop
+[18:58:23.326] FIN    demanda_gdelt_sercop (0.02s)
+[18:58:23.326] INICIO oficial_actualizar
+[18:58:23.329] FIN    oficial_actualizar (0.00s)
+[18:58:23.330] INICIO get_ia
+[18:58:23.404] FIN    get_ia (0.07s)
+[18:58:23.405] INICIO get_geo_evidencia
+[18:58:23.406] FIN    get_geo_evidencia (0.00s)
+[18:58:23.407] INICIO get_contexto
+[18:58:23.553] FIN    get_contexto (0.15s)
+[18:58:23.553] INICIO get_factcheck
+[18:58:25.330] FIN    get_factcheck (1.78s)
+[18:58:25.330] INICIO get_veredicto
+[18:58:25.657] FIN    get_veredicto (0.33s)
+[18:58:25.657] INICIO get_declaraciones
+[18:58:25.669] FIN    get_declaraciones (0.01s)
+[18:58:25.669] INICIO get_social
+[18:58:25.672] FIN    get_social (0.00s)
+[18:58:25.672] INICIO get_social_historias
+[18:58:25.676] FIN    get_social_historias (0.00s)
+[18:58:25.779] enrich_pass: arranca con 1551 historias publicadas
+[18:58:25.781] INICIO embed_pendientes_registro
+[18:58:25.878] FIN    embed_pendientes_registro (0.10s)
+[18:58:25.879] INICIO embed_multilingue_pendientes_registro
+[18:58:26.289] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:58:26.289] INICIO coherencia_pendientes_registro
+[18:58:26.462] FIN    coherencia_pendientes_registro (0.17s)
+[18:58:26.463] INICIO alertas_recolectar_senales
+[18:58:28.859] FIN    alertas_recolectar_senales (2.40s)
+[18:58:28.860] INICIO redes_pasada
+[18:58:28.866] FIN    redes_pasada (0.01s)
+[18:58:28.866] INICIO demanda_gdelt_sercop
+[18:58:28.881] FIN    demanda_gdelt_sercop (0.02s)
+[18:58:28.882] INICIO oficial_actualizar
+[18:58:28.886] FIN    oficial_actualizar (0.00s)
+[18:58:28.886] INICIO get_ia
+[18:58:28.964] FIN    get_ia (0.08s)
+[18:58:28.965] INICIO get_geo_evidencia
+[18:58:28.966] FIN    get_geo_evidencia (0.00s)
+[18:58:28.966] INICIO get_contexto
+[18:58:29.109] FIN    get_contexto (0.14s)
+[18:58:29.109] INICIO get_factcheck
+[18:58:29.138] FIN    get_factcheck (0.03s)
+[18:58:29.139] INICIO get_veredicto
+[18:58:29.439] FIN    get_veredicto (0.30s)
+[18:58:29.440] INICIO get_declaraciones
+[18:58:29.454] FIN    get_declaraciones (0.01s)
+[18:58:29.454] INICIO get_social
+[18:58:29.457] FIN    get_social (0.00s)
+[18:58:29.457] INICIO get_social_historias
+[18:58:29.461] FIN    get_social_historias (0.00s)
+[18:58:29.564] enrich_pass: arranca con 1551 historias publicadas
+[18:58:29.565] INICIO embed_pendientes_registro
+[18:58:29.664] FIN    embed_pendientes_registro (0.10s)
+[18:58:29.664] INICIO embed_multilingue_pendientes_registro
+[18:58:30.081] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:58:30.082] INICIO coherencia_pendientes_registro
+[18:58:30.254] FIN    coherencia_pendientes_registro (0.17s)
+[18:58:30.255] INICIO alertas_recolectar_senales
+[18:58:32.648] FIN    alertas_recolectar_senales (2.39s)
+[18:58:32.648] INICIO redes_pasada
+[18:58:32.655] FIN    redes_pasada (0.01s)
+[18:58:32.655] INICIO demanda_gdelt_sercop
+[18:58:32.670] FIN    demanda_gdelt_sercop (0.01s)
+[18:58:32.670] INICIO oficial_actualizar
+[18:58:32.673] FIN    oficial_actualizar (0.00s)
+[18:58:32.674] INICIO get_ia
+[18:58:32.749] FIN    get_ia (0.08s)
+[18:58:32.749] INICIO get_geo_evidencia
+[18:58:32.750] FIN    get_geo_evidencia (0.00s)
+[18:58:32.751] INICIO get_contexto
+[18:58:32.941] FIN    get_contexto (0.19s)
+[18:58:32.942] INICIO get_factcheck
+[18:58:32.984] FIN    get_factcheck (0.04s)
+[18:58:32.985] INICIO get_veredicto
+[18:58:33.417] FIN    get_veredicto (0.43s)
+[18:58:33.418] INICIO get_declaraciones
+[18:58:33.434] FIN    get_declaraciones (0.02s)
+[18:58:33.435] INICIO get_social
+[18:58:33.454] FIN    get_social (0.02s)
+[18:58:33.456] INICIO get_social_historias
+[18:58:33.464] FIN    get_social_historias (0.01s)
+[18:58:33.589] enrich_pass: arranca con 1551 historias publicadas
+[18:58:33.592] INICIO embed_pendientes_registro
+[18:58:33.771] FIN    embed_pendientes_registro (0.18s)
+[18:58:33.772] INICIO embed_multilingue_pendientes_registro
+[18:58:34.285] FIN    embed_multilingue_pendientes_registro (0.51s)
+[18:58:34.286] INICIO coherencia_pendientes_registro
+[18:58:34.797] FIN    coherencia_pendientes_registro (0.51s)
+[18:58:34.848] INICIO alertas_recolectar_senales
+[18:58:38.601] collect: feeds mas lentos -> Busqueda: Samborondon=3.37s(ok); Busqueda: Guayaquil=3.03s(ok); Busqueda: Duran EC=2.95s(ok); The Hindu=2.94s(ok); Expreso=2.70s(ok)
+[18:58:38.601] collect: 2 feed(s) con error/timeout -> Wambra=0.87s(HTTP 429); The Japan Times=0.54s(HTTP 404)
+[18:58:38.602] collect: 54 feeds en 5.15s (paralelo, max 20 hilos)
+[18:58:38.821] cluster: agrupando 1738 articulos contra el registro persistente...
+[18:58:39.320] FIN    alertas_recolectar_senales (4.47s)
+[18:58:39.421] INICIO redes_pasada
+[18:58:39.854] FIN    redes_pasada (0.43s)
+[18:58:39.933] INICIO demanda_gdelt_sercop
+[18:58:40.377] FIN    demanda_gdelt_sercop (0.44s)
+[18:58:40.456] INICIO oficial_actualizar
+[18:58:40.564] FIN    oficial_actualizar (0.11s)
+[18:58:40.572] INICIO get_ia
+[18:58:40.844] FIN    get_ia (0.27s)
+[18:58:40.940] INICIO get_geo_evidencia
+[18:58:41.046] FIN    get_geo_evidencia (0.11s)
+[18:58:41.124] INICIO get_contexto
+[18:58:47.146] FIN    get_contexto (6.02s)
+[18:58:47.220] INICIO get_factcheck
+[18:58:47.630] FIN    get_factcheck (0.41s)
+[18:58:47.725] INICIO get_veredicto
+[18:59:04.124] run_fast: 1738 articulos -> 1553 historias | collect=5.27s cluster=10.09s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.13s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.12s | TOTAL=30.66s
+[18:59:04.396] FIN    get_veredicto (16.67s)
+[18:59:04.397] INICIO get_declaraciones
+[18:59:04.412] FIN    get_declaraciones (0.02s)
+[18:59:04.413] INICIO get_social
+[18:59:04.416] FIN    get_social (0.00s)
+[18:59:04.416] INICIO get_social_historias
+[18:59:04.421] FIN    get_social_historias (0.00s)
+[18:59:04.561] enrich_pass: arranca con 1553 historias publicadas
+[18:59:04.563] INICIO embed_pendientes_registro
+[18:59:04.695] FIN    embed_pendientes_registro (0.13s)
+[18:59:04.696] INICIO embed_multilingue_pendientes_registro
+[18:59:05.146] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:59:05.146] INICIO coherencia_pendientes_registro
+[18:59:05.333] FIN    coherencia_pendientes_registro (0.19s)
+[18:59:05.333] INICIO alertas_recolectar_senales
+[18:59:08.054] FIN    alertas_recolectar_senales (2.72s)
+[18:59:08.055] INICIO redes_pasada
+[18:59:08.064] FIN    redes_pasada (0.01s)
+[18:59:08.064] INICIO demanda_gdelt_sercop
+[18:59:08.083] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:08.083] INICIO oficial_actualizar
+[18:59:08.086] FIN    oficial_actualizar (0.00s)
+[18:59:08.087] INICIO get_ia
+[18:59:08.167] FIN    get_ia (0.08s)
+[18:59:08.167] INICIO get_geo_evidencia
+[18:59:08.168] FIN    get_geo_evidencia (0.00s)
+[18:59:08.169] INICIO get_contexto
+[18:59:08.318] FIN    get_contexto (0.15s)
+[18:59:08.319] INICIO get_factcheck
+[18:59:09.472] FIN    get_factcheck (1.15s)
+[18:59:09.472] INICIO get_veredicto
+[18:59:09.823] FIN    get_veredicto (0.35s)
+[18:59:09.824] INICIO get_declaraciones
+[18:59:09.839] FIN    get_declaraciones (0.01s)
+[18:59:09.839] INICIO get_social
+[18:59:09.842] FIN    get_social (0.00s)
+[18:59:09.843] INICIO get_social_historias
+[18:59:09.848] FIN    get_social_historias (0.00s)
+[18:59:09.952] enrich_pass: arranca con 1553 historias publicadas
+[18:59:09.953] INICIO embed_pendientes_registro
+[18:59:10.055] FIN    embed_pendientes_registro (0.10s)
+[18:59:10.056] INICIO embed_multilingue_pendientes_registro
+[18:59:10.483] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:59:10.484] INICIO coherencia_pendientes_registro
+[18:59:10.666] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:10.667] INICIO alertas_recolectar_senales
+[18:59:13.211] FIN    alertas_recolectar_senales (2.54s)
+[18:59:13.212] INICIO redes_pasada
+[18:59:13.219] FIN    redes_pasada (0.01s)
+[18:59:13.219] INICIO demanda_gdelt_sercop
+[18:59:13.236] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:13.236] INICIO oficial_actualizar
+[18:59:13.239] FIN    oficial_actualizar (0.00s)
+[18:59:13.240] INICIO get_ia
+[18:59:13.353] FIN    get_ia (0.11s)
+[18:59:13.354] INICIO get_geo_evidencia
+[18:59:13.355] FIN    get_geo_evidencia (0.00s)
+[18:59:13.356] INICIO get_contexto
+[18:59:13.510] FIN    get_contexto (0.15s)
+[18:59:13.511] INICIO get_factcheck
+[18:59:13.538] FIN    get_factcheck (0.03s)
+[18:59:13.539] INICIO get_veredicto
+[18:59:13.884] FIN    get_veredicto (0.35s)
+[18:59:13.884] INICIO get_declaraciones
+[18:59:13.894] FIN    get_declaraciones (0.01s)
+[18:59:13.895] INICIO get_social
+[18:59:13.897] FIN    get_social (0.00s)
+[18:59:13.898] INICIO get_social_historias
+[18:59:13.902] FIN    get_social_historias (0.00s)
+[18:59:14.004] enrich_pass: arranca con 1553 historias publicadas
+[18:59:14.005] INICIO embed_pendientes_registro
+[18:59:14.106] FIN    embed_pendientes_registro (0.10s)
+[18:59:14.107] INICIO embed_multilingue_pendientes_registro
+[18:59:14.534] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:59:14.535] INICIO coherencia_pendientes_registro
+[18:59:14.712] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:14.712] INICIO alertas_recolectar_senales
+[18:59:17.374] FIN    alertas_recolectar_senales (2.66s)
+[18:59:17.374] INICIO redes_pasada
+[18:59:17.381] FIN    redes_pasada (0.01s)
+[18:59:17.382] INICIO demanda_gdelt_sercop
+[18:59:17.396] FIN    demanda_gdelt_sercop (0.01s)
+[18:59:17.397] INICIO oficial_actualizar
+[18:59:17.400] FIN    oficial_actualizar (0.00s)
+[18:59:17.400] INICIO get_ia
+[18:59:17.477] FIN    get_ia (0.08s)
+[18:59:17.478] INICIO get_geo_evidencia
+[18:59:17.479] FIN    get_geo_evidencia (0.00s)
+[18:59:17.479] INICIO get_contexto
+[18:59:17.623] FIN    get_contexto (0.14s)
+[18:59:17.623] INICIO get_factcheck
+[18:59:17.652] FIN    get_factcheck (0.03s)
+[18:59:17.652] INICIO get_veredicto
+[18:59:17.965] FIN    get_veredicto (0.31s)
+[18:59:17.965] INICIO get_declaraciones
+[18:59:17.976] FIN    get_declaraciones (0.01s)
+[18:59:17.977] INICIO get_social
+[18:59:17.979] FIN    get_social (0.00s)
+[18:59:17.979] INICIO get_social_historias
+[18:59:17.983] FIN    get_social_historias (0.00s)
+[18:59:18.088] enrich_pass: arranca con 1553 historias publicadas
+[18:59:18.090] INICIO embed_pendientes_registro
+[18:59:18.187] FIN    embed_pendientes_registro (0.10s)
+[18:59:18.188] INICIO embed_multilingue_pendientes_registro
+[18:59:18.614] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:59:18.614] INICIO coherencia_pendientes_registro
+[18:59:18.787] FIN    coherencia_pendientes_registro (0.17s)
+[18:59:18.787] INICIO alertas_recolectar_senales
+[18:59:21.493] FIN    alertas_recolectar_senales (2.71s)
+[18:59:21.494] INICIO redes_pasada
+[18:59:21.503] FIN    redes_pasada (0.01s)
+[18:59:21.503] INICIO demanda_gdelt_sercop
+[18:59:21.522] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:21.522] INICIO oficial_actualizar
+[18:59:21.526] FIN    oficial_actualizar (0.00s)
+[18:59:21.526] INICIO get_ia
+[18:59:21.603] FIN    get_ia (0.08s)
+[18:59:21.603] INICIO get_geo_evidencia
+[18:59:21.604] FIN    get_geo_evidencia (0.00s)
+[18:59:21.604] INICIO get_contexto
+[18:59:21.748] FIN    get_contexto (0.14s)
+[18:59:21.748] INICIO get_factcheck
+[18:59:21.776] FIN    get_factcheck (0.03s)
+[18:59:21.776] INICIO get_veredicto
+[18:59:22.077] FIN    get_veredicto (0.30s)
+[18:59:22.078] INICIO get_declaraciones
+[18:59:22.091] FIN    get_declaraciones (0.01s)
+[18:59:22.092] INICIO get_social
+[18:59:22.094] FIN    get_social (0.00s)
+[18:59:22.095] INICIO get_social_historias
+[18:59:22.099] FIN    get_social_historias (0.00s)
+[18:59:22.207] enrich_pass: arranca con 1553 historias publicadas
+[18:59:22.208] INICIO embed_pendientes_registro
+[18:59:22.314] FIN    embed_pendientes_registro (0.11s)
+[18:59:22.314] INICIO embed_multilingue_pendientes_registro
+[18:59:22.727] FIN    embed_multilingue_pendientes_registro (0.41s)
+[18:59:22.727] INICIO coherencia_pendientes_registro
+[18:59:22.931] FIN    coherencia_pendientes_registro (0.20s)
+[18:59:22.932] INICIO alertas_recolectar_senales
+[18:59:25.891] FIN    alertas_recolectar_senales (2.96s)
+[18:59:25.891] INICIO redes_pasada
+[18:59:25.898] FIN    redes_pasada (0.01s)
+[18:59:25.899] INICIO demanda_gdelt_sercop
+[18:59:25.916] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:25.916] INICIO oficial_actualizar
+[18:59:25.921] FIN    oficial_actualizar (0.00s)
+[18:59:25.921] INICIO get_ia
+[18:59:25.999] FIN    get_ia (0.08s)
+[18:59:26.000] INICIO get_geo_evidencia
+[18:59:26.002] FIN    get_geo_evidencia (0.00s)
+[18:59:26.003] INICIO get_contexto
+[18:59:26.153] FIN    get_contexto (0.15s)
+[18:59:26.154] INICIO get_factcheck
+[18:59:26.181] FIN    get_factcheck (0.03s)
+[18:59:26.182] INICIO get_veredicto
+[18:59:26.485] FIN    get_veredicto (0.30s)
+[18:59:26.485] INICIO get_declaraciones
+[18:59:26.495] FIN    get_declaraciones (0.01s)
+[18:59:26.496] INICIO get_social
+[18:59:26.498] FIN    get_social (0.00s)
+[18:59:26.498] INICIO get_social_historias
+[18:59:26.503] FIN    get_social_historias (0.01s)
+[18:59:26.606] enrich_pass: arranca con 1553 historias publicadas
+[18:59:26.607] INICIO embed_pendientes_registro
+[18:59:26.699] FIN    embed_pendientes_registro (0.09s)
+[18:59:26.700] INICIO embed_multilingue_pendientes_registro
+[18:59:27.131] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:59:27.132] INICIO coherencia_pendientes_registro
+[18:59:27.303] FIN    coherencia_pendientes_registro (0.17s)
+[18:59:27.304] INICIO alertas_recolectar_senales
+[18:59:30.429] FIN    alertas_recolectar_senales (3.13s)
+[18:59:30.430] INICIO redes_pasada
+[18:59:30.437] FIN    redes_pasada (0.01s)
+[18:59:30.437] INICIO demanda_gdelt_sercop
+[18:59:30.453] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:30.453] INICIO oficial_actualizar
+[18:59:30.456] FIN    oficial_actualizar (0.00s)
+[18:59:30.456] INICIO get_ia
+[18:59:30.532] FIN    get_ia (0.08s)
+[18:59:30.533] INICIO get_geo_evidencia
+[18:59:30.534] FIN    get_geo_evidencia (0.00s)
+[18:59:30.535] INICIO get_contexto
+[18:59:30.688] FIN    get_contexto (0.15s)
+[18:59:30.688] INICIO get_factcheck
+[18:59:30.717] FIN    get_factcheck (0.03s)
+[18:59:30.718] INICIO get_veredicto
+[18:59:31.157] FIN    get_veredicto (0.44s)
+[18:59:31.157] INICIO get_declaraciones
+[18:59:31.177] FIN    get_declaraciones (0.02s)
+[18:59:31.177] INICIO get_social
+[18:59:31.181] FIN    get_social (0.00s)
+[18:59:31.181] INICIO get_social_historias
+[18:59:31.189] FIN    get_social_historias (0.01s)
+[18:59:31.318] enrich_pass: arranca con 1553 historias publicadas
+[18:59:31.320] INICIO embed_pendientes_registro
+[18:59:31.443] FIN    embed_pendientes_registro (0.12s)
+[18:59:31.444] INICIO embed_multilingue_pendientes_registro
+[18:59:31.865] FIN    embed_multilingue_pendientes_registro (0.42s)
+[18:59:31.866] INICIO coherencia_pendientes_registro
+[18:59:32.037] FIN    coherencia_pendientes_registro (0.17s)
+[18:59:32.038] INICIO alertas_recolectar_senales
+[18:59:34.842] FIN    alertas_recolectar_senales (2.80s)
+[18:59:34.842] INICIO redes_pasada
+[18:59:34.850] FIN    redes_pasada (0.01s)
+[18:59:34.851] INICIO demanda_gdelt_sercop
+[18:59:34.866] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:34.867] INICIO oficial_actualizar
+[18:59:34.870] FIN    oficial_actualizar (0.00s)
+[18:59:34.870] INICIO get_ia
+[18:59:34.948] FIN    get_ia (0.08s)
+[18:59:34.949] INICIO get_geo_evidencia
+[18:59:34.949] FIN    get_geo_evidencia (0.00s)
+[18:59:34.950] INICIO get_contexto
+[18:59:35.103] FIN    get_contexto (0.15s)
+[18:59:35.103] INICIO get_factcheck
+[18:59:35.131] FIN    get_factcheck (0.03s)
+[18:59:35.131] INICIO get_veredicto
+[18:59:35.468] FIN    get_veredicto (0.34s)
+[18:59:35.469] INICIO get_declaraciones
+[18:59:35.485] FIN    get_declaraciones (0.02s)
+[18:59:35.486] INICIO get_social
+[18:59:35.488] FIN    get_social (0.00s)
+[18:59:35.489] INICIO get_social_historias
+[18:59:35.492] FIN    get_social_historias (0.00s)
+[18:59:35.614] enrich_pass: arranca con 1553 historias publicadas
+[18:59:35.615] INICIO embed_pendientes_registro
+[18:59:35.738] FIN    embed_pendientes_registro (0.12s)
+[18:59:35.739] INICIO embed_multilingue_pendientes_registro
+[18:59:36.165] FIN    embed_multilingue_pendientes_registro (0.43s)
+[18:59:36.166] INICIO coherencia_pendientes_registro
+[18:59:36.348] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:36.349] INICIO alertas_recolectar_senales
+[18:59:43.113] FIN    alertas_recolectar_senales (6.76s)
+[18:59:43.114] INICIO redes_pasada
+[18:59:43.123] FIN    redes_pasada (0.01s)
+[18:59:43.123] INICIO demanda_gdelt_sercop
+[18:59:43.142] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:43.142] INICIO oficial_actualizar
+[18:59:43.146] FIN    oficial_actualizar (0.00s)
+[18:59:43.146] INICIO get_ia
+[18:59:43.225] FIN    get_ia (0.08s)
+[18:59:43.226] INICIO get_geo_evidencia
+[18:59:43.227] FIN    get_geo_evidencia (0.00s)
+[18:59:43.227] INICIO get_contexto
+[18:59:43.379] FIN    get_contexto (0.15s)
+[18:59:43.380] INICIO get_factcheck
+[18:59:43.413] FIN    get_factcheck (0.03s)
+[18:59:43.414] INICIO get_veredicto
+[18:59:43.781] FIN    get_veredicto (0.37s)
+[18:59:43.781] INICIO get_declaraciones
+[18:59:43.792] FIN    get_declaraciones (0.01s)
+[18:59:43.793] INICIO get_social
+[18:59:43.796] FIN    get_social (0.00s)
+[18:59:43.796] INICIO get_social_historias
+[18:59:43.800] FIN    get_social_historias (0.00s)
+[18:59:43.969] enrich_pass: arranca con 1553 historias publicadas
+[18:59:43.971] INICIO embed_pendientes_registro
+[18:59:44.103] FIN    embed_pendientes_registro (0.13s)
+[18:59:44.104] INICIO embed_multilingue_pendientes_registro
+[18:59:44.542] FIN    embed_multilingue_pendientes_registro (0.44s)
+[18:59:44.542] INICIO coherencia_pendientes_registro
+[18:59:44.742] FIN    coherencia_pendientes_registro (0.20s)
+[18:59:44.742] INICIO alertas_recolectar_senales
+[18:59:47.521] FIN    alertas_recolectar_senales (2.78s)
+[18:59:47.521] INICIO redes_pasada
+[18:59:47.529] FIN    redes_pasada (0.01s)
+[18:59:47.530] INICIO demanda_gdelt_sercop
+[18:59:47.546] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:47.547] INICIO oficial_actualizar
+[18:59:47.550] FIN    oficial_actualizar (0.00s)
+[18:59:47.550] INICIO get_ia
+[18:59:47.629] FIN    get_ia (0.08s)
+[18:59:47.629] INICIO get_geo_evidencia
+[18:59:47.630] FIN    get_geo_evidencia (0.00s)
+[18:59:47.631] INICIO get_contexto
+[18:59:47.781] FIN    get_contexto (0.15s)
+[18:59:47.782] INICIO get_factcheck
+[18:59:47.812] FIN    get_factcheck (0.03s)
+[18:59:47.813] INICIO get_veredicto
+[18:59:48.165] FIN    get_veredicto (0.35s)
+[18:59:48.165] INICIO get_declaraciones
+[18:59:48.181] FIN    get_declaraciones (0.02s)
+[18:59:48.181] INICIO get_social
+[18:59:48.184] FIN    get_social (0.00s)
+[18:59:48.185] INICIO get_social_historias
+[18:59:48.189] FIN    get_social_historias (0.00s)
+[18:59:48.298] enrich_pass: arranca con 1553 historias publicadas
+[18:59:48.299] INICIO embed_pendientes_registro
+[18:59:48.407] FIN    embed_pendientes_registro (0.11s)
+[18:59:48.408] INICIO embed_multilingue_pendientes_registro
+[18:59:48.860] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:59:48.860] INICIO coherencia_pendientes_registro
+[18:59:49.044] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:49.044] INICIO alertas_recolectar_senales
+[18:59:51.748] FIN    alertas_recolectar_senales (2.70s)
+[18:59:51.749] INICIO redes_pasada
+[18:59:51.755] FIN    redes_pasada (0.01s)
+[18:59:51.756] INICIO demanda_gdelt_sercop
+[18:59:51.772] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:51.773] INICIO oficial_actualizar
+[18:59:51.776] FIN    oficial_actualizar (0.00s)
+[18:59:51.777] INICIO get_ia
+[18:59:51.860] FIN    get_ia (0.08s)
+[18:59:51.860] INICIO get_geo_evidencia
+[18:59:51.861] FIN    get_geo_evidencia (0.00s)
+[18:59:51.862] INICIO get_contexto
+[18:59:52.014] FIN    get_contexto (0.15s)
+[18:59:52.015] INICIO get_factcheck
+[18:59:52.047] FIN    get_factcheck (0.03s)
+[18:59:52.048] INICIO get_veredicto
+[18:59:52.464] FIN    get_veredicto (0.42s)
+[18:59:52.464] INICIO get_declaraciones
+[18:59:52.479] FIN    get_declaraciones (0.01s)
+[18:59:52.479] INICIO get_social
+[18:59:52.482] FIN    get_social (0.00s)
+[18:59:52.482] INICIO get_social_historias
+[18:59:52.487] FIN    get_social_historias (0.00s)
+[18:59:52.596] enrich_pass: arranca con 1553 historias publicadas
+[18:59:52.597] INICIO embed_pendientes_registro
+[18:59:52.696] FIN    embed_pendientes_registro (0.10s)
+[18:59:52.697] INICIO embed_multilingue_pendientes_registro
+[18:59:53.150] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:59:53.151] INICIO coherencia_pendientes_registro
+[18:59:53.330] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:53.331] INICIO alertas_recolectar_senales
+[18:59:55.780] FIN    alertas_recolectar_senales (2.45s)
+[18:59:55.781] INICIO redes_pasada
+[18:59:55.789] FIN    redes_pasada (0.01s)
+[18:59:55.790] INICIO demanda_gdelt_sercop
+[18:59:55.808] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:55.809] INICIO oficial_actualizar
+[18:59:55.812] FIN    oficial_actualizar (0.00s)
+[18:59:55.813] INICIO get_ia
+[18:59:55.895] FIN    get_ia (0.08s)
+[18:59:55.895] INICIO get_geo_evidencia
+[18:59:55.896] FIN    get_geo_evidencia (0.00s)
+[18:59:55.897] INICIO get_contexto
+[18:59:56.046] FIN    get_contexto (0.15s)
+[18:59:56.046] INICIO get_factcheck
+[18:59:56.081] FIN    get_factcheck (0.03s)
+[18:59:56.082] INICIO get_veredicto
+[18:59:56.420] FIN    get_veredicto (0.34s)
+[18:59:56.421] INICIO get_declaraciones
+[18:59:56.432] FIN    get_declaraciones (0.01s)
+[18:59:56.432] INICIO get_social
+[18:59:56.435] FIN    get_social (0.00s)
+[18:59:56.436] INICIO get_social_historias
+[18:59:56.440] FIN    get_social_historias (0.00s)
+[18:59:56.547] enrich_pass: arranca con 1553 historias publicadas
+[18:59:56.548] INICIO embed_pendientes_registro
+[18:59:56.651] FIN    embed_pendientes_registro (0.10s)
+[18:59:56.652] INICIO embed_multilingue_pendientes_registro
+[18:59:57.103] FIN    embed_multilingue_pendientes_registro (0.45s)
+[18:59:57.103] INICIO coherencia_pendientes_registro
+[18:59:57.287] FIN    coherencia_pendientes_registro (0.18s)
+[18:59:57.288] INICIO alertas_recolectar_senales
+[18:59:59.945] FIN    alertas_recolectar_senales (2.66s)
+[18:59:59.946] INICIO redes_pasada
+[18:59:59.954] FIN    redes_pasada (0.01s)
+[18:59:59.955] INICIO demanda_gdelt_sercop
+[18:59:59.975] FIN    demanda_gdelt_sercop (0.02s)
+[18:59:59.976] INICIO oficial_actualizar
+[18:59:59.979] FIN    oficial_actualizar (0.00s)
+[18:59:59.980] INICIO get_ia
+[19:00:07.996] collect: feeds mas lentos -> Busqueda: Samborondon=3.19s(ok); Busqueda: Duran EC=2.73s(ok); Busqueda: Guayaquil=2.56s(ok); Municipio de Guayaquil=2.31s(ok (304 sin cambios)); Presidencia Ecuador=1.91s(ok (304 sin cambios))
+[19:00:07.997] collect: 2 feed(s) con error/timeout -> Wambra=0.91s(HTTP 429); The Japan Times=0.43s(HTTP 404)
+[19:00:07.997] collect: 54 feeds en 3.84s (paralelo, max 20 hilos)
+[19:00:08.152] cluster: agrupando 1737 articulos contra el registro persistente...
+[19:00:33.350] run_fast: 1737 articulos -> 1554 historias | collect=3.97s cluster=9.64s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.12s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.41s | TOTAL=29.19s
+[19:01:37.414] collect: feeds mas lentos -> Busqueda: Duran EC=3.30s(ok); Busqueda: Guayaquil=3.06s(ok); RTS=2.75s(ok (304 sin cambios)); SCMP=2.49s(ok); Municipio de Guayaquil=2.28s(ok (304 sin cambios))
+[19:01:37.415] collect: 2 feed(s) con error/timeout -> Wambra=0.72s(HTTP 429); The Japan Times=0.77s(HTTP 404)
+[19:01:37.415] collect: 54 feeds en 4.03s (paralelo, max 20 hilos)
+[19:01:37.552] cluster: agrupando 1737 articulos contra el registro persistente...
+[19:02:03.182] run_fast: 1737 articulos -> 1555 historias | collect=4.14s cluster=9.78s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.12s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.70s | TOTAL=29.79s
+[19:02:12.781] FIN    get_ia (132.80s)
+[19:02:12.781] INICIO get_geo_evidencia
+[19:02:12.782] FIN    get_geo_evidencia (0.00s)
+[19:02:12.783] INICIO get_contexto
+[19:03:07.306] collect: 2 feed(s) con error/timeout -> Wambra=0.97s(HTTP 429); The Japan Times=0.95s(HTTP 404)
+[19:03:07.307] collect: 54 feeds en 4.09s (paralelo, max 20 hilos)
+[19:03:07.375] cluster: agrupando 1734 articulos contra el registro persistente...
+[19:03:32.521] run_fast: 1734 articulos -> 1555 historias | collect=4.14s cluster=9.88s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.15s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.02s get_factcheck=0.02s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.07s | TOTAL=29.31s
+[19:04:36.477] collect: 2 feed(s) con error/timeout -> Wambra=0.85s(HTTP 429); The Japan Times=1.12s(HTTP 404)
+[19:04:36.477] collect: 54 feeds en 3.93s (paralelo, max 20 hilos)
+[19:04:36.627] cluster: agrupando 1732 articulos contra el registro persistente...
+[19:05:01.487] run_fast: 1732 articulos -> 1560 historias | collect=4.05s cluster=9.77s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.13s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=14.93s | TOTAL=28.93s
+[19:06:05.170] collect: 1 feed(s) con error/timeout -> Wambra=0.82s(HTTP 429)
+[19:06:05.170] collect: 54 feeds en 3.66s (paralelo, max 20 hilos)
+[19:06:05.306] cluster: agrupando 1732 articulos contra el registro persistente...
+[19:06:29.467] run_fast: 1732 articulos -> 1561 historias | collect=3.77s cluster=9.38s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.13s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=14.62s | TOTAL=27.95s
+[19:07:33.747] collect: feeds mas lentos -> Busqueda: Samborondon=3.82s(ok); La Nacion (AR)=3.13s(ok); Busqueda: Duran EC=2.92s(ok); Extra=2.54s(ok); Municipio de Guayaquil=2.31s(ok (304 sin cambios))
+[19:07:33.748] collect: 1 feed(s) con error/timeout -> Wambra=0.85s(HTTP 429)
+[19:07:33.748] collect: 54 feeds en 4.25s (paralelo, max 20 hilos)
+[19:07:33.901] cluster: agrupando 1732 articulos contra el registro persistente...
+[19:07:38.185] FIN    get_contexto (325.40s)
+[19:07:38.264] INICIO get_factcheck
+[19:07:38.485] FIN    get_factcheck (0.22s)
+[19:07:38.552] INICIO get_veredicto
+[19:07:53.090] FIN    get_veredicto (14.54s)
+[19:07:53.180] INICIO get_declaraciones
+[19:08:00.418] run_fast: 1732 articulos -> 1563 historias | collect=4.37s cluster=10.59s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.16s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.02s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.72s | TOTAL=30.91s
+[19:08:03.044] FIN    get_declaraciones (9.86s)
+[19:08:03.045] INICIO get_social
+[19:08:14.152] FIN    get_social (11.11s)
+[19:08:14.153] INICIO get_social_historias
+[19:08:14.156] FIN    get_social_historias (0.00s)
+[19:08:14.268] enrich_pass: arranca con 1563 historias publicadas
+[19:08:14.269] INICIO embed_pendientes_registro
+[19:08:41.141] FIN    embed_pendientes_registro (26.87s)
+[19:08:41.143] INICIO embed_multilingue_pendientes_registro
+[19:08:54.863] FIN    embed_multilingue_pendientes_registro (13.72s)
+[19:08:54.864] INICIO coherencia_pendientes_registro
+[19:09:06.301] collect: feeds mas lentos -> Semana (Colombia)=3.80s(ok); Busqueda: Guayaquil=3.69s(ok); Busqueda: Duran EC=2.73s(ok); Municipio de Guayaquil=2.67s(ok (304 sin cambios)); La Jornada=2.60s(ok (304 sin cambios))
+[19:09:06.301] collect: 1 feed(s) con error/timeout -> Wambra=0.93s(HTTP 429)
+[19:09:06.302] collect: 54 feeds en 5.85s (paralelo, max 20 hilos)
+[19:09:06.370] cluster: agrupando 1732 articulos contra el registro persistente...
+[19:09:10.140] FIN    coherencia_pendientes_registro (15.28s)
+[19:09:10.209] INICIO alertas_recolectar_senales
+[19:09:14.235] FIN    alertas_recolectar_senales (4.03s)
+[19:09:14.279] INICIO redes_pasada
+[19:09:14.660] FIN    redes_pasada (0.38s)
+[19:09:14.734] INICIO demanda_gdelt_sercop
+[19:09:15.177] FIN    demanda_gdelt_sercop (0.44s)
+[19:09:15.326] INICIO oficial_actualizar
+[19:09:15.597] FIN    oficial_actualizar (0.27s)
+[19:09:15.716] INICIO get_ia
+[19:09:33.264] run_fast: 1732 articulos -> 1563 historias | collect=5.90s cluster=10.41s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.15s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.29s | TOTAL=32.81s
+[19:10:37.307] collect: feeds mas lentos -> Busqueda: Samborondon=3.76s(ok); Busqueda: Duran EC=2.66s(ok); Extra=2.27s(ok); SCMP=2.26s(ok (304 sin cambios)); Expreso=2.21s(ok)
+[19:10:37.307] collect: 1 feed(s) con error/timeout -> Wambra=0.78s(HTTP 429)
+[19:10:37.308] collect: 54 feeds en 4.01s (paralelo, max 20 hilos)
+[19:10:37.448] cluster: agrupando 1733 articulos contra el registro persistente...
+[19:11:05.267] run_fast: 1733 articulos -> 1582 historias | collect=4.13s cluster=10.19s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.14s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=17.46s | TOTAL=31.97s
+[19:11:17.472] FIN    get_ia (121.76s)
+[19:11:17.472] INICIO get_geo_evidencia
+[19:11:17.473] FIN    get_geo_evidencia (0.00s)
+[19:11:17.474] INICIO get_contexto
+[19:12:09.715] collect: feeds mas lentos -> Municipio de Guayaquil=4.38s(ok (304 sin cambios)); Busqueda: Duran EC=3.24s(ok); Busqueda: Samborondon=2.93s(ok); Busqueda: Guayaquil=2.69s(ok); Expreso=2.56s(ok)
+[19:12:09.715] collect: 1 feed(s) con error/timeout -> Wambra=0.82s(HTTP 429)
+[19:12:09.716] collect: 54 feeds en 4.42s (paralelo, max 20 hilos)
+[19:12:09.864] cluster: agrupando 1732 articulos contra el registro persistente...
+[19:12:31.203] FIN    get_contexto (73.73s)
+[19:12:31.321] INICIO get_factcheck
+[19:12:36.607] run_fast: 1732 articulos -> 1585 historias | collect=4.54s cluster=10.42s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.16s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.13s | TOTAL=31.30s
+[19:12:37.718] FIN    get_factcheck (6.40s)
+[19:12:37.719] INICIO get_veredicto
+[19:12:48.141] FIN    get_veredicto (10.42s)
+[19:12:48.142] INICIO get_declaraciones
+[19:12:54.509] FIN    get_declaraciones (6.37s)
+[19:12:54.509] INICIO get_social
+[19:12:54.513] FIN    get_social (0.00s)
+[19:12:54.513] INICIO get_social_historias
+[19:13:01.374] FIN    get_social_historias (6.86s)
+[19:13:01.482] enrich_pass: arranca con 1585 historias publicadas
+[19:13:01.483] INICIO embed_pendientes_registro
+[19:13:25.832] FIN    embed_pendientes_registro (24.35s)
+[19:13:25.833] INICIO embed_multilingue_pendientes_registro
+[19:13:40.836] collect: feeds mas lentos -> Expreso=3.63s(ok); TC Television=3.10s(ok (304 sin cambios)); Busqueda: Duran EC=2.94s(ok); Busqueda: Samborondon=2.69s(ok); Municipio de Guayaquil=2.29s(ok (304 sin cambios))
+[19:13:40.837] collect: 1 feed(s) con error/timeout -> Wambra=0.77s(HTTP 429)
+[19:13:40.837] collect: 54 feeds en 4.20s (paralelo, max 20 hilos)
+[19:13:40.991] cluster: agrupando 1731 articulos contra el registro persistente...
+[19:13:46.280] FIN    embed_multilingue_pendientes_registro (20.45s)
+[19:13:46.363] INICIO coherencia_pendientes_registro
+[19:14:01.829] FIN    coherencia_pendientes_registro (15.47s)
+[19:14:01.929] INICIO alertas_recolectar_senales
+[19:14:06.218] FIN    alertas_recolectar_senales (4.29s)
+[19:14:06.340] INICIO redes_pasada
+[19:14:06.848] FIN    redes_pasada (0.51s)
+[19:14:06.868] INICIO demanda_gdelt_sercop
+[19:14:07.298] FIN    demanda_gdelt_sercop (0.43s)
+[19:14:07.375] INICIO oficial_actualizar
+[19:14:09.240] run_fast: 1731 articulos -> 1587 historias | collect=4.33s cluster=11.17s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.21s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.83s | TOTAL=32.59s
+[19:14:09.864] FIN    oficial_actualizar (2.49s)
+[19:14:09.866] INICIO get_ia
+[19:15:13.190] collect: feeds mas lentos -> Busqueda: Samborondon=3.07s(ok); Busqueda: Duran EC=2.91s(ok); Busqueda: Guayaquil=2.70s(ok); Municipio de Guayaquil=2.49s(ok (304 sin cambios)); Extra=2.13s(ok)
+[19:15:13.191] collect: 1 feed(s) con error/timeout -> Wambra=0.87s(HTTP 429)
+[19:15:13.191] collect: 54 feeds en 3.92s (paralelo, max 20 hilos)
+[19:15:13.335] cluster: agrupando 1731 articulos contra el registro persistente...
+[19:15:40.473] run_fast: 1731 articulos -> 1606 historias | collect=4.04s cluster=10.48s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.17s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.45s | TOTAL=31.19s
+[19:16:14.729] FIN    get_ia (124.86s)
+[19:16:14.730] INICIO get_geo_evidencia
+[19:16:14.730] FIN    get_geo_evidencia (0.00s)
+[19:16:14.731] INICIO get_contexto
+[19:16:44.461] collect: feeds mas lentos -> Busqueda: Duran EC=3.22s(ok); Busqueda: Samborondon=3.16s(ok); Busqueda: Guayaquil=2.73s(ok); Municipio de Guayaquil=2.36s(ok (304 sin cambios)); Extra=2.17s(ok)
+[19:16:44.461] collect: 1 feed(s) con error/timeout -> Wambra=0.92s(HTTP 429)
+[19:16:44.462] collect: 54 feeds en 3.96s (paralelo, max 20 hilos)
+[19:16:44.534] cluster: agrupando 1731 articulos contra el registro persistente...
+[19:17:11.317] run_fast: 1731 articulos -> 1606 historias | collect=4.00s cluster=10.84s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.17s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.73s | TOTAL=30.79s
+[19:18:03.417] FIN    get_contexto (108.69s)
+[19:18:03.418] INICIO get_factcheck
+[19:18:08.968] FIN    get_factcheck (5.55s)
+[19:18:08.969] INICIO get_veredicto
+[19:18:19.574] FIN    get_veredicto (10.61s)
+[19:18:19.575] INICIO get_declaraciones
+[19:18:20.112] collect: feeds mas lentos -> El Pais (Espana)=8.51s(ok); SCMP=4.20s(ok); Busqueda: Guayaquil=3.88s(ok); Busqueda: Duran EC=3.85s(ok); Busqueda: Samborondon=3.76s(ok)
+[19:18:20.113] collect: 1 feed(s) con error/timeout -> Wambra=0.70s(HTTP 429)
+[19:18:20.113] collect: 54 feeds en 8.77s (paralelo, max 20 hilos)
+[19:18:20.190] cluster: agrupando 1735 articulos contra el registro persistente...
+[19:18:30.241] FIN    get_declaraciones (10.67s)
+[19:18:30.318] INICIO get_social
+[19:18:45.465] FIN    get_social (15.15s)
+[19:18:45.574] INICIO get_social_historias
+[19:18:47.314] run_fast: 1735 articulos -> 1606 historias | collect=8.82s cluster=10.67s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.17s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.25s | TOTAL=35.96s
+[19:18:49.479] FIN    get_social_historias (3.90s)
+[19:18:49.602] enrich_pass: arranca con 1606 historias publicadas
+[19:18:49.604] INICIO embed_pendientes_registro
+[19:19:16.494] FIN    embed_pendientes_registro (26.89s)
+[19:19:16.495] INICIO embed_multilingue_pendientes_registro
+[19:19:31.146] FIN    embed_multilingue_pendientes_registro (14.65s)
+[19:19:31.147] INICIO coherencia_pendientes_registro
+[19:19:43.533] FIN    coherencia_pendientes_registro (12.39s)
+[19:19:43.534] INICIO alertas_recolectar_senales
+[19:19:46.102] FIN    alertas_recolectar_senales (2.57s)
+[19:19:46.103] INICIO redes_pasada
+[19:19:46.110] FIN    redes_pasada (0.01s)
+[19:19:46.111] INICIO demanda_gdelt_sercop
+[19:19:46.127] FIN    demanda_gdelt_sercop (0.02s)
+[19:19:46.128] INICIO oficial_actualizar
+[19:19:46.131] FIN    oficial_actualizar (0.00s)
+[19:19:46.131] INICIO get_ia
+[19:19:51.364] collect: feeds mas lentos -> El Universo (Guayaquil)=3.43s(ok); Busqueda: Samborondon=2.94s(ok); Busqueda: Guayaquil=2.79s(ok); Busqueda: Duran EC=2.68s(ok); Expreso=2.11s(ok)
+[19:19:51.364] collect: 1 feed(s) con error/timeout -> Wambra=0.87s(HTTP 429)
+[19:19:51.365] collect: 54 feeds en 4.02s (paralelo, max 20 hilos)
+[19:19:51.431] cluster: agrupando 1735 articulos contra el registro persistente...
+[19:20:18.229] run_fast: 1735 articulos -> 1613 historias | collect=4.06s cluster=10.91s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.21s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.02s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.64s | TOTAL=30.88s
+[19:21:23.811] collect: feeds mas lentos -> El Universo=5.52s(ok); El Diario (Manabi)=3.85s(ok); Busqueda: Guayaquil=3.58s(ok); Busqueda: Samborondon=3.52s(ok); Busqueda: Duran EC=2.88s(ok)
+[19:21:23.812] collect: 1 feed(s) con error/timeout -> Wambra=0.91s(HTTP 429)
+[19:21:23.813] collect: 54 feeds en 5.55s (paralelo, max 20 hilos)
+[19:21:23.974] cluster: agrupando 1736 articulos contra el registro persistente...
+[19:21:51.595] run_fast: 1736 articulos -> 1620 historias | collect=5.68s cluster=10.76s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.21s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.02s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.60s | TOTAL=33.31s
+[19:21:55.328] FIN    get_ia (129.20s)
+[19:21:55.329] INICIO get_geo_evidencia
+[19:21:55.329] FIN    get_geo_evidencia (0.00s)
+[19:21:55.330] INICIO get_contexto
+[19:22:11.500] FIN    get_contexto (16.17s)
+[19:22:11.501] INICIO get_factcheck
+[19:22:16.478] FIN    get_factcheck (4.98s)
+[19:22:16.479] INICIO get_veredicto
+[19:22:25.636] FIN    get_veredicto (9.16s)
+[19:22:25.636] INICIO get_declaraciones
+[19:22:32.301] FIN    get_declaraciones (6.66s)
+[19:22:32.301] INICIO get_social
+[19:22:32.305] FIN    get_social (0.00s)
+[19:22:32.305] INICIO get_social_historias
+[19:22:32.309] FIN    get_social_historias (0.00s)
+[19:22:32.417] enrich_pass: arranca con 1620 historias publicadas
+[19:22:32.418] INICIO embed_pendientes_registro
+[19:22:55.812] collect: feeds mas lentos -> Expreso=3.66s(ok); Busqueda: Samborondon=3.24s(ok); Busqueda: Duran EC=2.73s(ok); Semana (Colombia)=2.13s(ok); Infobae=2.11s(ok)
+[19:22:55.813] collect: 1 feed(s) con error/timeout -> Wambra=0.92s(HTTP 429)
+[19:22:55.814] collect: 54 feeds en 4.18s (paralelo, max 20 hilos)
+[19:22:55.881] cluster: agrupando 1736 articulos contra el registro persistente...
+[19:23:12.116] FIN    embed_pendientes_registro (39.70s)
+[19:23:12.258] INICIO embed_multilingue_pendientes_registro
+[19:23:25.484] run_fast: 1736 articulos -> 1620 historias | collect=4.23s cluster=10.94s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.23s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=18.40s | TOTAL=33.85s
+[19:23:37.194] FIN    embed_multilingue_pendientes_registro (24.94s)
+[19:23:37.195] INICIO coherencia_pendientes_registro
+[19:24:20.415] FIN    coherencia_pendientes_registro (43.22s)
+[19:24:20.415] INICIO alertas_recolectar_senales
+[19:24:27.693] FIN    alertas_recolectar_senales (7.28s)
+[19:24:27.722] INICIO redes_pasada
+[19:24:27.731] FIN    redes_pasada (0.01s)
+[19:24:27.732] INICIO demanda_gdelt_sercop
+[19:24:28.378] FIN    demanda_gdelt_sercop (0.65s)
+[19:24:28.598] INICIO oficial_actualizar
+[19:24:28.822] FIN    oficial_actualizar (0.22s)
+[19:24:28.899] INICIO get_ia
+[19:24:29.539] collect: 1 feed(s) con error/timeout -> Wambra=0.91s(HTTP 429)
+[19:24:29.540] collect: 54 feeds en 4.02s (paralelo, max 20 hilos)
+[19:24:29.691] cluster: agrupando 1735 articulos contra el registro persistente...
+[19:24:56.780] run_fast: 1735 articulos -> 1633 historias | collect=4.14s cluster=10.88s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.20s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=15.99s | TOTAL=31.26s
+[19:26:07.667] collect: feeds mas lentos -> ABC News (AU)=8.75s(TimeoutError); CBC News (World)=8.40s(ok); BBC Business=5.57s(ok); El Universo=4.89s(ok); Busqueda: Samborondon=3.01s(ok)
+[19:26:07.668] collect: 2 feed(s) con error/timeout -> Wambra=0.83s(HTTP 429); ABC News (AU)=8.75s(TimeoutError)
+[19:26:07.668] collect: 54 feeds en 10.86s (paralelo, max 20 hilos)
+[19:26:07.737] cluster: agrupando 1735 articulos contra el registro persistente...
+[19:26:35.272] run_fast: 1735 articulos -> 1633 historias | collect=10.90s cluster=10.74s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.19s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.57s | TOTAL=38.45s
+[19:26:39.664] FIN    get_ia (130.77s)
+[19:26:39.664] INICIO get_geo_evidencia
+[19:26:39.665] FIN    get_geo_evidencia (0.00s)
+[19:26:39.666] INICIO get_contexto
+[19:26:40.019] FIN    get_contexto (0.35s)
+[19:26:40.020] INICIO get_factcheck
+[19:26:44.824] FIN    get_factcheck (4.80s)
+[19:26:44.825] INICIO get_veredicto
+[19:26:54.955] FIN    get_veredicto (10.13s)
+[19:26:54.956] INICIO get_declaraciones
+[19:27:02.260] FIN    get_declaraciones (7.30s)
+[19:27:02.260] INICIO get_social
+[19:27:02.263] FIN    get_social (0.00s)
+[19:27:02.263] INICIO get_social_historias
+[19:27:02.268] FIN    get_social_historias (0.00s)
+[19:27:02.378] enrich_pass: arranca con 1633 historias publicadas
+[19:27:02.379] INICIO embed_pendientes_registro
+[19:27:27.936] FIN    embed_pendientes_registro (25.56s)
+[19:27:27.937] INICIO embed_multilingue_pendientes_registro
+[19:27:40.423] collect: feeds mas lentos -> Busqueda: Guayaquil=3.84s(ok); Busqueda: Duran EC=3.83s(ok); Busqueda: Samborondon=3.72s(ok); SCMP=3.61s(ok); The Hindu=2.81s(ok)
+[19:27:40.424] collect: 1 feed(s) con error/timeout -> Wambra=0.98s(HTTP 429)
+[19:27:40.424] collect: 54 feeds en 5.12s (paralelo, max 20 hilos)
+[19:27:40.566] cluster: agrupando 1734 articulos contra el registro persistente...
+[19:27:56.554] FIN    embed_multilingue_pendientes_registro (28.62s)
+[19:27:56.648] INICIO coherencia_pendientes_registro
+[19:28:15.665] FIN    coherencia_pendientes_registro (19.02s)
+[19:28:15.730] INICIO alertas_recolectar_senales
+[19:28:17.037] run_fast: 1734 articulos -> 1640 historias | collect=5.23s cluster=18.20s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.23s get_geo_evidencia=0.00s get_contexto=0.04s get_contracts=0.02s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=17.98s | TOTAL=41.73s
+[19:28:19.420] FIN    alertas_recolectar_senales (3.69s)
+[19:28:19.421] INICIO redes_pasada
+[19:28:19.428] FIN    redes_pasada (0.01s)
+[19:28:19.428] INICIO demanda_gdelt_sercop
+[19:28:19.443] FIN    demanda_gdelt_sercop (0.02s)
+[19:28:19.444] INICIO oficial_actualizar
+[19:28:19.447] FIN    oficial_actualizar (0.00s)
+[19:28:19.447] INICIO get_ia
+[19:29:21.275] collect: feeds mas lentos -> Busqueda: Samborondon=3.24s(ok); The Japan Times=3.12s(ok); La Jornada=2.66s(ok (304 sin cambios)); SCMP=2.62s(ok); Busqueda: Duran EC=2.60s(ok)
+[19:29:21.276] collect: 1 feed(s) con error/timeout -> Wambra=1.06s(HTTP 429)
+[19:29:21.276] collect: 54 feeds en 4.21s (paralelo, max 20 hilos)
+[19:29:21.340] cluster: agrupando 1734 articulos contra el registro persistente...
+[19:29:49.640] run_fast: 1734 articulos -> 1644 historias | collect=4.25s cluster=11.66s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.20s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.02s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.40s | TOTAL=32.57s
+[19:30:31.183] FIN    get_ia (131.74s)
+[19:30:31.183] INICIO get_geo_evidencia
+[19:30:31.184] FIN    get_geo_evidencia (0.00s)
+[19:30:31.185] INICIO get_contexto
+[19:30:53.697] collect: feeds mas lentos -> Busqueda: Samborondon=3.77s(ok); Busqueda: Duran EC=3.72s(ok); Busqueda: Guayaquil=3.61s(ok); Municipio de Guayaquil=2.26s(ok (304 sin cambios)); Expreso=1.98s(ok)
+[19:30:53.698] collect: 1 feed(s) con error/timeout -> Wambra=1.14s(HTTP 429)
+[19:30:53.698] collect: 54 feeds en 4.03s (paralelo, max 20 hilos)
+[19:30:53.770] cluster: agrupando 1733 articulos contra el registro persistente...
+[19:31:21.859] run_fast: 1733 articulos -> 1644 historias | collect=4.07s cluster=10.86s get_demand=0.00s get_gdelt=0.00s interes=0.00s get_ia=0.23s get_geo_evidencia=0.00s get_contexto=0.02s get_contracts=0.01s get_factcheck=0.01s get_veredicto=0.01s get_declaraciones=0.00s get_social=0.00s get_social_historias=0.00s revisar_casos_avisos=0.00s write_outputs=16.97s | TOTAL=32.18s

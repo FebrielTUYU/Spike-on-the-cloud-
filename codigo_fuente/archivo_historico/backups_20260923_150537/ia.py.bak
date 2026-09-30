@@ -1,0 +1,833 @@
+# -*- coding: utf-8 -*-
+"""
+Agente de IA LOCAL (Ollama) — comprension de contexto para el monitor. Solo stdlib.
+
+Hace lo que las palabras clave no pueden: revisar y corregir el ETIQUETADO por
+palabras clave (feeds.py) con criterio de SIGNIFICADO, ubicar la nota en el mapa
+geografico (Guayaquil/Ecuador/mundo), y dar una interpretacion breve de por que
+importa. Todo local y gratis via Ollama (http://localhost:11434), sin enviar
+nada a la nube.
+
+El catalogo de categorias tematicas es FIJO (viene de feeds.KEYWORDS): la IA
+nunca inventa categorias nuevas ni las elimina del catalogo, solo decide para
+CADA NOTA cuales de esas categorias ya existentes le aplican.
+
+Optimizado para PC: modelo pequeno, respuesta corta (JSON), y el que llama
+cachea por nota para no repetir. Si Ollama no esta, avisa y el monitor sigue
+con las palabras clave.
+"""
+
+import os, re, json, urllib.request, urllib.error
+from feeds import KEYWORDS
+
+HOST = "http://localhost:11434"
+# Ventana de contexto para Ollama. Sin fijarla, Ollama usa el default del modelo
+# (32768 en qwen2.5:3b), que reserva mucha mas memoria de la que esta tarea
+# necesita (titular + resumen corto + prompt fijo) y empuja parte del modelo a
+# CPU en GPUs chicas. 4096 alcanza de sobra y deja el modelo entero en GPU.
+IA_CTX = int(os.environ.get("MONITOR_IA_CTX", "4096"))
+# Modelos preferidos (chicos y buenos en espanol), de mas liviano a mas pesado.
+# Se usa el primero que este instalado. Forzar con MONITOR_IA_MODEL.
+PREFER = ["llama3.2:3b", "qwen2.5:3b", "gemma2:2b", "qwen2.5:1.5b",
+          "phi3.5", "phi3:mini", "llama3.2:1b", "mistral:7b", "llama3.1:8b"]
+
+# Modelo dedicado para el chat critico (Parte E, chat()) -- DISTINTO del resto
+# del pipeline a proposito. El resto (analizar/extraer_entidades/
+# contextualizar/coincide_dominio) corre en el hilo trabajador, en LOTE
+# (decenas de historias nuevas cada pocos minutos) y necesita quedarse
+# "caliente" y rapido en la GPU chica -- por eso sigue en un modelo de la
+# lista PREFER de arriba (qwen2.5:3b tipicamente). El chat es ON-DEMAND: lo
+# dispara el usuario una vez, espera una respuesta puntual, y tolera un
+# modelo mas lento a cambio de mejor criterio. Medido en vivo en una GPU de
+# 4GB VRAM: un modelo de ~7-8B (la base de MONITOR_CHAT_MODEL) no entra
+# entero y paga 20-27s de SOLO CARGA por llamada -- inviable para el lote del
+# trabajador, tolerable para una pregunta de chat. Ver Modelfile.critico
+# (system prompt de "analista critico", base deepseek-r1:8b) para (re)crear
+# el modelo por defecto: `ollama create monitor-critico -f Modelfile.critico`.
+CHAT_MODEL = os.environ.get("MONITOR_CHAT_MODEL", "monitor-critico")
+_chat_model_ok = None  # cache de si CHAT_MODEL esta instalado (se prueba una vez)
+
+def elegir_modelo_chat():
+    """Modelo para chat(): preferir CHAT_MODEL si esta instalado; si no, cae
+    al mismo modelo rapido del resto del pipeline (mejor una respuesta con
+    menos filo critico que ninguna respuesta).
+
+    Compara por NOMBRE BASE (antes de ":"), no el string exacto: Ollama lista
+    los modelos con tag (ej. "monitor-critico:latest"), asi que comparar
+    CHAT_MODEL="monitor-critico" contra ese string exacto nunca matcheaba --
+    bug real, encontrado en vivo (elegir_modelo_chat() devolvia el modelo
+    rapido de siempre en vez del critico, sin avisar del problema). Misma
+    tecnica que ya usa elegir_modelo() para el resto del pipeline."""
+    global _chat_model_ok
+    if _chat_model_ok is None:
+        base = CHAT_MODEL.split(":")[0]
+        _chat_model_ok = any(m.split(":")[0] == base for m in modelos())
+    if _chat_model_ok:
+        return CHAT_MODEL
+    return _model or elegir_modelo()
+
+# Catalogo FIJO de categorias tematicas: todas las hojas de feeds.KEYWORDS
+# (Elecciones, Salud, Cultura/Comunidad, ...) mas "otros" para cuando ninguna
+# aplica. Una sola fuente de verdad (feeds.py) para que IA y palabras clave
+# nunca se desalineen.
+TEMA_CATALOG = sorted({tema for bank in KEYWORDS.values() for tema in bank})
+TEMA_OTROS = "otros"
+# Match tolerante a mayusculas/espacios: el modelo a veces no reproduce el
+# nombre EXACTO de la categoria (p.ej. "cultura/comunidad" en vez de
+# "Cultura/Comunidad"), pero igual debe mapear a la categoria fija real.
+_TEMA_LOOKUP = {t.strip().lower(): t for t in TEMA_CATALOG}
+_TEMA_LOOKUP[TEMA_OTROS] = TEMA_OTROS
+
+# Eje geografico jerarquico que decide la IA: guayaquil implica ecuador.
+GEO_CATALOG = ["guayaquil", "ecuador", "internacional"]
+
+last_error = None
+_model = None
+
+
+def _get(url, timeout=10):
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))
+
+
+def _post(url, payload, timeout=120):
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))
+
+
+def modelos():
+    """Lista de modelos instalados en Ollama, o [] si no responde."""
+    try:
+        data = _get(HOST + "/api/tags", timeout=8)
+        return [m.get("name", "") for m in data.get("models", [])]
+    except Exception:
+        return []
+
+
+def elegir_modelo(forzado=""):
+    """Elige el modelo a usar: el forzado, o el primero preferido instalado, o
+    el primero disponible. Devuelve None si no hay ninguno."""
+    global _model, last_error
+    if forzado:
+        _model = forzado
+        return _model
+    inst = modelos()
+    if not inst:
+        last_error = "Ollama sin modelos o apagado"
+        return None
+    for p in PREFER:
+        for m in inst:
+            if m == p or m.startswith(p + "-") or m.split(":")[0] == p.split(":")[0]:
+                _model = m
+                return m
+    _model = inst[0]
+    return _model
+
+
+def disponible(forzado=""):
+    return elegir_modelo(forzado) is not None
+
+
+_PROMPT = (
+    "Clasifica esta noticia y responde SOLO un JSON valido con estas claves:\n"
+    '{"temas": [{"cat": "<categoria del catalogo>", "score": 0.0-1.0}, ...],\n'
+    ' "geo": ["guayaquil"|"ecuador"|"internacional", ...]}.\n\n'
+    # La interpretacion ya NO se pide aca (bug real 2026-09-22): pedirle al
+    # mismo modelo chico clasificar + ubicar + interpretar en un solo JSON hacia
+    # que el campo 'interpretacion' se llenara con la JUSTIFICACION de la
+    # etiqueta ("Noticia internacional sobre X, sin impacto en Ecuador") -- de
+    # ahi la queja de que "la IA interpreta todo literal" pese a las
+    # correcciones del prompt. Ahora es una llamada aparte: interpretar().
+    "CATALOGO FIJO de categorias tematicas (no existen otras, no inventes ninguna "
+    "fuera de esta lista):\n%s\n\n"
+    "Para 'temas': las palabras clave ya pre-etiquetaron esta nota con: %s. Tu "
+    "unica tarea aqui es DEPURAR esa lista, nunca ampliarla: revisa cada categoria "
+    "y, si NO corresponde al contenido real, no la incluyas en tu respuesta (ej.: "
+    "una nota sobre la muerte de un poeta que quedo etiquetada 'Comercio/Inversion' "
+    "por una palabra clave suelta no debe llevar esa categoria). No agregues "
+    "ninguna categoria del catalogo que no este en esa lista pre-etiquetada, "
+    "aunque creas que aplica. Da un score de 0 a 1 de tu confianza en cada "
+    "categoria de la lista que SI incluyas. Si ninguna de esas categorias aplica "
+    "de verdad, responde "
+    '"temas": [{"cat": "otros", "score": 1}]. Nunca inventes categorias fuera del '
+    "catalogo.\n\n"
+    "Para 'geo' (jerarquico): \"guayaquil\" si el hecho ocurre en o trata "
+    "especificamente de Guayaquil (en ese caso incluye tambien \"ecuador\", nunca "
+    "\"guayaquil\" solo); \"ecuador\" si es noticia nacional de Ecuador (incluidas "
+    "Quito y otras ciudades: una nota de Quito es \"ecuador\", nunca \"guayaquil\"); "
+    "\"internacional\" si el foco esta fuera de Ecuador, aunque mencione bloques como "
+    "la Union Europea.\n"
+    "Ejemplo: \"Canada siendo invitado a la Union Europea\" = [\"internacional\"] "
+    "(no menciona a Ecuador).\n\n"
+    "Titular: %s\nResumen: %s"
+)
+
+_CATALOGO_TXT = ", ".join(TEMA_CATALOG)
+
+
+def analizar(titular, resumen="", temas_kw=None, forzado="", timeout=120):
+    """Devuelve {"temas": [{"cat","score"}, ...], "geo": [...], "interpretacion"} o
+    None si falla. 'temas_kw' son las categorias que ya asignaron las palabras
+    clave (feeds.py), para que la IA las revise y corrija en vez de partir de cero."""
+    global last_error
+    last_error = None
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return None
+    kw_txt = ", ".join(temas_kw) if temas_kw else "(ninguna)"
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT % (_CATALOGO_TXT, kw_txt, titular or "", (resumen or "")[:300]),
+            "stream": False,
+            "format": "json",   # Ollama fuerza JSON valido
+            # num_predict con margen: la respuesta ahora es mas larga (lista de
+            # temas + geo + interpretacion); con poco margen se puede cortar a
+            # mitad del JSON y fallar el parseo. num_ctx acotado (ver IA_CTX
+            # arriba) para no desperdiciar VRAM y mantener el modelo en GPU.
+            "options": {"temperature": 0.1, "num_predict": 220, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        r = json.loads(out.get("response", "{}"))
+
+        temas = []
+        for t in (r.get("temas") or []):
+            if not isinstance(t, dict):
+                continue
+            cat = _TEMA_LOOKUP.get(str(t.get("cat", "")).strip().lower())
+            if not cat:
+                continue  # nunca se inventa una categoria fuera del catalogo fijo
+            try:
+                score = float(t.get("score", 0))
+            except (TypeError, ValueError):
+                score = 0.0
+            temas.append({"cat": cat, "score": max(0.0, min(1.0, score))})
+
+        geo_raw = r.get("geo") or []
+        geo = [g for g in (str(x).lower().strip() for x in geo_raw) if g in GEO_CATALOG]
+
+        return {"temas": temas, "geo": geo}
+    except urllib.error.HTTPError as e:
+        last_error = "HTTP %s" % e.code
+    except Exception as e:
+        last_error = type(e).__name__
+    return None
+
+
+# ------------------------- interpretacion (lectura editorial) -------------------------
+# Llamada PROPIA, en texto libre (sin JSON) y con ejemplos resueltos: a un
+# modelo de 3B le cuesta mucho seguir una instruccion abstracta ("no resumas,
+# interpreta"), pero imita bastante bien un patron que ve resuelto 3 veces.
+# Ademas, un filtro (es_literal) descarta lo que siga siendo parafrasis o
+# descripcion de la nota: mejor no mostrar nada que mostrar relleno.
+
+INTERP_MODEL = os.environ.get("MONITOR_IA_INTERP_MODEL", "")  # vacio = el modelo rapido del pipeline
+
+_INTERP_SISTEMA = (
+    "Eres editor de una redaccion en Ecuador. Un reportero te pasa un titular y "
+    "tu le respondes en UNA o DOS frases (maximo 40 palabras) que hay DETRAS del "
+    "hecho: que esta en juego, a quien beneficia o perjudica, que tension revela "
+    "o que pregunta concreta deberia perseguir el reportero. Nunca describas la "
+    "noticia ni digas de que trata, nunca menciones si es nacional o "
+    "internacional, nunca empieces con 'La noticia' o 'La nota'. No inventes "
+    "cifras, nombres ni fechas que no esten en el texto; si el texto es muy "
+    "escueto, di que dato falta para dimensionarlo."
+)
+
+_INTERP_EJEMPLOS = [
+    ("Titular: Gobierno sube el precio del diesel en 10 centavos desde el viernes\n"
+     "Resumen: El Ministerio de Energia anuncio el nuevo precio por galon.",
+     "El golpe cae primero en transportistas y agricultores, que suelen trasladarlo "
+     "a pasajes y alimentos: la pregunta es si hay compensacion para ellos y cuanto "
+     "ahorra realmente el fisco."),
+    ("Titular: Asamblea archiva el juicio politico contra la ministra de Salud\n"
+     "Resumen: La mocion no alcanzo los votos necesarios.",
+     "Lo relevante es quien cambio su voto y a cambio de que: un archivo por pocos "
+     "votos suele revelar acuerdos entre bancadas que no se dicen en el pleno."),
+    ("Titular: Trump amenaza con aranceles a paises que compren petroleo venezolano\n"
+     "Resumen: El anuncio se hizo en la Casa Blanca.",
+     "Para Ecuador, exportador de petroleo y con EE.UU. como primer socio, conviene "
+     "mirar si esto le abre mercado o lo expone a presion por sus propios socios "
+     "comerciales."),
+]
+
+_LITERAL_INICIOS = ("la noticia", "noticia", "la nota", "esta noticia", "esta nota",
+                    "el articulo", "se trata", "trata sobre", "interpreta", "el titular",
+                    "la informacion", "informa", "se informa", "reporta", "nota ",
+                    "interaccion", "reunion entre", "alerta de", "anuncio de")
+_LITERAL_FRASES = ("sin impacto directo", "no relacionada con", "no menciona", "sin mencionar",
+                   "relacionada con ecuador", "noticia internacional", "noticia nacional",
+                   "contexto internacional", "escala internacional", "foco internacional",
+                   "no implica a ecuador", "ni guayaquil", "o guayaquil", "relacionada con",
+                   "relacionado con", "tema internacional", "no directamente", "en contexto de")
+
+def _sin_tildes(t):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", t or "") if unicodedata.category(c) != "Mn").lower()
+
+def es_literal(texto, titular=""):
+    """True si el texto es parafrasis/descripcion de la nota y no una lectura
+    editorial. Heuristica, no perfecta -- pero atrapa los casos reales vistos
+    en ia_cache.json ("Noticia internacional sobre...", "La nota trata
+    sobre...", "...sin impacto directo en Ecuador")."""
+    t = _sin_tildes(texto).strip(" .\"'")
+    if len(t) < 25:
+        return True
+    if t.startswith(_LITERAL_INICIOS) or any(f in t for f in _LITERAL_FRASES):
+        return True
+    # demasiado parecido al titular = parafrasis
+    pal = lambda x: {w for w in re.findall(r"[a-z0-9]{4,}", _sin_tildes(x))}
+    pt, pi = pal(titular), pal(texto)
+    if pt and pi and len(pt & pi) / max(1, len(pi)) > 0.6:
+        return True
+    return False
+
+def interpretar(titular, resumen="", forzado="", timeout=90):
+    """Lectura editorial de UNA nota (texto libre). Devuelve el texto, "" si el
+    modelo solo produjo parafrasis (dos intentos), o None si Ollama fallo."""
+    global last_error
+    last_error = None
+    modelo = forzado or INTERP_MODEL or _model or elegir_modelo()
+    if not modelo:
+        return None
+    msgs = [{"role": "system", "content": _INTERP_SISTEMA}]
+    for u, a in _INTERP_EJEMPLOS:
+        msgs += [{"role": "user", "content": u}, {"role": "assistant", "content": a}]
+    msgs.append({"role": "user", "content": "Titular: %s\nResumen: %s" % (
+        titular or "", (resumen or "")[:400])})
+    for temp in (0.5, 0.8):
+        try:
+            out = _post(HOST + "/api/chat", {
+                "model": modelo, "messages": msgs, "stream": False,
+                "options": {"temperature": temp, "num_predict": 140, "num_ctx": IA_CTX},
+            }, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            last_error = "HTTP %s" % e.code
+            return None
+        except Exception as e:
+            last_error = type(e).__name__
+            return None
+        texto = ((out.get("message") or {}).get("content") or "").strip()
+        texto = re.sub(r"<think>.*?</think>", "", texto, flags=re.S).strip().strip('"')
+        if texto and not es_literal(texto, titular):
+            return texto[:300]
+    return ""
+
+
+# ------------------------- Parte B: contexto real por entidad -------------------------
+# El codigo (monitor.py) RECUPERA los datos (Wikipedia, GDELT); estas dos
+# funciones son las UNICAS que le piden algo al modelo para esto, y ambas le
+# dan el material ya recuperado -- el modelo NUNCA consulta una API por su
+# cuenta, solo extrae nombres del texto o redacta con lo que le pasan.
+
+_PROMPT_ENTIDADES = (
+    "Lee esta noticia y extrae las ENTIDADES con NOMBRE PROPIO que menciona: "
+    "personas, lugares (ciudades, instituciones con sede) u organizaciones. NO "
+    "temas genericos, NO fechas, NO paises ya obvios por el contexto (Ecuador, "
+    "Guayaquil, Quito).\n\n"
+    "Para CADA entidad da dos cosas: el \"nombre\" tal como aparece en el texto, "
+    "SIN cargos ni titulos (ej. \"Daniel Noboa\", no \"el presidente Daniel "
+    "Noboa\"); y una \"busqueda\" -- el termino que usarias para encontrar la "
+    "pagina de Wikipedia CORRECTA de esa entidad, usando el contexto de esta "
+    "nota (tema, ambito geografico, otras entidades) para desambiguarla. Esto "
+    "es CRITICO cuando el texto usa solo un apellido o un nombre corto que "
+    "podria confundirse con otra cosa: ejemplo, si el texto dice solo "
+    "\"Carney\" en una nota de politica internacional sobre aranceles con "
+    "Trump, la busqueda debe ser \"Mark Carney primer ministro de Canada\", "
+    "NO solo \"Carney\" (que en Wikipedia tambien es una villa en Michigan, "
+    "Estados Unidos, y confundirias la pagina). Si el nombre YA es inequivoco "
+    "tal cual aparece (ej. \"Daniel Noboa\"), la busqueda puede ser igual al "
+    "nombre.\n\n"
+    "ADEMAS, por separado: si la nota describe un SUCESO/EVENTO con nombre "
+    "propio o casi-propio que podria tener su PROPIA pagina de Wikipedia "
+    "aparte de cualquier persona (una ley, un paro/protesta, un conflicto, un "
+    "desastre, un proceso electoral, un escandalo -- ej. \"Paro nacional de "
+    "Ecuador de 2022\", \"Muerte de Fernando Villavicencio\"), da tambien "
+    "\"evento\": {\"nombre\": \"...\", \"busqueda\": \"...\"} con el mismo "
+    "criterio de desambiguacion. Si la nota es solo un hecho cotidiano sin "
+    "identidad propia como para tener un articulo dedicado, \"evento\" debe "
+    "ser null -- no inventes un nombre de evento que no calza.\n\n"
+    "Contexto de esta nota -- tema(s): %s | ambito: %s.\n\n"
+    "Responde SOLO un JSON valido: "
+    '{"entidades": [{"nombre": "...", "busqueda": "..."}, ...], '
+    '"evento": {"nombre": "...", "busqueda": "..."} | null}. Maximo 5 entidades, en '
+    "orden de importancia para la nota (la mas relevante primero). Si no hay "
+    'ninguna entidad clara, "entidades" es [].\n\n'
+    "Titular: %s\nResumen: %s"
+)
+
+def extraer_entidades(titular, resumen="", temas=None, ambito="", forzado="", timeout=60):
+    """Devuelve una lista de candidatos [{"nombre","busqueda"}, ...] que la
+    nota menciona, en orden de relevancia. Son CANDIDATOS: quien llama debe
+    verificarlos contra una fuente real (wiki.resumen) antes de usarlos -- el
+    modelo puede alucinar un nombre que no existe.
+
+    'temas'/'ambito' (Capa 1 del bug de Carney, ver wiki.resumen): contexto
+    YA CALCULADO por palabras clave (gratis, sin llamada extra) que se le pasa
+    al modelo para que arme una 'busqueda' desambiguada por entidad, en vez de
+    depender solo del nombre suelto que aparece en el texto.
+
+    NOTA (Problema 6, "el contexto describe a la persona, no la situacion"):
+    esta funcion tambien puede devolver un candidato de EVENTO por separado
+    (ver extraer_entidades_con_evento) -- extraer_entidades() sola sigue
+    devolviendo solo la lista de entidades (compatibilidad con el resto del
+    pipeline que ya la llama asi)."""
+    return extraer_entidades_con_evento(titular, resumen, temas, ambito, forzado, timeout)[0]
+
+def extraer_entidades_con_evento(titular, resumen="", temas=None, ambito="", forzado="", timeout=60):
+    """Como extraer_entidades(), pero devuelve (entidades, evento) -- 'evento'
+    es un candidato {"nombre","busqueda"} para un SUCESO con posible pagina
+    propia de Wikipedia (una ley, un paro, un conflicto...), o None. Se prueba
+    ANTES que las bios de persona en _construir_contexto (monitor.py): un
+    articulo sobre el EVENTO explica la situacion directamente, una bio de
+    persona rara vez lo hace (Problema 6)."""
+    global last_error
+    last_error = None
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return [], None
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT_ENTIDADES % (", ".join(temas or []) or "(sin tema)",
+                                            ambito or "(sin dato)",
+                                            titular or "", (resumen or "")[:300]),
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1, "num_predict": 260, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        r = json.loads(out.get("response", "{}"))
+        vistos, out_list = set(), []
+        for e in (r.get("entidades") or []):
+            if isinstance(e, dict):
+                nombre = str(e.get("nombre", "")).strip()
+                busqueda = str(e.get("busqueda", "")).strip()
+            else:  # tolerancia: formato viejo (lista de strings sueltos)
+                nombre = str(e).strip()
+                busqueda = nombre
+            if nombre and nombre.lower() not in vistos:
+                vistos.add(nombre.lower())
+                out_list.append({"nombre": nombre, "busqueda": busqueda or nombre})
+        evento = r.get("evento")
+        if isinstance(evento, dict) and str(evento.get("nombre", "")).strip():
+            evento = {"nombre": str(evento.get("nombre", "")).strip(),
+                      "busqueda": str(evento.get("busqueda", "")).strip() or str(evento.get("nombre", "")).strip()}
+        else:
+            evento = None
+        return out_list[:5], evento
+    except urllib.error.HTTPError as e:
+        last_error = "HTTP %s" % e.code
+    except Exception as e:
+        last_error = type(e).__name__
+    return [], None
+
+
+_PROMPT_CONTEXTO = (
+    "Tienes el TITULAR y RESUMEN de una noticia (asi son los HECHOS: quien hizo "
+    "que, segun la nota -- no los cambies ni los reinterpretes), y un MATERIAL YA "
+    "VERIFICADO: puede incluir extractos reales de Wikipedia sobre las entidades "
+    "que menciona, titulares REALES y recientes de otras notas de prensa sobre lo "
+    "mismo (con fecha), y nombres con los que la entidad principal aparecio junto "
+    "en cobertura reciente segun GDELT.\n\n"
+    "Tu tarea es explicar LA SITUACION, no solo quien es alguien: por que pasa "
+    "esto ahora, que antecedente inmediato tiene (si los titulares recientes "
+    "muestran una seguidilla de hechos, un conflicto en curso, una escalada, "
+    "etc.), o que rol juega la entidad en ese marco mas amplio -- SOLO si el "
+    "material te da con que armar eso. Si el material SOLO trae una bio de "
+    "Wikipedia sin nada que conecte con la situacion (ej. no hay titulares "
+    "recientes ni co-menciones utiles), ahi si limitate a decir brevemente quien "
+    "es la entidad; no inventes una conexion que el material no respalda.\n\n"
+    "Redacta en 1-2 frases (maximo 45 palabras). NO repitas ni reformules los "
+    "hechos del resumen, y sobre todo NO les cambies los roles (si el resumen "
+    "dice que A publico algo sobre B, tu texto no puede decir que A hizo lo que "
+    "hizo B). Usa SOLO el material verificado, nunca conocimiento previo tuyo: "
+    "si el material no menciona una fecha, un lugar o un dato puntual, vos "
+    "tampoco lo inventes. Si el material incluye nombres de GDELT (co-menciones, "
+    "no titulares), mencionalos EXPLICITAMENTE como \"pista por verificar\" (que "
+    "dos nombres compartan cobertura de prensa no prueba una relacion entre "
+    "ellos). Los TITULARES si son hechos reales publicados, podes citarlos como "
+    "evidencia de la situacion (ej. \"esto se da luego de que...\", citando el "
+    "titular y su fecha). Si el material no alcanza para agregar nada util, "
+    "responde exactamente 'sin contexto disponible'. Responde SOLO un JSON "
+    'valido: {"contexto": "..."}.\n\n'
+    "Titular: %s\nResumen: %s\n\nMATERIAL VERIFICADO:\n%s"
+)
+
+def contextualizar(titular, resumen, material_txt, forzado="", timeout=90):
+    """Redacta el 'por que importa' grounded: usa el titular+resumen SOLO para
+    no confundir los roles de los hechos (quien hizo que), y 'material_txt'
+    (que arma monitor.py con extractos de Wikipedia + co-menciones de GDELT ya
+    verificados) para el dato nuevo que agrega. Nunca inventa: si no hay
+    material, ni siquiera llama al modelo. Devuelve el texto, o None si la
+    llamada a Ollama fallo (distinto de 'sin contexto disponible', que es una
+    respuesta valida cuando no hay nada que contar)."""
+    global last_error
+    last_error = None
+    if not (material_txt or "").strip():
+        return "sin contexto disponible"
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return None
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT_CONTEXTO % (titular or "", (resumen or "")[:300], material_txt[:2500]),
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.2, "num_predict": 220, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        r = json.loads(out.get("response", "{}"))
+        texto = str(r.get("contexto", "")).strip()[:420]
+        return texto or "sin contexto disponible"
+    except urllib.error.HTTPError as e:
+        last_error = "HTTP %s" % e.code
+    except Exception as e:
+        last_error = type(e).__name__
+    return None
+
+
+_PROMPT_VEREDICTO = (
+    "Tienes una AFIRMACION (titular+resumen de una noticia) y MATERIAL YA "
+    "VERIFICADO para contrastarla: puede incluir contexto reciente sobre el "
+    "tema (otras notas, co-menciones, antecedentes), contratos publicos "
+    "oficiales (SERCOP) relacionados, y verificaciones periodisticas "
+    "(ClaimReview) relacionadas.\n\n"
+    "Tu tarea es un VEREDICTO de contraste, usando SOLO el material dado (nunca "
+    "tu conocimiento previo): decide si ese material COINCIDE con la "
+    "afirmacion, la CONTRADICE, o no hay suficiente material para decidir "
+    "(sin_datos). En 'texto' escribi el HECHO CONCRETO que encontraste en el "
+    "material (un numero, una fecha, una calificacion, un dato puntual) -- "
+    "NUNCA una frase generica tipo 'segun el contexto verificado' o 'la "
+    "cobertura reciente muestra que' sin completarla con el dato real: esas "
+    "frases sueltas, sin el hecho concreto detras, no sirven de nada. Si el "
+    "material no menciona nada que confirme o contradiga la afirmacion "
+    "puntual, el estado es 'sin_datos' -- NUNCA inventes un dato que el "
+    "material no tiene.\n\n"
+    "Ejemplo 1 (contradice, con el dato concreto):\n"
+    "AFIRMACION: El municipio adjudico sin licitacion un contrato de recoleccion de basura.\n"
+    "MATERIAL: Contratos oficiales SERCOP relacionados: GAD Municipal -- "
+    "Recoleccion de residuos solidos (Licitacion Publica, $450000, 2026-08-10)\n"
+    '{"estado": "contradice", "texto": "El contrato SERCOP (ocds, $450000) muestra que el '
+    'proceso fue Licitacion Publica, no una adjudicacion directa como dice la nota.", '
+    '"citas": ["SERCOP"]}\n\n'
+    "Ejemplo 2 (sin_datos, el material no habla del reclamo puntual):\n"
+    "AFIRMACION: La ministra asegura que el programa redujo la desnutricion infantil a la mitad.\n"
+    "MATERIAL: Contexto verificado de la situacion: la ministra fue nombrada en "
+    "enero de 2026 tras la salida de su antecesor.\n"
+    '{"estado": "sin_datos", "texto": "El material solo confirma cuando asumio la '
+    'ministra, no trae ninguna cifra sobre desnutricion infantil para confirmar o '
+    'desmentir el dato que da la nota.", "citas": []}\n\n'
+    "Responde SOLO un JSON valido con esta forma exacta: "
+    '{"estado": "coincide"|"contradice"|"sin_datos", "texto": "...", "citas": ["..."]} '
+    "-- 'texto' maximo 35 palabras, 'citas' una lista corta de que partes del material "
+    'usaste (ej. ["SERCOP", "FactCheck: Ecuador Chequea"]).\n\n'
+    "AFIRMACION (titular): %s\nResumen: %s\n\nMATERIAL:\n%s"
+)
+
+def veredicto_contraste(titular, resumen, material_txt, forzado="", timeout=90):
+    """Veredicto de contraste (Problema 4: Verificacion y Contraste) --
+    'coincide'/'contradice'/'sin_datos', citando que parte del material uso.
+
+    Mismo patron que contextualizar(): el codigo (monitor.py) ya reunio el
+    material (contexto de Parte B + SERCOP + FactCheck) ANTES de llamar aca --
+    esta funcion nunca busca nada por su cuenta, solo redacta un veredicto
+    sobre lo que ya esta verificado. Si no hay material, ni siquiera llama al
+    modelo: 'sin_datos' es la respuesta segura por defecto (candado tambien a
+    nivel de CODIGO en monitor.py, no solo aca, por si el material esta vacio
+    pero se llama igual). Devuelve None si la llamada a Ollama fallo (para que
+    monitor.py lo distinga de un 'sin_datos' real y pueda mostrar 'pendiente'
+    en vez de inventar un estado)."""
+    global last_error
+    last_error = None
+    if not (material_txt or "").strip():
+        return {"estado": "sin_datos", "texto": "Sin material verificado para contrastar esta nota.", "citas": []}
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return None
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT_VEREDICTO % (titular or "", (resumen or "")[:300], material_txt[:2500]),
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1, "num_predict": 220, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        r = json.loads(out.get("response", "{}"))
+        estado = str(r.get("estado", "")).strip().lower()
+        if estado not in ("coincide", "contradice", "sin_datos"):
+            estado = "sin_datos"  # candado en codigo: ante respuesta rara del modelo, nunca inventar un estado
+        texto = str(r.get("texto", "")).strip()[:300]
+        citas = r.get("citas") or []
+        if not isinstance(citas, list):
+            citas = []
+        return {"estado": estado, "texto": texto or "Sin detalle.", "citas": [str(c)[:80] for c in citas][:6]}
+    except urllib.error.HTTPError as e:
+        last_error = "HTTP %s" % e.code
+    except Exception as e:
+        last_error = type(e).__name__
+    return None
+
+
+_PROMPT_DOMINIO = (
+    "NOTICIA: %s. %s\n\n"
+    "PAGINA DE WIKIPEDIA (titulo: \"%s\"): %s\n\n"
+    "Pregunta: la noticia menciona a \"%s\". Esa pagina de Wikipedia, ¿es sobre "
+    "esa misma persona/lugar/organizacion (aunque el titulo este mas completo)? "
+    "Piensa brevemente y termina tu respuesta con exactamente SI o NO en "
+    "mayusculas."
+)
+_RE_SI_NO = re.compile(r"\bS[IÍ]\b|\bNO\b", re.IGNORECASE)
+
+def coincide_dominio(titular, resumen, nombre_mencionado, titulo_wiki, extracto_wiki, forzado="", timeout=60):
+    """Capa 2 del bug de Carney (reja de coherencia, Parte B): verifica que la
+    pagina de Wikipedia encontrada para una entidad REALMENTE sea la misma que
+    la nota menciona, antes de presentarla como contexto verificado. Es el
+    respaldo para cuando la Capa 1 (busqueda desambiguada, ver
+    extraer_entidades/wiki.resumen) igual trae una pagina real pero
+    equivocada -- Wikipedia puede tener mas de un homonimo real y la busqueda
+    con contexto no es infalible.
+
+    'nombre_mencionado' es el nombre TAL COMO lo extrajo la IA del texto de la
+    nota (ej. "Carney"); 'titulo_wiki' es el titulo REAL de la pagina que
+    devolvio wiki.resumen (ej. "Mark Carney" o, en el caso homonimo real,
+    "Carney (Michigan)"). Pasar los DOS nombres por separado (en vez de uno
+    solo) fue clave probado en vivo: con un solo nombre (comparando el titulo
+    contra si mismo, o mencionando "homonimo" en el prompt como ejemplo) el
+    modelo chico (qwen2.5:3b) se sesgaba y contestaba NO sistematicamente,
+    incluso para el caso correcto. Mostrando ambos nombres el desacuerdo (o
+    acuerdo) queda evidente con solo comparar los titulos, sin pedirle al
+    modelo un juicio semantico fino.
+
+    A PROPOSITO no usa format="json" aqui (a diferencia del resto de ia.py):
+    forzar JSON estricto tambien degradaba el juicio de este modelo en esta
+    tarea puntual. En texto libre, terminando en SI/NO, discrimina bien. Se
+    toma la ULTIMA mencion de SI/NO en la respuesta (por si razona antes de
+    concluir).
+
+    Regla dura: ante la duda -- o si esta funcion no puede consultar el
+    modelo (Ollama caido, respuesta sin SI/NO, timeout) -- devuelve False.
+    Mejor 'sin contexto disponible' que un contexto equivocado con sello de
+    verificado. Esto se aplica a nivel de CODIGO (el valor por defecto en
+    cualquier camino de error), no metiendo esa instruccion en el prompt --
+    probado que hacerlo asi tambien sesgaba al modelo hacia NO siempre."""
+    global last_error
+    last_error = None
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return False
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT_DOMINIO % (titular or "", (resumen or "")[:300],
+                                          titulo_wiki, (extracto_wiki or "")[:500],
+                                          nombre_mencionado),
+            "stream": False,
+            "options": {"temperature": 0.1, "num_predict": 200, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        texto = out.get("response", "")
+        matches = _RE_SI_NO.findall(texto)
+        if not matches:
+            last_error = "sin veredicto SI/NO"
+            return False
+        return matches[-1].strip().upper() in ("SI", "SÍ")
+    except Exception as e:
+        last_error = type(e).__name__
+        return False  # ante la duda / error de red o parseo: se descarta (ver docstring)
+
+
+# ------------------------- Parte E: chat por item (on-demand) -------------------------
+# A diferencia de todo lo anterior (que corre solo en el hilo trabajador,
+# durante el feed), esto lo dispara el USUARIO desde el dashboard cuando abre
+# el detalle de un item y escribe algo -- nunca durante una pasada del feed.
+# monitor.py arma 'item_contexto' con los datos YA CALCULADOS de esa tarjeta
+# (titular, resumen, contexto verificado, fuentes, etc. o -- para un tema --
+# demanda/cobertura/pulso social); esta funcion NUNCA consulta Wikipedia/GDELT
+# por su cuenta, solo conversa sobre ese material, igual que contextualizar().
+
+_PROMPT_CHAT_SISTEMA = (
+    "Sos un asistente que ayuda a un estudiante de periodismo a revisar y "
+    "discutir UN item de su monitor de noticias (una noticia puntual, un tema "
+    "candidato a reportaje, o el pulso social de un tema). Estos son los datos "
+    "YA CALCULADOS por el programa sobre ese item, incluyendo material "
+    "verificado contra Wikipedia cuando la pregunta lo necesito:\n\n"
+    "%s\n\n"
+    "REGLA DURA sobre HECHOS CONCRETOS (quien es alguien, que cargo tiene, "
+    "cifras, fechas, nombres): SOLO afirmes lo que este en el material de "
+    "arriba. Si ese material dice 'SIN VERIFICAR' sobre algo, o si te "
+    "preguntan por una persona/entidad que NO aparece ahi, respondé "
+    "EXPLICITAMENTE que no tenes ese dato verificado en este momento -- "
+    "NUNCA completes con un nombre o dato que te 'suene familiar', eso es "
+    "inventar (ya paso una vez: le dijiste a un periodista que 'Alias Fito' "
+    "era 'Carlos Ospina', un dato FALSO). Mejor decir 'no lo tengo "
+    "verificado, convendria confirmarlo' que arriesgar un dato incorrecto.\n\n"
+    "Fuera de eso, para la INTERPRETACION (que angulo le falta a la nota, a "
+    "quien conviene esa version, si es una oportunidad de reportaje) si "
+    "podes opinar libremente con tu criterio -- ahi el periodista es el "
+    "juez final y puede corregirte.\n\n"
+    "Responde en espanol, breve (maximo 5-6 lineas), en tono conversacional "
+    "-- sin JSON ni formato especial."
+)
+
+
+_PROMPT_ENTIDADES_CHAT = (
+    "Un periodista te esta preguntando algo en un chat, dentro del contexto de "
+    "este item de su monitor de noticias:\n%s\n\n"
+    "Su mensaje: %s\n\n"
+    "Si el mensaje pregunta por una entidad con NOMBRE PROPIO (persona, alias, "
+    "lugar, organizacion) sobre la que haria falta verificar quien/que es "
+    "realmente, extraela. Para cada una da el \"nombre\" tal como aparece en "
+    "el mensaje, y una \"busqueda\" que la desambigue para encontrar su pagina "
+    "REAL de Wikipedia (nombre completo + el dato que la identifica, usando "
+    "el contexto del item y tu propio conocimiento si lo tenes -- ej. si "
+    "preguntan por \"Alias Fito\" en contexto ecuatoriano, la busqueda debe "
+    "ser algo como \"Jose Adolfo Macias Villamar lider Los Choneros\", NO "
+    "solo \"Fito\"). Si el mensaje NO pregunta por ninguna entidad puntual "
+    "(es una pregunta general, de opinion, o sobre datos que ya estan en el "
+    "contexto del item), responde una lista vacia.\n\n"
+    "Responde SOLO un JSON valido: "
+    '{"entidades": [{"nombre": "...", "busqueda": "..."}, ...]}, maximo 3.'
+)
+
+def extraer_entidades_chat(mensaje, item_contexto="", forzado="", timeout=30):
+    """Capa de aterrizaje (grounding) para el chat critico (Parte E): antes de
+    dejar que el modelo pesado responda una pregunta de identidad, se intenta
+    reconocer la entidad para verificarla contra Wikipedia -- MISMO patron
+    que Parte B (extraer_entidades + wiki.resumen), pero disparado por la
+    PREGUNTA del chat en vez del texto de una nota (ver _aterrizar_chat en
+    monitor.py, que hace la verificacion real).
+
+    A PROPOSITO usa el modelo RAPIDO del pipeline (_model/elegir_modelo,
+    NUNCA elegir_modelo_chat/CHAT_MODEL): esto es un paso previo que tiene
+    que ser rapido, no la respuesta conversacional final.
+
+    Bug real que motivo esta funcion: le preguntaron al chat 'quien es Alias
+    Fito' y respondio 'Carlos Ospina' -- un nombre inventado con confianza.
+    El chat SI tiene permiso de opinar con su propio criterio (a diferencia
+    del resto del proyecto), y un modelo local puede alucinar una identidad
+    completa sin que se note. Esto le da al chat un ancla real de Wikipedia
+    para preguntas de identidad, sin sacarle la libertad de interpretar."""
+    global last_error
+    last_error = None
+    modelo = _model or elegir_modelo(forzado)
+    if not modelo:
+        return []
+    try:
+        out = _post(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": _PROMPT_ENTIDADES_CHAT % ((item_contexto or "")[:800], (mensaje or "")[:500]),
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1, "num_predict": 150, "num_ctx": IA_CTX},
+        }, timeout=timeout)
+        r = json.loads(out.get("response", "{}"))
+        vistos, out_list = set(), []
+        for e in (r.get("entidades") or []):
+            if not isinstance(e, dict):
+                continue
+            nombre = str(e.get("nombre", "")).strip()
+            busqueda = str(e.get("busqueda", "")).strip()
+            if nombre and nombre.lower() not in vistos:
+                vistos.add(nombre.lower())
+                out_list.append({"nombre": nombre, "busqueda": busqueda or nombre})
+        return out_list[:3]
+    except Exception as e:
+        last_error = type(e).__name__
+        return []
+
+def _post_stream(url, payload, timeout=220):
+    """Como _post, pero para stream=true: devuelve la respuesta HTTP ABIERTA
+    (no la lee entera), para leerla linea por linea. El llamador la cierra
+    (usada siempre con 'with')."""
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+# Frente B: dos modos de chat. La idea original era "mismo modelo, solo baja
+# num_predict" -- BUG REAL descubierto probando en vivo: con el modelo de
+# razonamiento (monitor-critico), bajar num_predict NO acelera nada, porque
+# el modelo gasta ese presupuesto "pensando" antes de escribir una sola
+# palabra de respuesta visible. Con num_predict=280 tardo 74s y devolvio
+# STRING VACIO (goto el limite a mitad del pensamiento). Se probo tambien
+# "think": false (la opcion de Ollama para apagar el razonamiento) y esta
+# version del modelo lo IGNORA -- el <think> se filtra igual dentro de
+# 'response' y sigue cortando a mitad de camino.
+#
+# Arreglo real: "rapido" usa el modelo RAPIDO del pipeline (qwen2.5:3b
+# tipicamente, el mismo de analizar/extraer_entidades -- sin razonamiento,
+# ya medido en ~2-4s en esta PC) en vez del critico. Para una consulta que la
+# propia tarjeta ya responde ("de que trata esto") no hace falta el analisis
+# critico profundo, y asi el objetivo de <=30s es real, no aspiracional.
+# "profundo" sigue siendo el modelo critico dedicado (monitor-critico), con
+# margen de sobra para pensar y responder.
+MODOS_CHAT = {
+    "rapido":   {"modelo": "pipeline", "num_predict": 280, "num_ctx": 2048},
+    "profundo": {"modelo": "chat",     "num_predict": 700, "num_ctx": 4096},
+}
+
+def chat_stream(item_contexto, historial, mensaje, on_delta, modo="rapido", forzado="", timeout=220):
+    """Chat conversacional sobre UN item del dashboard (Parte E), CON
+    STREAMING: llama a on_delta(texto_parcial) por cada pedazo de respuesta
+    que Ollama va generando, en vez de esperar el bloque completo -- el
+    llamador (monitor.py) relay-ea cada pedazo al navegador apenas llega, asi
+    la respuesta aparece en vivo (esto solo ya cambia la percepcion de
+    velocidad, aunque el modelo tarde lo mismo en generar todo). Responde en
+    TEXTO LIBRE (a diferencia del resto de ia.py, sin format='json': esto es
+    conversacion). 'historial' es una lista de {"rol": "usuario"|"ia",
+    "texto": "..."} de turnos previos de ESTE chat puntual (se manda solo los
+    ultimos 8). Devuelve el texto COMPLETO acumulado al final (o lo que se
+    haya alcanzado a generar si hubo un error a mitad de camino), o None si
+    no se genero nada.
+
+    'modo' ("rapido" por defecto, o "profundo") decide TANTO el modelo como
+    num_predict/num_ctx -- ver MODOS_CHAT arriba para el porque. 'forzado',
+    si se pasa, gana sobre la eleccion de modelo del modo (para pruebas
+    puntuales)."""
+    global last_error
+    last_error = None
+    cfg = MODOS_CHAT.get(modo, MODOS_CHAT["rapido"])
+    if cfg["modelo"] == "pipeline":
+        modelo = forzado or _model or elegir_modelo()
+    else:
+        modelo = forzado or elegir_modelo_chat()
+    if not modelo:
+        return None
+    turnos = []
+    for h in (historial or [])[-8:]:
+        rol = "Periodista" if h.get("rol") == "usuario" else "Vos"
+        turnos.append("%s: %s" % (rol, str(h.get("texto", ""))[:500]))
+    turnos.append("Periodista: %s" % (mensaje or "")[:1000])
+    prompt = (_PROMPT_CHAT_SISTEMA % (item_contexto or "")[:3000]) + "\n\n" + "\n".join(turnos) + "\n\nVos:"
+    acumulado = []
+    try:
+        resp = _post_stream(HOST + "/api/generate", {
+            "model": modelo,
+            "prompt": prompt,
+            "stream": True,
+            "options": {"temperature": 0.4, "num_predict": cfg["num_predict"], "num_ctx": cfg["num_ctx"]},
+        }, timeout=timeout)
+        with resp:
+            for linea in resp:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                try:
+                    chunk = json.loads(linea.decode("utf-8", "replace"))
+                except ValueError:
+                    continue
+                delta = chunk.get("response", "")
+                if delta:
+                    acumulado.append(delta)
+                    try:
+                        on_delta(delta)
+                    except Exception:
+                        pass  # que el navegador se haya ido no debe tumbar la generacion
+                if chunk.get("done"):
+                    break
+    except urllib.error.HTTPError as e:
+        last_error = "HTTP %s" % e.code
+    except Exception as e:
+        last_error = type(e).__name__
+    texto = "".join(acumulado).strip()
+    return texto[:1200] or None
