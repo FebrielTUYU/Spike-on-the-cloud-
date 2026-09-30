@@ -114,6 +114,10 @@ try:
 except Exception:
     comunidad = None
 try:
+    import mapa  # Fase 22c: mapa de Guayaquil con lo que pasa por sector (sin red ni IA)
+except Exception:
+    mapa = None
+try:
     import redes  # Fase 9, parte D3: orquestador de X+TikTok via Apify (xapi.py/tiktok.py) -- apagado sin token; opcional
 except Exception:
     redes = None
@@ -730,7 +734,13 @@ CITIES = {
     "Guayaquil": ["guayaquil", "guayas", "pascuales", "urdesa",
                   "isla trinitaria", "kennedy norte", "flor de bastion"],
     "Samborondon": ["samborondon"],
-    "Duran": ["duran"],
+    # Fase 22c (bug real: "Murio Nafer Duran", cantante colombiano de
+    # vallenato, quedo como noticia de Guayaquil/Duran): "duran" suelto es un
+    # apellido comun (ver el caso Jhon Duran de arriba). Solo cuenta como
+    # LUGAR con la preposicion o la palabra que lo delata.
+    "Duran": ["en duran", "canton duran", "canton de duran", "a duran", "desde duran", "hacia duran",
+              "via duran", "via a duran", "municipio de duran", "alcaldia de duran", "alcalde de duran",
+              "puente duran", "duran-tambo", "duran tambo"],
     "Daule": ["daule"],
     "Quito": ["quito", "pichincha"],
     "Cuenca": ["cuenca", "azuay"],
@@ -3849,7 +3859,7 @@ def get_ia(stories, modo_lectura=False):
         return "cache (%d/%d%s)" % (n, len(stories), extra)
 
     if not ia.disponible(IA_MODEL):
-        return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")
+        return "error: %s" % (getattr(ia, "last_error", None) or "la IA (Gemini) no responde")
 
     orden_cupo = sorted(stories, key=_prioridad_cupo_ia)  # ver comentario en _prioridad_cupo_ia (Problema B2)
     top_keys = _claves_top_profundo(stories)
@@ -4399,7 +4409,7 @@ def get_contexto(stories, modo_lectura=False):
             or os.environ.get("MONITOR_NO_IA") == "1":
         return "desactivado"
     if not ia.disponible(IA_MODEL):
-        return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")
+        return "error: %s" % (getattr(ia, "last_error", None) or "la IA (Gemini) no responde")
 
     # Fase 11 (v2), pedido explicito del Paso 2: automatico SOLO para las
     # CONTEXTO_TOP historias LOCALES mejor rankeadas por corrida (antes era
@@ -5465,7 +5475,7 @@ def get_social(themes, modo_lectura=False, tema_ambito=None):
     if con_osint:
         return merged_s, "ok (%d/%d temas esta pasada, OSINT en %d, %d acumulados)" % (
             len(out), len(term_of), con_osint, len(merged_s))
-    return merged_s, "ok (%d/%d temas esta pasada, %d acumulados, sin OSINT: Ollama sin modelo)" % (
+    return merged_s, "ok (%d/%d temas esta pasada, %d acumulados, sin lectura OSINT)" % (
         len(out), len(term_of), len(merged_s))
 
 
@@ -6034,7 +6044,7 @@ def construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
         {"fuente": "Busqueda (Trends/Wikipedia)", "ok": _fuente_ok(estado), "detalle": estado},
         {"fuente": "GDELT (cobertura/tono)", "ok": _fuente_ok(gestado), "detalle": gestado},
         {"fuente": "SERCOP (contratos)", "ok": _fuente_ok(sstatus), "detalle": sstatus},
-        {"fuente": "IA (Ollama)", "ok": _fuente_ok(iastatus), "detalle": iastatus},
+        {"fuente": "IA (Gemini)", "ok": _fuente_ok(iastatus), "detalle": iastatus},
         {"fuente": "Contexto (Wikipedia+GDELT)", "ok": _fuente_ok(cstatus), "detalle": cstatus},
         {"fuente": "FactCheck", "ok": _fuente_ok(fcstatus), "detalle": fcstatus},
         {"fuente": "Escucha social", "ok": _fuente_ok(social_status), "detalle": social_status},
@@ -6096,6 +6106,21 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
     estado_movil = avisar_movil(stories, demand)
     alertas_activas, alertas_estado = procesar_alertas(stories)
     comunidad_data = calcular_comunidad(stories, alertas_activas, social_data, social_hist_data)
+    comunidad_lectura = {}
+    mapa_data = {}
+    if comunidad is not None:
+        try:  # Fase 22c: la ultima lectura de la IA (solo se LEE aca, nunca se pide)
+            comunidad_lectura = comunidad.cargar_lectura() or {}
+            if comunidad_lectura:
+                comunidad_lectura["desactualizada"] = (
+                    comunidad_lectura.get("firma") != comunidad._firma_lectura(comunidad_data.get("temas") or []))
+        except Exception:
+            comunidad_lectura = {}
+    if mapa is not None:
+        try:  # Fase 22c: puntos del mapa de Guayaquil (sin red ni IA)
+            mapa_data = mapa.puntos(stories, alertas_activas, comunidad_data)
+        except Exception as e:
+            mapa_data = {"puntos": [], "estado": "error: %s" % e}
     salud_fuentes = construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
                                              social_status, cstatus, fcstatus)
     payload = {
@@ -6166,6 +6191,8 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         # Fase 20: temas comunitarios de Guayaquil (problemas de barrio,
         # eventos, historias humanas) acumulados por barrio en comunidad.json.
         "comunidad": comunidad_data,
+        "comunidad_lectura": comunidad_lectura,
+        "mapa": mapa_data,
     }
     # BUG REAL encontrado en el Fase 0 (2026-09-23): el CLAUDE.md documentaba
     # "data.json se escribe atomico (_escribir_atomico)" como ya hecho, pero
@@ -6202,6 +6229,16 @@ def _ui_version(tpl):
     """Huella corta de la plantilla: cambia cada vez que cambia el diseño."""
     import hashlib
     return hashlib.md5(tpl.encode("utf-8")).hexdigest()[:12]
+
+
+def _pedido_interactivo():
+    """Fase 22c: marca el pedido del navegador como consulta del usuario
+    (ia.interactivo), asi puede usar la reserva de presupuesto de IA que el
+    trabajo de fondo no toca."""
+    import contextlib
+    if ia is not None and hasattr(ia, "interactivo"):
+        return ia.interactivo()
+    return contextlib.nullcontext()
 
 
 def regenerar_dashboard_desde_data():
@@ -6537,7 +6574,7 @@ def run_once(verbose=True):
         print("Verificaciones (FactCheck): %s" % fcstatus)
         print("Declaraciones (Fase 5): %s" % declstatus)
         print("Veredicto de contraste: %s" % vstatus)
-        print("Agente IA (Ollama): %s" % iastatus)
+        print("Agente IA (Gemini): %s" % iastatus)
         print("Contexto por entidad (Wikipedia+GDELT): %s" % cstatus)
         print("Escucha social (Bluesky/Reddit/YouTube): %s" % social_status)
         tam_reg = _tam_registro_mb()
@@ -6808,6 +6845,17 @@ def comunidad_ciclo():
             partes.append(r)
     except Exception as e:
         partes.append("recolectar: error %s" % e)
+    # Fase 22c: lectura de la comunidad con IA, sobre lo que el hilo rapido
+    # ya publico en data.json (el punto de entrega es el disco, como siempre).
+    if ia is not None and os.environ.get("MONITOR_NO_IA") != "1":
+        try:
+            with open(os.path.join(HERE, "data.json"), encoding="utf-8") as f:
+                com = (json.load(f) or {}).get("comunidad") or {}
+            r = comunidad.actualizar_lectura(com)
+            if r not in ("lectura: sin cambios", "lectura: todavia no toca"):
+                partes.append(r)
+        except Exception as e:
+            partes.append("lectura: error %s" % e)
     return "; ".join(partes)
 
 
@@ -7557,7 +7605,8 @@ def serve(port=8000, minutes=None):
                 if not (self._es_esta_pc() or self._tiene_clave()):
                     self.send_error(401)
                     return
-                return self._do_GET_api(ruta_api, query_api)
+                with _pedido_interactivo():
+                    return self._do_GET_api(ruta_api, query_api)
             if self._es_esta_pc():
                 return super().do_GET()  # esta PC: todo igual que siempre
             ruta, _, query = self.path.partition("?")
@@ -8012,7 +8061,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 self._responder_caso_chat_stream(caso_id, mensaje, historial)
 
@@ -8024,7 +8073,9 @@ def serve(port=8000, minutes=None):
             if not (self._es_esta_pc() or self._tiene_clave()):
                 self.send_error(401)
                 return
-            self._do_POST()
+            # Fase 22c: lo que pide el usuario usa la reserva de presupuesto de IA.
+            with _pedido_interactivo():
+                self._do_POST()
 
         def _do_POST(self):
             """Endpoints propios del servidor. Todo lo demas (dashboard.html,
@@ -8104,7 +8155,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 # Capa de aterrizaje (grounding) ANTES de dejar que el chat
                 # responda -- ver bug real de "Alias Fito" en Decisiones ya
@@ -8126,7 +8177,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia or not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 self._responder_asistente_stream(mensaje, historial)
             elif self.path == "/api/buscar":
@@ -8164,7 +8215,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia or not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 self._responder_buscar_leer_stream(query, ambitos)
             elif self.path == "/api/casos" or self.path.startswith("/api/casos/"):

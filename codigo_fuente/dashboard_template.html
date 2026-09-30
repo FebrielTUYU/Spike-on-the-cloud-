@@ -448,6 +448,17 @@
   a{color:var(--spike-dk);}
   @media (prefers-color-scheme: dark){ a{color:#5fd3a2;} }
   /* ---- pagina Resumen: grilla de tarjetas ---- */
+  .mapagye{height:460px;border:1px solid var(--line);border-radius:4px;background:var(--chip);z-index:0;}
+  .mapaleyenda{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 0 0;}
+  .mapaleyenda i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+  .mapapop{font:13px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;max-width:260px;}
+  .mapapop b{display:block;margin-bottom:3px;}
+  .mapapop .m{color:#5b6472;font-size:11.5px;margin-top:4px;}
+  .lectura h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:12px 0 4px;}
+  .lectura ul{margin:0;padding-left:18px;}
+  .lectura li{margin:4px 0;}
+  .lectura .tref{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:3px;padding:0 5px;margin:0 3px 0 0;cursor:pointer;color:var(--spike-dk);background:var(--chip);}
+  .lectura .tref:hover{border-color:var(--spike);}
   .tiles{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;}
   .tile{grid-column:span 4;background:var(--card);border:1px solid var(--line);border-radius:4px;
         padding:12px 14px;box-shadow:var(--shadow);min-width:0;overflow:hidden;}
@@ -504,6 +515,7 @@
     .product .wrap{padding:12px 12px 64px;}
     .tile,.tile.s3,.tile.s6,.tile.s8,.tile.s12{grid-column:span 12;}
     .kpi{font-size:32px;}
+    .mapagye{height:340px;}
   }
 </style>
 </head>
@@ -830,6 +842,29 @@
   <!-- Fase 20: lente Comunidad (comunidad.py). Temas para reportear en
        Guayaquil: problemas de barrio que se repiten, eventos, historias humanas. -->
   <section id="secComunidad" hidden>
+    <!-- Fase 22c: lectura de la comunidad con IA (Gemini). El codigo arma el
+         material (los temas de abajo) y la IA solo redacta; cada punto cita
+         los temas que lo sostienen y las zonas tienen que existir en los datos. -->
+    <div class="panel" style="border-left:4px solid var(--spike)">
+      <h2 style="margin:0 0 4px">Lectura de la comunidad (IA)</h2>
+      <p class="hint">Que es lo que mas habla la gente de Guayaquil, que tienen en comun las quejas y en que zonas. La redacta la IA (Gemini) solo con los temas de esta pestaña; cada punto cita los temas en los que se apoya (clic para verlos). Se actualiza sola cuando cambian los temas, como mucho cada 30 minutos. Es una lectura, no un dato: revisala contra las publicaciones.</p>
+      <div id="comLectura"></div>
+    </div>
+    <!-- Fase 22c: mapa de Guayaquil (mapa.py arma los puntos, sin red ni IA). -->
+    <div class="panel" style="border-left:4px solid #0f766e">
+      <h2 style="margin:0 0 4px">Mapa de Guayaquil — que pasa y donde</h2>
+      <p class="hint">Noticias recientes de Guayaquil, alertas de la gente y quejas de la comunidad, puestas en el sector que se detecto en el texto. Cada punto va en el centro aproximado del sector, no en la direccion exacta del hecho; al tocarlo dice de donde salio la apreciacion (titular, resumen o la localidad del medio). Lo que no nombra ningun sector conocido no se pone en el mapa.</p>
+      <div class="seg" id="mapaSeg" style="margin:6px 0 8px">
+        <button class="active" data-mapa="">Todo</button>
+        <button data-mapa="noticia">Noticias</button>
+        <button data-mapa="alerta">Alertas</button>
+        <button data-mapa="comunidad">Comunidad</button>
+      </div>
+      <div id="mapaGye" class="mapagye"></div>
+      <div class="mapaleyenda"><span><i style="background:#1f8a5f"></i>Noticia</span><span><i style="background:#dc2626"></i>Alerta de la gente</span><span><i style="background:#d97706"></i>Queja de la comunidad</span></div>
+      <p class="hint" id="mapaEstado"></p>
+      <details><summary class="hint">Sectores que no se pudieron ubicar</summary><div id="mapaSinUbicar" class="hint"></div></details>
+    </div>
     <!-- Fase 21: EmergenciasEc (medio millon de seguidores, publica al momento) y la
          gente que le responde o la etiqueta. Solo lo de las ultimas horas. -->
     <div class="panel" style="border-left:4px solid #dc2626">
@@ -1804,7 +1839,7 @@ function renderSocial(){
   if(!todos.length){
     box.innerHTML=`<div class="gapnone">Sin escucha social esta corrida `
       +`(${esc(DATA.estado_social||"sin fuente")}). Bluesky es publico y no necesita cuenta; `
-      +`YouTube necesita MONITOR_YT_KEY; la lectura OSINT necesita tu Ollama con un modelo.</div>`;
+      +`YouTube necesita MONITOR_YT_KEY.</div>`;
     return;
   }
   const temas=todos.filter(t=>!socialAmb || s[t].ambito===socialAmb);
@@ -3008,7 +3043,7 @@ $("#chatForm").addEventListener("submit", async e=>{
       chatHilos[key].push({rol:"ia", texto:acumulado.trim()});
       if(terminoOk===false) chatHilos[key].push({rol:"sistema", texto:"(la respuesta se cortó: "+(huboError||"error")+")"});
     } else {
-      chatHilos[key].push({rol:"sistema", texto:"No se pudo consultar la IA local: "+(huboError||"sin respuesta")+". ¿Esta Ollama corriendo?"});
+      chatHilos[key].push({rol:"sistema", texto:"No se pudo consultar la IA: "+(huboError||"sin respuesta")+"."});
     }
   }catch(err){
     burbuja.remove();
@@ -3088,7 +3123,7 @@ $("#asistenteForm").addEventListener("submit", async e=>{
       asistenteHilo.push({rol:"ia", texto:acumulado.trim()});
       if(terminoOk===false) asistenteHilo.push({rol:"sistema", texto:"(la respuesta se cortó: "+(huboError||"error")+")"});
     } else {
-      asistenteHilo.push({rol:"sistema", texto:"No se pudo consultar al asistente: "+(huboError||"sin respuesta")+". ¿Esta Ollama corriendo?"});
+      asistenteHilo.push({rol:"sistema", texto:"No se pudo consultar al asistente: "+(huboError||"sin respuesta")+"."});
     }
   }catch(err){
     burbuja.remove();
@@ -3532,7 +3567,7 @@ function bindCasoChatForm(){
           }
         }
       } else {
-        casoChatHilo.push({rol:"sistema", texto:"No se pudo consultar al caso: "+(huboError||"sin respuesta")+". ¿Está Ollama corriendo?"});
+        casoChatHilo.push({rol:"sistema", texto:"No se pudo consultar al caso: "+(huboError||"sin respuesta")+"."});
       }
     }catch(err){
       burbuja.remove();
@@ -3620,7 +3655,7 @@ async function leerBusquedaConAsistente(){
       out.innerHTML = `<div class="chatmsg ia">${esc(acumulado.trim()).replace(/\n/g,"<br>")}</div>`
         + (terminoOk===false ? `<div class="hint">(se cortó: ${esc(huboError||"error")})</div>` : "");
     } else {
-      out.innerHTML = `<div class="gapnone">No se pudo leer: ${esc(huboError||"sin respuesta")}. ¿Está Ollama corriendo?</div>`;
+      out.innerHTML = `<div class="gapnone">No se pudo leer: ${esc(huboError||"sin respuesta")}.</div>`;
     }
   }catch(err){
     out.innerHTML = '<div class="gapnone">No se pudo conectar con el servidor.</div>';
@@ -3755,6 +3790,7 @@ document.querySelectorAll("#emSeg button").forEach(b=>b.addEventListener("click"
 (function(){ const vm=document.getElementById("emVermas"); if(vm) vm.addEventListener("click",()=>{ emExpandido=true; renderEmergencias(); }); })();
 
 function renderComunidad(){
+  renderLecturaCom(); renderMapa();
   renderEmergencias();
   const box=$("#comList"); if(!box) return;
   const C=DATA.comunidad||{};
@@ -4030,6 +4066,93 @@ if(conServidor){
 // refresca la etiqueta "hace X min" cada 30s
 setInterval(()=>{ if(DATA.generado) $("#sub").textContent="Actualizado "+fmtAgo(DATA.generado)+" ("+fmtHoraEC(DATA.generado)+")"; },30000);
 
+// ------- Fase 22c: lectura de la comunidad (IA) + mapa de Guayaquil -------
+function renderLecturaCom(){
+  const box=$("#comLectura"); if(!box) return;
+  const L0=DATA.comunidad_lectura||{}, Lx=L0.lectura;
+  if(!Lx){
+    box.innerHTML=`<div class="gapnone">Todavia no hay lectura. Se hace sola cuando hay al menos 2 temas de la gente (se revisa en cada vuelta de Comunidad).</div>`;
+    return;
+  }
+  const refs=L0.refs||{};
+  const chips=ids=>(ids||[]).map(id=>refs[id]?`<span class="tref" data-tema="${esc(refs[id].id||"")}" title="Ver este tema">${esc(refs[id].titulo||id)}</span>`:"").join("");
+  const lista=(arr,campo)=>arr&&arr.length?`<ul>${arr.map(x=>`<li>${esc(x[campo])} ${chips(x.temas)}</li>`).join("")}</ul>`:`<div class="hint">Sin datos suficientes.</div>`;
+  let h=`<div class="lectura">`;
+  if(L0.desactualizada) h+=`<div class="hint" style="color:#b45309">Los temas cambiaron desde esta lectura; la nueva llega en la proxima vuelta.</div>`;
+  h+=`<p style="margin:4px 0 6px;font-size:14.5px">${esc(Lx.resumen||"")}</p>`;
+  h+=`<h3>Lo que mas habla la gente</h3>`+lista(Lx.lo_que_mas_habla,"texto");
+  h+=`<h3>Factor comun</h3>`+(Lx.factor_comun?`<p style="margin:0">${esc(Lx.factor_comun.texto)} ${chips(Lx.factor_comun.temas)}</p>`:`<div class="hint">No se encontro un factor comun claro.</div>`);
+  h+=`<h3>En que zonas habla la gente</h3>`+(Lx.zonas&&Lx.zonas.length?`<ul>${Lx.zonas.map(z=>`<li><b>${esc(z.zona)}:</b> ${esc(z.que_dice)} ${chips(z.temas)}</li>`).join("")}</ul>`:`<div class="hint">La gente casi no nombra el sector en lo captado.</div>`);
+  h+=`<h3>Para reportear</h3>`+lista(Lx.para_reportear,"idea");
+  if(Lx.limitaciones) h+=`<h3>Limitaciones</h3><p class="hint" style="margin:0">${esc(Lx.limitaciones)}</p>`;
+  h+=`<p class="hint" style="margin-top:10px">Lectura IA (Gemini) de ${L0.n_temas||0} temas y ${L0.n_publicaciones||0} publicaciones, ${L0.ts?esc(fmtAgo(L0.ts)):""}${L0.descartadas?` · ${L0.descartadas} afirmacion(es) descartada(s) por no citar temas reales`:""}.</p></div>`;
+  box.innerHTML=h;
+  box.querySelectorAll(".tref").forEach(el=>el.addEventListener("click",()=>{
+    const [barrio,cat]=(el.dataset.tema||"").split("|");
+    comBarrio=barrio||""; comCat=cat||""; comExpandido=true; renderComunidad();
+    const lst=$("#comList"); if(lst && lst.scrollIntoView) lst.scrollIntoView({behavior:"smooth",block:"start"});
+  }));
+}
+
+let mapaObj=null, mapaCapa=null, mapaFiltro="", mapaCargando=false, mapaFallo=false;
+const MAPA_COLOR={noticia:"#1f8a5f", alerta:"#dc2626", comunidad:"#d97706"};
+const MAPA_ETQ={noticia:"Noticia", alerta:"Alerta de la gente", comunidad:"Queja de la comunidad"};
+const MAPA_DONDE={titular:"se nombra en el titular", resumen:"se nombra en el resumen",
+  localidad:"lo marco el medio como localidad", "sector de la actualizacion":"es el sector de esa actualizacion del evento",
+  alerta:"lo detecto la alerta de la gente", comunidad:"lo nombraron las personas"};
+function cargarLeaflet(cb){
+  if(window.L && window.L.map) return cb();
+  if(mapaCargando || mapaFallo) return;
+  mapaCargando=true;
+  const css=document.createElement("link");
+  css.rel="stylesheet"; css.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+  document.head.appendChild(css);
+  const sc=document.createElement("script");
+  sc.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+  sc.onload=()=>{ mapaCargando=false; cb(); };
+  sc.onerror=()=>{ mapaCargando=false; mapaFallo=true;
+    const m=$("#mapaGye"); if(m) m.innerHTML=`<div class="gapnone" style="padding:14px">No se pudo cargar el mapa (hace falta internet). Los puntos siguen en la lista de abajo.</div>`; };
+  document.head.appendChild(sc);
+}
+function mapaPopup(p){
+  const lnk=p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.titulo||"(sin titulo)")}</a>`:esc(p.titulo||"");
+  let extra="";
+  if(p.tipo==="noticia") extra=`${p.medios||1} medio(s)${p.evento?` · parte de "${esc(p.evento)}"`:""}`;
+  if(p.tipo==="alerta") extra=`${esc(ALERTA_TIPO_LABEL[p.tipo_alerta]||p.tipo_alerta||"")} · ${esc(ALERTA_ESTADO_LABEL[p.estado]||p.estado||"")}`;
+  if(p.tipo==="comunidad") extra=`${p.personas||0} persona(s) · ${p.cubierto?"la prensa ya lo publico":"sin cobertura de prensa"}`;
+  return `<div class="mapapop"><b style="color:${MAPA_COLOR[p.tipo]}">${esc(MAPA_ETQ[p.tipo]||p.tipo)}</b>${lnk}
+    <div class="m">${extra}${p.hora?` · ${esc(fmtHoraEC(p.hora))}`:""}</div>
+    <div class="m">Sector estimado: <b style="display:inline">${esc(p.sector)}</b>${p.precision==="zona amplia"?" (zona amplia)":""} — ${esc(MAPA_DONDE[p.donde]||p.donde||"")}. Ubicacion aproximada del sector, no la direccion exacta.</div></div>`;
+}
+function renderMapa(){
+  const M=DATA.mapa||{}, pts=(M.puntos||[]).filter(p=>!mapaFiltro||p.tipo===mapaFiltro);
+  const est=$("#mapaEstado"); if(est) est.textContent=M.estado||"Sin datos del mapa todavia.";
+  const su=$("#mapaSinUbicar");
+  if(su) su.innerHTML=(M.sin_ubicar||[]).length?(M.sin_ubicar||[]).map(x=>`${esc(MAPA_ETQ[x.tipo]||x.tipo)}: ${esc(x.sector)} — ${esc(x.titulo||"")}`).join("<br>"):"Ninguno.";
+  const cont=$("#mapaGye"); if(!cont) return;
+  cargarLeaflet(()=>{
+    try{
+      if(!mapaObj){
+        mapaObj=L.map(cont,{scrollWheelZoom:false}).setView(M.centro||[-2.17,-79.92],12);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+          {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+           subdomains:"abcd", maxZoom:19}).addTo(mapaObj);
+        mapaCapa=L.layerGroup().addTo(mapaObj);
+      }
+      mapaCapa.clearLayers();
+      pts.forEach(p=>{
+        L.circleMarker([p.lat,p.lon],{radius:p.tipo==="alerta"?9:7, color:"#ffffff", weight:1.5,
+          fillColor:MAPA_COLOR[p.tipo]||"#555", fillOpacity:.9}).bindPopup(mapaPopup(p)).addTo(mapaCapa);
+      });
+      setTimeout(()=>{ try{ mapaObj.invalidateSize(); }catch(e){} }, 60);
+    }catch(e){ if(est) est.textContent="No se pudo dibujar el mapa: "+e; }
+  });
+}
+document.querySelectorAll("#mapaSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#mapaSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); mapaFiltro=b.dataset.mapa; renderMapa();
+}));
+
 // ------- Fase 22: pagina Resumen (tarjetas tipo Power BI) -------
 // Solo LEE lo que ya trae data.json; ningun dato nuevo, ninguna llamada extra.
 function tileBars(items, color){
@@ -4103,6 +4226,13 @@ function renderResumen(){
   const cats=(C.categorias||[]).slice().sort((a,b)=>(b.n_temas||0)-(a.n_temas||0)).slice(0,8);
   html += tile("s6","comunidad","Comunidad: problemas mas mencionados","",
     tileBars(cats.map(c=>({label:c.label||c.categoria,value:c.n_temas||0}))));
+  // Fase 22c: lectura de la comunidad (IA)
+  const LC=(DATA.comunidad_lectura||{}).lectura;
+  if(LC && LC.resumen){
+    html += tile("s12","comunidad","Lo que dice la gente de Guayaquil","lectura IA",
+      `<p style="margin:0 0 6px;font-size:14px">${esc(LC.resumen)}</p>`
+      + ((LC.zonas||[]).length?`<div class="kpi-sub">Zonas: ${LC.zonas.map(z=>esc(z.zona)).join(", ")}</div>`:""));
+  }
   // medios con mas notas
   const med={}; R.forEach(h=>(h.outlets||[]).forEach(o=>med[o]=(med[o]||0)+1));
   html += tile("s4","stats","Medios con mas notas","",

@@ -5083,3 +5083,35 @@ el ultimo `data.json` al arrancar (sin red ni IA); `data.json["ui_version"]` (ha
 `poll()` recarga la pagina entera si la version cambio. `write_outputs` escribe `dashboard.html` antes
 que `data.json`. `test_fase22b_interfaz_nueva.py` (4). OJO: `dashboard_template.html` se lee del disco
 (tambien el `.exe`), asi que basta con que el archivo nuevo este en `codigo_fuente`.
+
+## Fase 22c (2026-09-30) — "No se pudo consultar al asistente... ¿Esta Ollama corriendo?", lectura IA de Comunidad y mapa de Guayaquil
+
+- **Causa real del error del Asistente**: el trabajo de fondo gastaba el tope diario completo de
+  Gemini ($1) y la consulta de Fernando se quedaba sin presupuesto; el mensaje además mencionaba a
+  Ollama, que ya no se usa (Fase 10). Arreglo (`ia.py`): **reserva para consultas**
+  (`MONITOR_IA_RESERVA_USD`, def. 0.30). El trabajo de fondo solo puede gastar `tope - reserva`; lo
+  interactivo (todo pedido `/api/...` del servidor, marcado por hilo con `ia.interactivo()` /
+  `threading.local`, el servidor ya usa un hilo por pedido) puede usar el tope completo. Mensajes
+  claros ("se acabo el presupuesto diario de IA... se renueva a medianoche, o sube
+  MONITOR_IA_TOPE_DIA_USD") y se sacaron todas las menciones a Ollama del dashboard y de monitor.py.
+- **Lectura de la comunidad (IA)** (`comunidad.actualizar_lectura`, `comunidad_lectura.json`): con
+  Gemini (perfil rápido) sobre los temas de Comunidad Guayaquil: resumen, de qué más habla la gente,
+  factor común, zonas (qué dice cada una), ideas para reportear y limitaciones. El código arma el
+  material con ids T1..Tn y valida en código: se descarta todo elemento sin ids reales y toda zona
+  que no esté en los datos. La pide el hilo de Comunidad, cada `MONITOR_COMUNIDAD_LECTURA_MIN` (30)
+  y solo si cambiaron los temas (firma); con menos de 2 temas no gasta. El hilo rápido solo la lee
+  (`data.json["comunidad_lectura"]`, marcada `desactualizada` si los temas cambiaron). Panel arriba
+  de Comunidad (chips que filtran la lista) y tarjeta en Resumen.
+- **Mapa de Guayaquil** (`mapa.py`, sin red ni IA, en `write_outputs` → `data.json["mapa"]`):
+  noticias recientes de Guayaquil (las historias madre se reparten por sus actualizaciones),
+  alertas activas y temas de comunidad, cada uno en el **centro aproximado de su sector** (misma lista
+  de barrios de `comunidad.py`); el popup dice qué sector se estimó y de dónde (titular, resumen,
+  localidad) y que no es la dirección exacta. Lo que no tiene sector se cuenta aparte, no se inventa
+  un punto. Leaflet 1.9.4 desde cdnjs + mosaicos CARTO (necesita internet; sin él lo avisa).
+- **Bug real de paso**: "Murió Náfer Durán" (cantante colombiano) salía como Guayaquil/Durán porque
+  `CITIES` tenía "duran" suelto. Ahora solo frases de lugar ("en duran", "canton duran", "puente
+  duran"...).
+- Pruebas: `test_fase22c_comunidad_mapa.py` (13). Suite: 440, solo los 15 fallos viejos de
+  `test_fase9_xapi.py`. Dashboard completo en jsdom sin errores; captura real con Chromium del mapa.
+- **No verificado en vivo**: la llamada real a Gemini para la lectura y Leaflet/mosaicos por CDN (el
+  entorno en la nube no llega a cdnjs). Hay que recompilar `Spike.exe`.

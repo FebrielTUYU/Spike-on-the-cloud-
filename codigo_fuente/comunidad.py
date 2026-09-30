@@ -768,3 +768,154 @@ def actualizar(historias, alertas=None, social=None, social_historias=None, ahor
             "frecuencias": {"x_min": float(os.environ.get("MONITOR_COMUNIDAD_X_MIN", "10")),
                             "bluesky_min": BSKY_CADA_MIN, "youtube_h": YT_CADA_H,
                             "facebook_min": float(os.environ.get("MONITOR_FB_MIN", "60"))}}
+
+
+# ---------------------------------------------------------------------------
+# Fase 22c: "Lectura de la comunidad" con IA (pedido de Fernando: que es lo que
+# mas habla la gente, cual es el factor comun, en que zonas habla, etc.).
+# Mismo principio de siempre: el CODIGO arma el material (los temas ya
+# calculados, con ids T1..Tn y citas reales) y la IA SOLO redacta. Cada
+# afirmacion tiene que citar ids de temas que existen, y cada zona tiene que
+# ser un sector que de verdad aparece en los datos -- lo que no cumple, se
+# descarta en codigo (no se confia solo en el prompt).
+# ---------------------------------------------------------------------------
+LECTURA_PATH = os.path.join(HERE, "comunidad_lectura.json")
+LECTURA_CADA_MIN = float(os.environ.get("MONITOR_COMUNIDAD_LECTURA_MIN", "30"))
+LECTURA_MIN_TEMAS = int(os.environ.get("MONITOR_COMUNIDAD_LECTURA_MIN_TEMAS", "2"))
+
+_PROMPT_LECTURA = (
+    "Eres editor de un periodista de Guayaquil (Ecuador). Abajo esta TODO lo que la gente "
+    "de la ciudad publico en redes en las ultimas horas, ya agrupado en temas (T1, T2...) "
+    "por sector y tipo de problema, con citas textuales de las publicaciones.\n\n"
+    "Responde SOLO un JSON valido con estas claves:\n"
+    '{"resumen": "2-3 frases: que esta viviendo la ciudad segun la gente",\n'
+    ' "lo_que_mas_habla": [{"texto": "...", "temas": ["T1", ...]}],\n'
+    ' "factor_comun": {"texto": "que tienen en comun las quejas (causa, responsable, patron)", "temas": ["T.."]},\n'
+    ' "zonas": [{"zona": "<sector EXACTO de la lista>", "que_dice": "...", "temas": ["T.."]}],\n'
+    ' "para_reportear": [{"idea": "angulo concreto de reportaje", "temas": ["T.."]}],\n'
+    ' "limitaciones": "que no se puede afirmar con estos datos"}\n\n'
+    "Reglas duras:\n"
+    "- Usa SOLO lo que dice el material. No inventes hechos, cifras, nombres ni lugares.\n"
+    "- Cada elemento cita los ids de los temas que lo sostienen (solo ids que existen abajo).\n"
+    "- 'zona' tiene que ser uno de estos sectores, escrito igual: %s. No uses 'Guayaquil (sin sector)' como zona.\n"
+    "- Si hay pocos datos, dilo en 'limitaciones' en vez de exagerar. Pocas personas no son 'la ciudad'.\n"
+    "- Maximo 4 elementos en cada lista. Espanol claro, sin adornos.\n\n"
+    "MATERIAL:\n%s"
+)
+
+
+def _firma_lectura(temas):
+    base = "|".join("%s:%s:%s" % (t.get("id"), t.get("personas"), t.get("n")) for t in temas)
+    import hashlib
+    return hashlib.md5(base.encode("utf-8")).hexdigest()[:16]
+
+
+def material_lectura(com):
+    """Texto para la IA + mapa de ids validos + sectores validos."""
+    temas = (com or {}).get("temas") or []
+    ids, lineas, sectores = {}, [], set()
+    for i, t in enumerate(temas[:25], 1):
+        tid = "T%d" % i
+        ids[tid] = t
+        if t.get("barrio") and t["barrio"] != SIN_SECTOR:
+            sectores.add(t["barrio"])
+        citas = " / ".join('"%s"' % (p.get("texto") or "")[:180].replace("\n", " ")
+                           for p in (t.get("publicaciones") or [])[:3])
+        lineas.append("%s | %s | sector: %s | %d persona(s), %d publicacion(es) | prensa: %s | antes: %d publicaciones\n   citas: %s"
+                      % (tid, t.get("categoria_label"), t.get("barrio"), t.get("personas", 0), t.get("n", 0),
+                         "ya cubierto" if t.get("cubierto") else "sin cobertura", t.get("antes_n", 0), citas))
+    return "\n".join(lineas), ids, sectores
+
+
+def _validar_lectura(r, ids, sectores):
+    """Descarta en codigo todo lo que no cite temas reales o nombre zonas que no estan."""
+    if not isinstance(r, dict):
+        return None, 0
+    descartadas = 0
+    norm_sect = {_norm(s): s for s in sectores}
+
+    def _citas(x):
+        return [c for c in (x.get("temas") or []) if isinstance(c, str) and c in ids]
+
+    def _lista(clave, campo):
+        nonlocal descartadas
+        out = []
+        for x in (r.get(clave) or [])[:4]:
+            if not isinstance(x, dict) or not str(x.get(campo) or "").strip():
+                descartadas += 1
+                continue
+            c = _citas(x)
+            if not c:
+                descartadas += 1
+                continue
+            out.append(dict(x, temas=c))
+        return out
+
+    zonas = []
+    for z in (r.get("zonas") or [])[:6]:
+        if not isinstance(z, dict):
+            continue
+        real = norm_sect.get(_norm(str(z.get("zona") or "")))
+        c = _citas(z)
+        if not real or not c or not str(z.get("que_dice") or "").strip():
+            descartadas += 1
+            continue
+        zonas.append({"zona": real, "que_dice": z["que_dice"], "temas": c})
+    fc = r.get("factor_comun") if isinstance(r.get("factor_comun"), dict) else {}
+    factor = None
+    if str(fc.get("texto") or "").strip() and _citas(fc):
+        factor = {"texto": fc["texto"], "temas": _citas(fc)}
+    elif fc:
+        descartadas += 1
+    return {"resumen": str(r.get("resumen") or "").strip(),
+            "lo_que_mas_habla": _lista("lo_que_mas_habla", "texto"),
+            "factor_comun": factor, "zonas": zonas[:4],
+            "para_reportear": _lista("para_reportear", "idea"),
+            "limitaciones": str(r.get("limitaciones") or "").strip()}, descartadas
+
+
+def cargar_lectura():
+    try:
+        with open(LECTURA_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def actualizar_lectura(com, ahora=None, forzar=False):
+    """Hilo de fondo (nunca el rapido): pide la lectura a la IA solo si los
+    temas cambiaron y paso LECTURA_CADA_MIN desde la ultima. Devuelve un texto
+    de estado."""
+    ahora = ahora or dt.datetime.now(dt.timezone.utc)
+    temas = (com or {}).get("temas") or []
+    previa = cargar_lectura()
+    firma = _firma_lectura(temas)
+    if len(temas) < LECTURA_MIN_TEMAS:
+        return "lectura: pocos temas todavia (%d)" % len(temas)
+    ts = _parse(previa.get("ts") or "")
+    if not forzar and previa.get("firma") == firma:
+        return "lectura: sin cambios"
+    if not forzar and ts and (ahora - ts).total_seconds() < LECTURA_CADA_MIN * 60:
+        return "lectura: todavia no toca"
+    try:
+        import ia
+    except Exception:
+        return "lectura: ia.py no disponible"
+    material, ids, sectores = material_lectura(com)
+    prompt = _PROMPT_LECTURA % (", ".join(sorted(sectores)) or "(ninguno con sector)", material)
+    r = ia._generar_json(prompt, perfil=ia.PERFIL_RAPIDO, temperatura=0.2, max_tokens=1600, timeout=90)
+    if r is None:
+        return "lectura: error (%s)" % (getattr(ia, "last_error", None) or "sin respuesta")
+    lectura, descartadas = _validar_lectura(r, ids, sectores)
+    if not lectura or not lectura.get("resumen"):
+        return "lectura: la IA no devolvio un resumen valido"
+    # Para el dashboard: cada id T# se resuelve al titulo real del tema.
+    refs = {tid: {"titulo": t.get("titulo"), "id": t.get("id")} for tid, t in ids.items()}
+    datos = {"firma": firma, "ts": ahora.isoformat(), "lectura": lectura, "refs": refs,
+             "descartadas": descartadas, "n_temas": len(temas),
+             "n_publicaciones": (com or {}).get("total_publicaciones", 0)}
+    tmp = LECTURA_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(datos, f, ensure_ascii=False)
+    os.replace(tmp, LECTURA_PATH)
+    return "lectura: nueva (%d temas, %d afirmaciones descartadas)" % (len(temas), descartadas)

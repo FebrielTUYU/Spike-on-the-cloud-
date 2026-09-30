@@ -51,10 +51,12 @@ catalogo, solo decide para CADA NOTA cuales de esas categorias ya existentes
 le aplican.
 """
 
+import contextlib
 import datetime as dt
 import json
 import os
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -186,9 +188,48 @@ def _registrar_gasto(monto, motivo=""):
     _guardar_gasto(g)
 
 
+# Fase 22c (bug real, reportado por Fernando: el Asistente respondia "presupuesto
+# agotado" -- el trabajador de fondo gastaba el tope diario entero y no dejaba
+# NADA para las preguntas que el hace a mano). Una parte del tope diario queda
+# RESERVADA para lo interactivo (chat, Asistente, Buscar, contexto bajo
+# demanda): el trabajador de fondo solo puede gastar TOPE - RESERVA. Lo
+# interactivo se marca con `with ia.interactivo():` (monitor.py lo pone en
+# cada pedido del navegador); es por hilo, asi no se mezcla con el fondo.
+RESERVA_INTERACTIVA_USD = float(os.environ.get("MONITOR_IA_RESERVA_USD", "0.30"))
+_ctx = threading.local()
+
+
+@contextlib.contextmanager
+def interactivo():
+    previo = getattr(_ctx, "interactivo", False)
+    _ctx.interactivo = True
+    try:
+        yield
+    finally:
+        _ctx.interactivo = previo
+
+
+def es_interactivo():
+    return bool(getattr(_ctx, "interactivo", False))
+
+
+def tope_dia_efectivo():
+    """Lo que puede gastar HOY quien llama: el tope entero si es una consulta
+    del usuario, el tope menos la reserva si es trabajo de fondo."""
+    if es_interactivo():
+        return TOPE_DIA_USD
+    return max(0.0, TOPE_DIA_USD - min(RESERVA_INTERACTIVA_USD, TOPE_DIA_USD))
+
+
 def _cabe_en_presupuesto(costo_max):
-    if gasto_hoy() + costo_max > TOPE_DIA_USD:
-        return False, "tope diario de IA (%.4f + %.4f > %.2f USD)" % (gasto_hoy(), costo_max, TOPE_DIA_USD)
+    tope = tope_dia_efectivo()
+    if gasto_hoy() + costo_max > tope:
+        if es_interactivo():
+            return False, ("se acabo el presupuesto diario de IA (%.2f de %.2f USD usados hoy); "
+                           "se renueva a medianoche, o sube MONITOR_IA_TOPE_DIA_USD en .env"
+                           % (gasto_hoy(), TOPE_DIA_USD))
+        return False, ("tope del trabajo de fondo (%.4f + %.4f > %.2f USD; %.2f quedan reservados "
+                       "para tus consultas)" % (gasto_hoy(), costo_max, tope, TOPE_DIA_USD - tope))
     if gasto_mes() + costo_max > TOPE_MES_USD:
         return False, "tope mensual de IA (%.4f + %.4f > %.2f USD)" % (gasto_mes(), costo_max, TOPE_MES_USD)
     return True, ""
@@ -205,6 +246,7 @@ def estado_gasto():
     return {"gasto_hoy": round(gasto_hoy(), 5), "gasto_mes": round(gasto_mes(), 5),
             "tope_dia": TOPE_DIA_USD, "tope_mes": TOPE_MES_USD,
             "restante_hoy": round(max(0.0, TOPE_DIA_USD - gasto_hoy()), 5),
+            "reserva_consultas": RESERVA_INTERACTIVA_USD,
             "restante_mes": round(max(0.0, TOPE_MES_USD - gasto_mes()), 5)}
 
 
