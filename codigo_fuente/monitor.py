@@ -87,6 +87,10 @@ try:
 except Exception:
     alertas = None
 try:
+    import senales  # Fase 15/18 (P0-4): motor de senales -- escrito en la Fase 15, conectado recien ahora; opcional
+except Exception:
+    senales = None
+try:
     import contexto  # Fase 11 (v2): contexto de 4 bloques (antecedentes/actores/que_es_nuevo/que_falta_saber); opcional
 except Exception:
     contexto = None
@@ -5561,6 +5565,9 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         "alertas": alertas_activas,
         "alertas_estado": alertas_estado,
         "alertas_metricas": alertas.metricas_adelanto() if alertas else {"n": 0, "promedio_min": None, "casos": []},
+        # Fase 18 (P0-4): senales de la Fase 15, que nunca se habian conectado.
+        # El hilo rapido solo LEE senales_estado.json (lo escribe senales_loop).
+        **senales_para_dashboard(),
     }
     # BUG REAL encontrado en el Fase 0 (2026-09-23): el CLAUDE.md documentaba
     # "data.json se escribe atomico (_escribir_atomico)" como ya hecho, pero
@@ -5861,6 +5868,17 @@ def run_once(verbose=True):
         social_data, social_status = get_social(themes_present, tema_ambito=tema_ambito_map(stories))
         social_hist_data, social_hist_status = get_social_historias(stories)
     t0 = _fase("get_social", t0)
+    if os.environ.get("MONITOR_SAMPLE") != "1":
+        # Fase 18 (P0-4): la corrida unica tambien deja senales_estado.json
+        # listo (en modo serve lo hace senales_loop cada 15 min).
+        try:
+            if verbose:
+                print("Senales: %s" % correr_senales(stories, demand if "Trends" in (fuente or "") else {}))
+            else:
+                correr_senales(stories, demand if "Trends" in (fuente or "") else {})
+        except Exception as e:
+            print("Error en senales: %s" % e)
+        t0 = _fase("senales", t0)
 
     write_outputs(stories, report, demand, tend, fuente, dstatus, gdelt_data, gstatus,
                   sstatus, iastatus, social_data, social_status, cstatus, fcstatus, vstatus,
@@ -6020,6 +6038,79 @@ def run_fast(verbose=False):
         + " ".join("%s=%.2fs" % (k, v) for k, v in tiempos.items())
         + " | TOTAL=%.2fs" % sum(tiempos.values()))
     return stories
+
+
+# ------------------------- senales (Fase 15, conectadas en Fase 18 P0-4) -------------------------
+SENALES_MIN = float(os.environ.get("MONITOR_SENALES_MIN", "15"))
+SENALES_IA_MAX = int(os.environ.get("MONITOR_SENALES_IA_MAX", "5"))
+
+
+def senales_para_dashboard():
+    """Lo que va a data.json: senales activas + estado honesto."""
+    if senales is None:
+        return {"senales": [], "estado_senales": "senales.py no disponible"}
+    act = senales.activas()
+    ult = senales.ultima_vuelta()
+    return {"senales": act,
+            "estado_senales": ("%d activas (ultima vuelta %s)" % (len(act), ult)) if ult
+                              else "esperando la primera vuelta del motor de senales"}
+
+
+def _ia_desenlace(material):
+    """Para senales.detectar_sin_resolver: ¿el material muestra un desenlace?
+    Pide una cita LITERAL (senales la valida en codigo)."""
+    prompt = ("Estas son notas de prensa sobre UNA historia de Ecuador:\n%s\n\n"
+              "¿Alguna de ellas muestra que el hecho ya se resolvio (sentencia, captura, "
+              "reapertura, acuerdo, desmentido, cierre)? Responde SOLO JSON: "
+              '{"hubo_desenlace": true|false, "cita": "frase copiada LITERAL del material o null"}'
+              % material[:2500])
+    return ia._generar_json(prompt, max_tokens=200) if ia else None
+
+
+def _ia_texto_rapido(prompt):
+    return ia._generar(prompt, max_tokens=160) if ia else None
+
+
+def correr_senales(stories=None, demand=None):
+    """Una vuelta del motor de senales con TODO lo que ya esta calculado.
+    Nunca llama a feeds/redes; la IA (perfil rapido) queda acotada a
+    SENALES_IA_MAX llamadas por vuelta. Devuelve el texto de estado."""
+    if senales is None:
+        return "senales.py no disponible"
+    if stories is None:
+        stories = _cargar_ultimas_historias() or []
+    if demand is None:
+        themes = sorted({t for s in stories for t in s.get("temas", [])})
+        try:
+            vals, _t, _e, fuente = get_demand(themes, modo_lectura=True)
+            # Fase 18 (P2-12): Wikipedia mide hispanohablantes del mundo, no
+            # Guayaquil/Ecuador -- no sirve como "la gente lo busca" para una
+            # historia local. Solo cuenta Google Trends (geo EC).
+            demand = vals if "Trends" in (fuente or "") else {}
+        except Exception:
+            demand = {}
+    reg = _cargar_registro()
+    entries, by_link = [], {}
+    for eid, e in reg.items():
+        d_ = {"eid": eid, "ciudad": e.get("ciudad", ""), "rep_titulo": e.get("fundador_titulo") or e.get("rep_titulo", ""),
+              "ultimo": e["ultimo"].isoformat() if e.get("ultimo") else None,
+              "fuentes": [dict(f_, date=f_["date"].isoformat() if f_.get("date") else None) for f_ in e.get("fuentes", [])]}
+        entries.append(d_)
+        for f_ in d_["fuentes"]:
+            if f_.get("link"):
+                by_link[f_["link"]] = d_
+    try:
+        with open(ENTITIES_PATH, encoding="utf-8") as f:
+            entities = json.load(f)
+    except Exception:
+        entities = {}
+    usar_ia = bool(ia and os.environ.get("MONITOR_NO_IA") != "1" and ia.backend_listo())
+    r = senales.ciclo_senales(stories, demand=demand, registro_entries=entries, entities=entities,
+                              saved=load_saved(), registro_by_link=by_link,
+                              ia_desenlace=_ia_desenlace if usar_ia else None,
+                              ia_texto=_ia_texto_rapido if usar_ia else None,
+                              max_ia=SENALES_IA_MAX if usar_ia else 0)
+    return r["estado"]
 
 
 def _cargar_ultimas_historias():
@@ -6615,6 +6706,19 @@ def serve(port=8000, minutes=None):
                 run_fast(verbose=True)
             except Exception as e:
                 print("Error en feed rapido: %s" % e)
+
+    def senales_loop():
+        # Fase 18 (P0-4): hilo propio del motor de senales (Fase 15), cada
+        # MONITOR_SENALES_MIN minutos. Espera 1 min al arrancar para que el
+        # hilo rapido ya haya publicado data.json.
+        espera = 60
+        while not stop.wait(espera):
+            espera = SENALES_MIN * 60
+            try:
+                with _medir_etapa("senales"):
+                    print("[%s] Senales: %s" % (now_utc().strftime("%H:%M:%S"), correr_senales()))
+            except Exception as e:
+                print("Error en senales: %s" % e)
 
     def worker_loop():
         if oficial:
@@ -7384,6 +7488,7 @@ def serve(port=8000, minutes=None):
 
             threading.Thread(target=fast_loop, daemon=True).start()
             threading.Thread(target=worker_loop, daemon=True).start()
+            threading.Thread(target=senales_loop, daemon=True).start()
 
             print("\n" + "=" * 56)
             if port != puerto_pedido:

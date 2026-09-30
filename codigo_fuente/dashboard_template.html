@@ -681,6 +681,16 @@
   </section>
 
   <section id="secGap" hidden>
+    <div class="panel" style="border-left:4px solid #16a34a" id="senalesPanel">
+      <h2 style="margin:0 0 4px">Señales — historias concretas para mover hoy</h2>
+      <p class="hint">Cada señal apunta a UNA historia real, dice por qué ahora (con el número que la respalda) y, cuando se pudo, un primer paso. Guayaquil primero, después el resto de Ecuador.</p>
+      <div class="seg" id="senalesSeg" style="margin:6px 0 10px">
+        <button class="active" data-sa="">Todas</button>
+        <button data-sa="guayaquil">Guayaquil</button>
+        <button data-sa="ecuador">Resto de Ecuador</button>
+      </div>
+      <div id="senalesList"></div>
+    </div>
     <div class="panel" style="border-left:4px solid #e11d48">
       <h2 style="margin:0 0 4px">Oportunidades — brecha entre busqueda y cobertura</h2>
       <p class="hint">Temas donde la gente <b>busca mas de lo que los medios cubren</b>.
@@ -1219,7 +1229,33 @@ function renderSaludFuentes(){
 
 // ------- apartado Oportunidades -------
 let gapAmb="";  // "", "local", "internacional"
+// Fase 18 (P0-4): senales del motor de la Fase 15 (senales.py), que nunca
+// se habian conectado. Vienen ya ordenadas (Guayaquil primero) en DATA.senales.
+const SENAL_ETIQUETA = {acelera:"Acelerando", un_solo_medio:"Un solo medio",
+  brecha_historia:"La gente lo busca y nadie lo cubre", sin_resolver:"Se apagó sin resolverse",
+  actor_repetido:"Actor repetido", alerta_estado:"Alerta temprana", guardada_actualizada:"Guardada con novedades"};
+let senalesAmb = "";
+function renderSenales(){
+  const box=$("#senalesList"); if(!box) return;
+  const todas = DATA.senales || [];
+  const L = todas.filter(s=>!senalesAmb || s.ambito===senalesAmb);
+  if(!L.length){
+    box.innerHTML = `<p class="hint">${todas.length?"Sin señales en este ámbito.":esc(DATA.estado_senales||"Sin señales todavía.")}</p>`;
+    return;
+  }
+  box.innerHTML = L.map(s=>`<div class="gapcard" style="margin-bottom:8px">
+      <div class="row"><span class="tag ${s.prioridad==="alta"?"gap":"loc"}">${esc(SENAL_ETIQUETA[s.tipo]||s.tipo)}</span>
+        <span class="tag loc">${s.ambito==="guayaquil"?"Guayaquil":"Ecuador"}</span>
+        <span class="hint" style="margin-left:auto">certeza ${esc((s.certeza||{}).nivel||"?")}</span></div>
+      <div class="titular" style="margin:6px 0">${s.link?`<a href="${esc(s.link)}" target="_blank" rel="noopener">${esc(s.titulo)}</a>`:esc(s.titulo)}</div>
+      <div><b>Por qué ahora:</b> ${esc(s.por_que_ahora||"")}</div>
+      ${s.primer_paso?`<div style="margin-top:4px"><b>Primer paso:</b> ${esc(s.primer_paso)}</div>`:""}
+    </div>`).join("")
+    + `<p class="hint">${esc(DATA.estado_senales||"")}</p>`;
+}
+
 function renderGap(){
+  renderSenales();
   const box=$("#gaplist");
   const tend=DATA.tendencias||{};
   const H=(DATA.historias||[]).filter(h=>
@@ -3404,6 +3440,10 @@ function renderAll(){
   if(sec==="guardadas") cargarGuardadas().then(renderGuardadas);
 }
 // toggle Ecuador/Mundo en Oportunidades
+document.querySelectorAll("#senalesSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#senalesSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); senalesAmb=b.dataset.sa; renderSenales();
+}));
 document.querySelectorAll("#gapseg button").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll("#gapseg button").forEach(x=>x.classList.remove("active"));
   b.classList.add("active"); gapAmb=b.dataset.ga; renderGap();

@@ -93,6 +93,18 @@ def _es_guayaquil(s):
     return (s.get("ciudad") or "") == "Guayaquil"
 
 
+# Fase 18 (P0-4): Fernando reporto "ya no identifica oportunidades en
+# Ecuador" -- las senales solo miraban Guayaquil. Ahora cubren TODO Ecuador
+# (historias locales: es_local o ciudad de Ecuador); Guayaquil va primero en
+# el orden y cada senal dice su ambito.
+def _es_ecuador(s):
+    return bool(s.get("es_local")) or _es_guayaquil(s)
+
+
+def _ambito(s):
+    return "guayaquil" if _es_guayaquil(s) else "ecuador"
+
+
 # ------------------------- estado propio (dedupe + últimos vistos) -------------------------
 
 def _cargar_estado():
@@ -126,7 +138,7 @@ def detectar_acelera(stories, ahora=None):
     ahora = ahora or now_utc()
     out = []
     for s in stories:
-        if not _es_guayaquil(s):
+        if not _es_ecuador(s):
             continue
         fuentes = s.get("fuentes") or []
         fechas = sorted(f for f in (_parse_iso(x.get("date")) for x in fuentes) if f)
@@ -180,7 +192,7 @@ def detectar_un_solo_medio(stories, ahora=None):
     ahora = ahora or now_utc()
     out = []
     for s in stories:
-        if not _es_guayaquil(s):
+        if not _es_ecuador(s):
             continue
         n_outlets = s.get("n_outlets")
         if n_outlets is None:
@@ -227,7 +239,7 @@ def detectar_brecha_historia(stories, demand, ahora=None):
     demand = demand or {}
     out = []
     for s in stories:
-        if not _es_guayaquil(s):
+        if not _es_ecuador(s):
             continue
         if (s.get("n_outlets") or 0) > UMBRAL_COBERTURA_BRECHA_MAX:
             continue
@@ -281,7 +293,9 @@ def detectar_sin_resolver(registro_entries, ia_fn=None, ahora=None):
     ahora = ahora or now_utc()
     out = []
     for e in registro_entries:
-        if (e.get("ciudad") or "") != "Guayaquil":
+        # Fase 18: cualquier ciudad de Ecuador (el registro solo guarda
+        # ciudades de Ecuador en 'ciudad'); antes solo Guayaquil.
+        if not (e.get("ciudad") or ""):
             continue
         fuentes = e.get("fuentes") or []
         if len(fuentes) < UMBRAL_FUENTES_SIN_RESOLVER_MIN:
@@ -331,7 +345,7 @@ def detectar_actor_repetido(entities_registro, stories_guayaquil, dias=UMBRAL_DI
     ahora = ahora or now_utc()
     links_gye = {}
     for s in stories_guayaquil:
-        if not _es_guayaquil(s):
+        if not _es_ecuador(s):
             continue
         for f in (s.get("fuentes") or []):
             if f.get("link"):
@@ -528,3 +542,164 @@ def texto_resumen(agrupadas):
         extra = "" if len(items) <= 8 else "\n  (+%d más)" % (len(items) - 8)
         bloques.append("%s (%d):\n%s%s" % (etiqueta, len(items), lineas, extra))
     return "\n\n".join(bloques)
+
+
+# ------------------------- ciclo completo (Fase 18, P0-4) -------------------------
+# La Fase 15 dejo los detectores escritos y probados, pero NADIE los llamaba:
+# monitor.py nunca importaba este modulo, no existia senales_estado.json y
+# Oportunidades nunca mostro una senal. ciclo_senales() junta todo en una
+# vuelta: corre los detectores, ordena (Guayaquil primero), conserva el
+# primer_paso ya calculado de vueltas anteriores y persiste las ACTIVAS en
+# senales_estado.json -- de ahi las lee el hilo rapido para data.json sin
+# volver a calcular nada.
+
+_ORDEN_TIPO = {t: i for i, t in enumerate(("alerta_estado", "acelera", "guardada_actualizada",
+                                           "brecha_historia", "un_solo_medio", "sin_resolver",
+                                           "actor_repetido"))}
+_ORDEN_NIVEL = {"alta": 0, "media": 1, "baja": 2}
+MAX_ACTIVAS = 40
+# Cupo por ambito: sin esto, en la primera prueba con datos reales las 40
+# plazas se llenaron SOLO con Guayaquil y el resto de Ecuador no aparecia
+# (justo lo que Fernando reporto).
+CUPO_GUAYAQUIL = 25
+CUPO_ECUADOR = 15
+# Boletines de servicio/agenda: no son una oportunidad de reportaje por si
+# solos (caso real: "Clima hoy en Guayaquil" y "fechas de los shows" salian
+# como "la gente lo busca y nadie lo cubre").
+_RX_NO_SENAL = re.compile(r"\b(clima|pronostico|tendra lluvias|fechas y precios|fechas de los shows|"
+                          r"horarios?|cartelera|lotto|loteria|feriado)\b")
+
+
+def _es_boletin(titulo):
+    return bool(_RX_NO_SENAL.search(_norm(titulo)))
+
+
+def _clave_material(texto):
+    import hashlib
+    return hashlib.sha1((texto or "").encode("utf-8", "ignore")).hexdigest()[:16]
+
+
+def ciclo_senales(stories, demand=None, registro_entries=None, entities=None, saved=None,
+                  registro_by_link=None, ia_desenlace=None, ia_texto=None, max_ia=5,
+                  estado_path=None, ahora=None):
+    """Una vuelta del motor de senales. Todas las fuentes son de SOLO
+    LECTURA (lo que el pipeline ya calculo); la IA es opcional y acotada a
+    'max_ia' llamadas nuevas por vuelta (desenlace + primer_paso), con cache
+    en el propio estado para no volver a pagar por lo mismo. Devuelve
+    {"senales": activas, "nuevas": [...], "estado": texto}."""
+    ruta = estado_path or ESTADO_PATH
+    ahora = ahora or now_utc()
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            estado = json.load(f)
+    except Exception:
+        estado = {}
+    estado.setdefault("vistas", {})
+    estado.setdefault("guardadas_ultimo_n", {})
+    cache_desenlace = estado.setdefault("desenlace", {})
+    # Dos presupuestos separados: en la primera prueba real, la verificacion
+    # de desenlace (sin_resolver) se comia todas las llamadas y ninguna senal
+    # recibia primer_paso.
+    presupuesto = {"n": max_ia}
+    presupuesto_paso = {"n": max_ia}
+
+    def _desenlace(material):
+        k = _clave_material(material)
+        if k in cache_desenlace:
+            return cache_desenlace[k]
+        if ia_desenlace is None or presupuesto["n"] <= 0:
+            return None
+        presupuesto["n"] -= 1
+        r = ia_desenlace(material)
+        if r is not None:
+            cache_desenlace[k] = r
+        return r
+
+    por_id = {story_key(s): s for s in stories or []}
+    candidatas = []
+    candidatas += detectar_acelera(stories or [], ahora=ahora)
+    candidatas += detectar_un_solo_medio(stories or [], ahora=ahora)
+    candidatas += detectar_brecha_historia(stories or [], demand or {}, ahora=ahora)
+    if registro_entries:
+        candidatas += detectar_sin_resolver(registro_entries, ia_fn=_desenlace if ia_desenlace else None,
+                                            ahora=ahora)
+    if entities:
+        candidatas += detectar_actor_repetido(entities, stories or [], ahora=ahora)
+    candidatas += detectar_evento_alertas()
+    if saved:
+        candidatas += detectar_evento_guardadas(saved, registro_by_link or {}, estado)
+
+    for c in candidatas:
+        s = por_id.get(c.get("historia_id"))
+        if s is not None:
+            c["ambito"] = _ambito(s)
+        elif c["tipo"] == "alerta_estado":
+            c["ambito"] = "guayaquil"
+        else:
+            ciudad = next((e.get("ciudad") for e in (registro_entries or [])
+                           if (e.get("fuentes") or [{}])[0].get("link") == c.get("historia_id")), "")
+            c["ambito"] = "guayaquil" if ciudad == "Guayaquil" else "ecuador"
+        c["prioridad"] = "alta" if c["tipo"] in PRIORIDAD_ALTA else "normal"
+
+    candidatas = [c for c in candidatas if c["tipo"] in ("alerta_estado", "actor_repetido")
+                  or not _es_boletin(c.get("titulo", ""))]
+    candidatas.sort(key=lambda c: (0 if c.get("ambito") == "guayaquil" else 1,
+                                   _ORDEN_TIPO.get(c["tipo"], 9),
+                                   _ORDEN_NIVEL.get((c.get("certeza") or {}).get("nivel"), 3),
+                                   -((por_id.get(c.get("historia_id")) or {}).get("interes") or 0)))
+    gye = [c for c in candidatas if c.get("ambito") == "guayaquil"][:CUPO_GUAYAQUIL]
+    ecu = [c for c in candidatas if c.get("ambito") != "guayaquil"][:CUPO_ECUADOR]
+    candidatas = (gye + ecu)[:MAX_ACTIVAS]
+
+    # primer_paso: se conserva el de la vuelta anterior (misma clave); los
+    # que faltan se piden a la IA mientras quede presupuesto.
+    previas = {c.get("clave_dedupe"): c for c in estado.get("activas", [])}
+    for c in candidatas:
+        prev = previas.get(c["clave_dedupe"])
+        if prev and prev.get("primer_paso"):
+            c["primer_paso"] = prev["primer_paso"]
+            c["ts"] = prev.get("ts", c["ts"])
+        elif ia_texto is not None and presupuesto_paso["n"] > 0:
+            s = por_id.get(c.get("historia_id")) or {}
+            material = "\n".join([c.get("titulo", ""), s.get("resumen", "") or ""] +
+                                 ["- %s (%s)" % (f.get("title", ""), f.get("outlet", ""))
+                                  for f in (s.get("fuentes") or [])[:6]])
+            presupuesto_paso["n"] -= 1
+            c["primer_paso"] = generar_primer_paso(c, material, ia_texto)
+
+    nuevas = deduplicar(candidatas, estado["vistas"])
+    # 'vistas' no crece sin limite: se queda con las claves activas + las 500 mas recientes
+    if len(estado["vistas"]) > 800:
+        activas_k = {c["clave_dedupe"] for c in candidatas}
+        resto = [k for k in estado["vistas"] if k not in activas_k][-500:]
+        estado["vistas"] = {k: estado["vistas"][k] for k in list(activas_k) + resto if k in estado["vistas"]}
+    if len(cache_desenlace) > 500:
+        estado["desenlace"] = dict(list(cache_desenlace.items())[-500:])
+    estado["activas"] = candidatas
+    estado["ultima_vuelta"] = ahora.isoformat()
+    estado["nuevas_ultima_vuelta"] = len(nuevas)
+    tmp = ruta + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(estado, f, ensure_ascii=False)
+    os.replace(tmp, ruta)
+    texto = "%d activas (%d nuevas; Guayaquil %d, resto de Ecuador %d)" % (
+        len(candidatas), len(nuevas), sum(1 for c in candidatas if c.get("ambito") == "guayaquil"),
+        sum(1 for c in candidatas if c.get("ambito") != "guayaquil"))
+    return {"senales": candidatas, "nuevas": nuevas, "estado": texto}
+
+
+def activas(estado_path=None):
+    """Senales activas de la ultima vuelta (solo lectura, para data.json)."""
+    try:
+        with open(estado_path or ESTADO_PATH, encoding="utf-8") as f:
+            return json.load(f).get("activas", [])
+    except Exception:
+        return []
+
+
+def ultima_vuelta(estado_path=None):
+    try:
+        with open(estado_path or ESTADO_PATH, encoding="utf-8") as f:
+            return json.load(f).get("ultima_vuelta")
+    except Exception:
+        return None
