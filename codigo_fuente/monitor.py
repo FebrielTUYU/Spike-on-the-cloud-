@@ -3542,6 +3542,82 @@ def get_demand(themes, modo_lectura=False):
     return vals, tend, estado, fuente
 
 
+# ------------------------- estadisticas honestas (Fase 18, P2-12) -------------------------
+# Cada numero con su fuente, su ALCANCE GEOGRAFICO real y su antiguedad.
+# Caso real: una nota LOCAL salia con "demanda 100" sacada de Wikipedia en
+# espanol (lectores de todo el mundo, no de Guayaquil), de hace 25 h; y GDELT
+# llevaba 6 dias sin responder. Dato > DATO_VIEJO_H: marcado viejo;
+# > DATO_NO_GRAFICAR_H: no se grafica ni se usa.
+DATO_VIEJO_H = float(os.environ.get("MONITOR_DATO_VIEJO_H", "6"))
+DATO_NO_GRAFICAR_H = float(os.environ.get("MONITOR_DATO_NO_GRAFICAR_H", "48"))
+
+
+def _meta_de(cache, clave_ts, fuente, alcance):
+    ts = cache.get(clave_ts) or {}
+    if not ts and cache.get("ts"):
+        ts = {"_": cache["ts"]}
+    edades = {k: (time.time() - v) / 3600 for k, v in ts.items()}
+    frescos = {k: e for k, e in edades.items() if e <= DATO_NO_GRAFICAR_H}
+    edad_h = round(min(edades.values()), 1) if edades else None          # el tema mas nuevo
+    edad_max = round(max(frescos.values()), 1) if frescos else None      # el mas viejo que SI se grafica
+    return {"fuente": fuente, "alcance": alcance, "edad_h": edad_h, "edad_max_h": edad_max,
+            "temas_descartados_48h": sorted(k for k in edades if k not in frescos and k != "_"),
+            "viejo": bool(edad_max is not None and edad_max > DATO_VIEJO_H),
+            "no_graficar": not frescos}
+
+
+def _solo_frescos(datos, ruta_cache, clave_ts):
+    """Quita de 'datos' ({tema: ...}) los temas con dato de mas de
+    DATO_NO_GRAFICAR_H horas (Fase 18, P2-12)."""
+    try:
+        with open(ruta_cache, encoding="utf-8") as f:
+            ts = json.load(f).get(clave_ts) or {}
+    except Exception:
+        return datos
+    if not ts:
+        return datos
+    lim = time.time() - DATO_NO_GRAFICAR_H * 3600
+    return {t: v for t, v in (datos or {}).items() if ts.get(t, 0) >= lim}
+
+
+def meta_datos():
+    """Fuente/alcance/antiguedad de la demanda (Trends o Wikipedia) y de
+    GDELT, leidos de sus caches (nunca red)."""
+    def _leer(ruta):
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    tc, gc = _leer(TREND_CACHE), _leer(GDELT_CACHE)
+    fuente = tc.get("fuente") or ""
+    if "Trends" in fuente:
+        alcance = "búsquedas en Ecuador (Google Trends, geo %s) — no específico de Guayaquil" % (tc.get("geo") or TREND_GEO)
+    elif "Wiki" in fuente:
+        alcance = "lectores de Wikipedia en español de todo el mundo — no Guayaquil ni solo Ecuador"
+    else:
+        alcance = "sin fuente de demanda"
+    return {"demanda": _meta_de(tc, "vals_ts", fuente or "sin datos", alcance),
+            "gdelt": _meta_de(gc, "g_ts", "GDELT", "prensa mundial (GDELT) — no mide Ecuador en particular")}
+
+
+def _demanda_historia(s, demand, meta):
+    if meta.get("no_graficar") and meta.get("fuente") != "muestra":
+        s["demanda"], s["demanda_nota"] = None, "dato de demanda demasiado viejo"
+        return
+    if s.get("es_local") and "Trends" not in (meta.get("fuente") or "") and meta.get("fuente") != "muestra":
+        s["demanda"], s["demanda_nota"] = None, "sin dato local"
+        return
+    ds = [demand[t] for t in s.get("temas", []) if t in demand]
+    s["demanda"] = max(ds) if ds else None
+    s.pop("demanda_nota", None)
+
+
+def aplicar_demanda(stories, demand, meta):
+    for s in stories:
+        _demanda_historia(s, demand, meta)
+
+
 # ------------------------- agente de IA local (Ollama) -------------------------
 
 IA_CACHE = os.path.join(HERE, "ia_cache.json")
@@ -6000,11 +6076,13 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
                           for (o, s, n, st) in report],
         "historias": stories,
         "historial": hist,
-        "tendencias": tend or {},
+        "tendencias": _solo_frescos(tend or {}, TREND_CACHE, "vals_ts"),
         "fuente_interes": fuente,
         "estado_interes": estado,
-        "gdelt": gdelt_data or {},
+        "gdelt": _solo_frescos(gdelt_data or {}, GDELT_CACHE, "g_ts"),
         "estado_gdelt": gestado,
+        # Fase 18 (P2-12): fuente, alcance geografico real y antiguedad.
+        "datos_meta": meta_datos(),
         "estado_sercop": sstatus,
         "estado_ia": iastatus,
         "estado_contexto": cstatus,
@@ -6207,9 +6285,9 @@ def run_once(verbose=True):
         gdelt_data, gstatus = get_gdelt(themes_present)
     t0 = _fase("get_gdelt", t0)
 
+    _meta_dem = {"fuente": "muestra"} if os.environ.get("MONITOR_SAMPLE") == "1" else meta_datos()["demanda"]
     for s in stories:
-        ds = [demand[t] for t in s.get("temas", []) if t in demand]
-        s["demanda"] = max(ds) if ds else None
+        _demanda_historia(s, demand, _meta_dem)  # Fase 18 (P2-12): sin Wikipedia como demanda local
         # BRECHA: mucha demanda + poca cobertura = interes desatendido
         s["brecha"] = bool(s["demanda"] is not None and s["demanda"] >= 50 and s["n_outlets"] <= 1)
         # INTERES: lo que mas se habla (medios) + lo que mas se busca (demanda) + recencia.
@@ -6463,9 +6541,9 @@ def run_fast(verbose=False):
     gdelt_data, gstatus = get_gdelt(themes_present, modo_lectura=True)
     t0 = _fase("get_gdelt", t0)
 
+    _meta_dem = {"fuente": "muestra"} if os.environ.get("MONITOR_SAMPLE") == "1" else meta_datos()["demanda"]
     for s in stories:
-        ds = [demand[t] for t in s.get("temas", []) if t in demand]
-        s["demanda"] = max(ds) if ds else None
+        _demanda_historia(s, demand, _meta_dem)  # Fase 18 (P2-12): sin Wikipedia como demanda local
         s["brecha"] = bool(s["demanda"] is not None and s["demanda"] >= 50 and s["n_outlets"] <= 1)
         bono_impacto = _bono_impacto(s)
         s["alto_impacto"] = bono_impacto > 0

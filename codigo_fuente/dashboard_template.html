@@ -981,7 +981,17 @@ document.addEventListener("mousemove", e=>{
 // demanda de busqueda de un tema: promedio de la ultima semana COMPLETA que
 // calcula el motor (DATA.demanda_tema). Antes se tomaba el ULTIMO punto de la
 // serie = el periodo en curso, incompleto -> ceros o picos falsos.
+// Fase 18 (P2-12): fuente, alcance real y antiguedad de cada dato.
+function metaDato(k){ return ((DATA.datos_meta||{})[k])||null; }
+function metaTxt(k){
+  const m=metaDato(k); if(!m) return "";
+  const h2=x=> x<1 ? "<1 h" : (x<48 ? Math.round(x)+" h" : Math.round(x/24)+" días");
+  const edad = m.edad_h==null ? "sin fecha" : ("de hace "+h2(m.edad_h)+(m.edad_max_h!=null && Math.round(m.edad_max_h)!==Math.round(m.edad_h) ? " a "+h2(m.edad_max_h) : ""));
+  const desc = (m.temas_descartados_48h||[]).length ? ` · sin graficar (más de 48 h): ${esc(m.temas_descartados_48h.join(", "))}` : "";
+  return `${esc(m.fuente)} · ${esc(m.alcance)} · ${edad}${desc}${m.viejo?' <span class="tag" style="border-color:#f59e0b;color:#b45309">dato viejo</span>':''}`;
+}
 function demandaTema(t){
+  const md=metaDato("demanda"); if(md && md.no_graficar) return null;  // > 48 h: no se usa
   const d=(DATA.demanda_tema||{})[t];
   if(d!=null) return d;
   const v=((DATA.tendencias||{})[t]||{}).v||[];
@@ -990,7 +1000,8 @@ function demandaTema(t){
   return Math.round(tail.reduce((a,b)=>a+b,0)/tail.length);
 }
 function renderCharts(){
-  const tend=DATA.tendencias||{};
+  const md=metaDato("demanda");
+  const tend=(md && md.no_graficar) ? {} : (DATA.tendencias||{});  // Fase 18: > 48 h no se grafica
   const hist=DATA.historial||[];
   const hasTrends=Object.keys(tend).length>0;
   const hint=$("#charthint"), box=$("#sparks");
@@ -1029,14 +1040,14 @@ function renderCharts(){
     sel.value=t; shown=PAGE; showSection("noticias"); render();
   }));
   const src=DATA.fuente_interes||"?";
-  hint.innerHTML = hasTrends
+  hint.innerHTML = (md?`<div style="margin-bottom:4px"><b>Dato:</b> ${metaTxt("demanda")}</div>`:"") + (hasTrends
     ? (`Linea = <b>interes</b> segun ${esc(src)} (${src==="Wikipedia"?"vistas de articulos":"busquedas, geo Ecuador"}). `
        + `Barras: interes vs <b>cobertura</b> (historias del tema). ${rank==="brecha"
           ?"Orden por <b>brecha</b> (mucho interes + poca cobertura = tema desatendido)."
           :"Orden por lo <b>mas buscado</b>."} Clic en un tema para ver sus noticias.`)
-    : (`No hubo datos de busqueda esta corrida (${esc(DATA.estado_interes||"sin fuente")}). `
+    : (`${md&&md.no_graficar?"El dato de búsqueda tiene más de 48 h: no se grafica. ":"No hubo datos de busqueda esta corrida. "}(${esc(DATA.estado_interes||"sin fuente")}). `
        + `La linea muestra el <b>volumen</b> de cobertura en el tiempo. `
-       + `Clic en un tema para ver sus noticias.`);
+       + `Clic en un tema para ver sus noticias.`));
 }
 
 // ------- seccion Estadisticas: KPIs + distribucion por categoria -------
@@ -1425,9 +1436,14 @@ function renderGap(){
 }
 // ------- panel GDELT: volumen de prensa + tono por tema -------
 function renderGdelt(){
-  const box=$("#gdeltsparks"), g=DATA.gdelt||{};
-  $("#gdeltsrc").textContent = Object.keys(g).length ? "GDELT" : "sin datos";
+  const mg=metaDato("gdelt");
+  const box=$("#gdeltsparks"), g=(mg&&mg.no_graficar)?{}:(DATA.gdelt||{});
+  $("#gdeltsrc").innerHTML = Object.keys(g).length ? metaTxt("gdelt") : "sin datos recientes";
   if(!Object.keys(g).length){
+    if(mg && mg.no_graficar && Object.keys(DATA.gdelt||{}).length){
+      box.innerHTML=`<div class="gapnone">GDELT: el último dato es de ${mg.edad_h==null?"fecha desconocida":"hace "+Math.round(mg.edad_h/24)+" días"} — no se grafica (más de 48 h). ${esc(DATA.estado_gdelt||"")}</div>`;
+      return;
+    }
     box.innerHTML=`<div class="gapnone">Todavia no hay datos de GDELT `
       +`(${esc(DATA.estado_gdelt||"sin fuente")}). Se reintenta solo en segundo plano: `
       +`no hace falta reiniciar el programa.</div>`;
@@ -2151,7 +2167,8 @@ function cardHTML(h, i, opts){
     : (h.ciudad ? `<span class="tag loc"${geoEvid}>${esc(h.localidad ? h.localidad+" · Gran Guayaquil" : h.ciudad)}</span>` : `<span class="tag loc">Ecuador</span>`);
   const gap = h.brecha?`<span class="tag gap" title="Mucha busqueda + poca cobertura">Brecha</span>`:"";
   const impacto = h.alto_impacto?`<span class="tag" style="background:#dc2626;color:#fff;border-color:#dc2626" title="Suceso de alto impacto en Ecuador/Guayaquil (crimen/violencia grave)">Alto impacto</span>`:"";
-  const dem = (h.demanda!=null)?`<span class="dem">busq <b>${h.demanda}</b></span>`:"";
+  const dem = (h.demanda!=null)?`<span class="dem" title="${esc(((metaDato('demanda')||{}).alcance)||'')}">busq <b>${h.demanda}</b></span>`
+    : (h.demanda_nota?`<span class="dem" title="La demanda disponible no mide Guayaquil/Ecuador">${esc(h.demanda_nota)}</span>`:"");
   const medios=h.n_outlets>1?`<span class="badge">${h.n_outlets} medios</span>`:"";
   const img = h.image
     ? `<img class="thumb" src="${esc(h.image)}" loading="lazy" onerror="this.remove()">` : "";
