@@ -1,4 +1,53 @@
-# Coordinación — dos frentes activos
+# Coordinación — frentes activos
+
+## Frente C (nuevo, 2026-09-30): Fase 18 — arreglar la base antes de sumar funciones
+
+**Quién hizo qué (honesto):** Claude implementó todo en una sesión en la nube (Linux) sin acceso a
+Codex CLI ni a Windows. Por eso **Codex NO escribió las pruebas** como pedía el pedido: las escribió
+Claude **desde la especificación, antes de tocar cada parte del código** (cada prueba se corrió
+primero contra el código viejo y falló, reproduciendo el bug real; después se implementó). **Revisión
+de Codex: pendiente** — primer paso cuando se retome en la PC de Fernando.
+**`compilar.bat` / `.exe`: NO recompilado** (no hay Windows en la sesión). Fernando tiene que correr
+`compilar.bat` y probar el `.exe`.
+**Red de la sesión:** solo llegaba a la API de Gemini. Medios RSS, X/Apify, Bluesky, Wikipedia,
+sitemaps y Open-Meteo estaban bloqueados → todo lo que depende de esas fuentes quedó probado con
+fixtures reales del repo (data.json, historias_registro.json, fetch_cache.json, alertas.json,
+oficial_cache.json de la corrida 2026-09-30) o con sintéticos marcados como tales, NO en vivo.
+
+### Archivos tocados (todos liberados)
+monitor.py, alertas.py, social.py, xapi.py, redes.py, senales.py, herramientas.py, agente.py, ia.py,
+contexto.py, feeds.py, dashboard_template.html; nuevos: contraste.py, x_cuentas_locales.json,
+pruebas/fase18_casos_reales.json, pruebas/medir_fase18.py, pruebas/verificar_dashboard.js y 9
+test_fase18_*.py. Pruebas de fases anteriores ajustadas (porque el pedido cambia el criterio, no
+por comodidad): test_fase15_senales (señales para todo Ecuador), test_fase0_velocidad (latencia solo
+válida), test_fase11_contexto (contexto para todo lo local).
+
+### Tabla antes / después (números medidos, no estimados salvo donde se dice)
+
+| Paso | Síntoma | Antes | Después | Cómo se midió |
+|---|---|---|---|---|
+| P0-1 | Embeddings perdidos | 274/1794 con vector y sin subir (carrera) | 274 → 312 → 350 → 388 en 3 pasadas con run_fast intercalado | copia del registro real + Gemini real |
+| P0-2 | Lluvias GYE 29-sep fragmentadas | 12 tarjetas | 1 historia madre (13 notas por sector) | data.json real → registro reconstruido |
+| P0-2 | Mezclas (Cartagena, CDMX, Rep. Dominicana, La Libertad, Huaquillas, "fechas y precios") | fundidas con historias de Guayaquil | separadas; 11 pruebas con los titulares reales | fixture real + reconstrucción |
+| P0-3 | Historias GYE con otro lugar en el titular | 3 | 0 | pruebas/medir_fase18.py |
+| P0-3 | Historias GYE con fuente extranjera | 3 | 0 | ídem |
+| P0-3 | IVA del feriado | "Guayaquil" | Ecuador, sin ciudad | ídem |
+| P0-4 | Señales | módulo nunca importado, sin senales_estado.json | 40 activas (25 GYE + 15 resto de Ecuador); primer paso Gemini 5/5 | data.json real |
+| P1-5 | X alertas | "corte_luz Guayaquil" (clave interna), 8 términos / 10 tweets | 1 consulta OR con tilde + since: 2 h + cuentas + reactiva por evento | pruebas con actor simulado (sin Apify en la sesión) |
+| P1-6 | Enlaces alerta ↔ historia | 23 (9 sin lugar, Atarazana 18-sep ↔ vivienda 29-sep) | 4 válidos; 2 alertas de simulacro borradas | alertas.json real |
+| P1-7 | Posts sin señal ecuatoriana en ámbitos locales | 37 de 59 (31 de Mastodon) | 0 (filtro de señal positiva) | data.json real |
+| P1-8 | Latencia | medianas 405–666 min (infladas por backlog) | 12 689 mediciones viejas = backlog; se mide de nuevo en vivo | latencia_cache.json real — **no verificado < 20 min** |
+| P1-9 | Internacionales | 1318 | 150 (tope por relevancia); Infobae 80→23 y Semana 82→6 ítems; 16 de farándula fuera | data.json + fetch_cache.json reales; triaje Gemini real en 1 lote |
+| P2-10 | IA / contexto GYE | 36 % / 5 % | 100 % / 100 % | simulación 2 pasadas (IA falsa) + corrida e2e real (contexto GYE 100/100) |
+| P2-10 | IA / contexto resto de Ecuador | 34 % / 4 % | 68 % / 64 % | simulación 2 pasadas |
+| P2-11 | Contraste (locales) | sin_datos 188, pendiente 44, coincide 34 | documento_oficial 4 (ley de menores → Asamblea), corroborado 80, sin_hallazgo 182, hallazgo 0 | data.json + oficial_cache.json reales — **"≥1 hallazgo real" NO cumplido: 0 genuinos en esta corrida** |
+| P2-12 | Demanda de Wikipedia en notas locales | 158 historias | 0 ("sin dato local"); GDELT tema de 148 h fuera de los gráficos | caches reales |
+| P2-13 | Pregunta de la captura | "no tengo datos" | 3 ideas con historias reales citadas (~0,02 USD) | Gemini real |
+
+Suite: **325 → 384 pruebas**, mismos 15 errores viejos de test_fase9_xapi (xapi.GASTO_PATH, Fase 9),
+1 salteada a propósito (la pregunta con Gemini real, MONITOR_TEST_GEMINI=1).
+
+---
 
 ## Frente B (nuevo, 2026-09-29): el `.exe` tarda muchísimo en cargar o no termina
 

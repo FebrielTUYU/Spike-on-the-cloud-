@@ -4386,7 +4386,10 @@ def get_contexto(stories, modo_lectura=False):
         extra = ", %d desactualizados" % desactualizadas if desactualizadas else ""
         return "cache (%d/%d%s)" % (n, len(stories), extra)
 
-    if ia is None or wiki is None or os.environ.get("MONITOR_NO_CONTEXTO") == "1":
+    # Fase 18: tambien respeta MONITOR_NO_IA (antes lo ignoraba y gastaba
+    # Gemini aunque la IA estuviera apagada -- encontrado en la corrida e2e).
+    if ia is None or wiki is None or os.environ.get("MONITOR_NO_CONTEXTO") == "1" \
+            or os.environ.get("MONITOR_NO_IA") == "1":
         return "desactivado"
     if not ia.disponible(IA_MODEL):
         return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")

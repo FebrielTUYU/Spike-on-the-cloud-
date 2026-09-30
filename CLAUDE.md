@@ -4768,3 +4768,112 @@ recompilado con el cambio.
 3. No se revisó visualmente en un navegador real (esta sesión no tiene esa herramienta) -- toda la
    verificación fue con `jsdom` contra datos reales (ver arriba), que confirma comportamiento y
    ausencia de errores mas no la apariencia visual de los dos toggles nuevos.
+
+## Fase 18 (2026-09-30) — arreglar la base antes de sumar funciones
+
+(Nota de numeración: el pedido de Fernando se tituló "Fase 18", igual que la sección anterior sobre
+el Pulso social por red. Son trabajos distintos; este es el de "arreglar la base".)
+
+Trece puntos (P0-1 a P2-13) de un diagnóstico hecho desde Cowork sobre el `data.json` real del
+2026-09-30. Detalle completo, tabla antes/después y quién hizo qué en `codigo_fuente/COORDINACION.md`
+(sección "Frente C"). Lo esencial para no romperlo después:
+
+**Cómo se trabajó (honesto):** sesión en la nube (Linux), sin Codex ni Windows. Las pruebas
+(`test_fase18_*.py`, 59 nuevas) las escribió Claude desde la especificación, antes de cada cambio, y
+cada una falló primero contra el código viejo. **Codex no revisó todavía.** **`Spike.exe` NO se
+recompiló**: hay que correr `compilar.bat` y probar el `.exe`. La red solo llegaba a Gemini, así
+que X/Apify, sitemaps, Bluesky y los feeds se probaron con fixtures reales o sintéticos, no en vivo.
+
+### P0 — la base
+- **P0-1, carrera en `historias_registro.json`**: `run_fast` y el trabajador guardaban el registro sin
+  coordinarse y se pisaban. Ahora todo "cargar → modificar → guardar" pasa por `_REGISTRO_LOCK`; el
+  trabajador llama a Gemini FUERA del lock y aplica sus vectores/divisiones sobre el registro
+  recargado. El texto que se vectoriza es el titular fundador (`_texto_embedding`). Medido: 274 → 388
+  entradas con embedding en 3 pasadas con `run_fast` intercalado.
+- **P0-2, agrupamiento**: titular = nota fundadora (lo nuevo va a `actualizaciones`); veto de lugar
+  extranjero contra representante Y fundador (también en la reconciliación por embeddings); léxico
+  ampliado (Cartagena, CDMX, República Dominicana... / Huaquillas, Santa Elena, Latacunga...);
+  `"ecuatorian"` ahora es prefijo (antes nunca coincidía con "ecuatoriano"); **veto de plantilla**
+  (`TOKENS_PLANTILLA`: "fechas y precios", "ataque armado", "corte de agua", "invierte millones",
+  "aprehendidos"...) — solas ya no unen dos notas, hace falta nombre/cifra/ciudad o 2+ palabras
+  específicas. **Evento en curso** (`agrupar_eventos_en_curso`): ≥3 historias locales de la misma
+  ciudad, mismo tipo de hecho y mismo día local → historia madre ("Lluvias en Guayaquil — 29 sep")
+  con `sub_actualizaciones` por sector. Es solo de VISTA (no toca el registro). Marca `es_nueva`
+  (creada hace ≤ `MONITOR_NUEVA_H`, def. 3 h) o "Actualización · vista por primera vez hace X".
+- **P0-3, qué es Guayaquil**: el titular manda — si nombra otra ciudad/provincia, la historia es de
+  esa ciudad; medida nacional (`es_nacional`, con lista "fuerte": IVA, decreto, ley...) → Ecuador sin
+  ciudad aunque la publique la sección Guayaquil. Samborondón/Durán/Daule: `ciudad="Guayaquil"`
+  (todos los filtros siguen igual) + `localidad` para el chip "Samborondón · Gran Guayaquil".
+- **Migración del registro**: `reconstruir_registro()` re-procesa TODAS las fuentes guardadas con las
+  reglas nuevas (respaldo `historias_registro.json.bak-fase18-...`, conserva los embeddings ya
+  pagados). Corre sola UNA vez al arrancar (`migrar_registro_si_hace_falta`, marca en
+  `historias_registro_version.json`) y a mano con `python monitor.py reconstruir_registro`. Medido:
+  ~40 s con el registro real.
+- **P0-4, señales conectadas**: `senales.py` (Fase 15) nunca se importaba. Ahora `ciclo_senales()`
+  corre en su hilo (`senales_loop`, `MONITOR_SENALES_MIN` def. 15) y en `run_once`; escribe
+  `senales_estado.json`; `data.json["senales"]`; panel arriba de Oportunidades. Alcance: TODO Ecuador
+  (cupo 25 Guayaquil + 15 resto), Guayaquil primero. "Brecha" solo con Google Trends EC (Wikipedia no
+  mide Guayaquil); boletines (clima, fechas y precios) fuera. IA acotada: dos presupuestos
+  (desenlace y primer paso), `MONITOR_SENALES_IA_MAX` def. 5 cada uno.
+
+### P1
+- **P1-5, X (Apify)**: términos con tilde en UNA consulta OR + `since:` (2 h) + filtro por
+  `createdAt` al recibir (antes: `"corte_luz Guayaquil"`, la clave interna). Capas nuevas:
+  cuentas hiperlocales (`x_cuentas_locales.json`, **editable; los usuarios NO están verificados en
+  vivo**) y búsqueda **reactiva** por evento en curso (sectores de la madre, cada 45 min, primero
+  que todo); sus tweets se muestran dentro de la madre ("En X ahora"). Consulta por historia solo con
+  entidades reales (`consulta_x_historia`, sin "hasta/ataque/fuerte"; sin entidad no se gasta).
+  `_es_boletin_plantilla` ya no excluye inundaciones/cortes. TikTok en pausa tras 2 días malos.
+- **P1-6, alertas**: señal de >24 h se descarta; fecha REAL de Bluesky/RSS (antes se pasaba `""` =
+  "ahora"); enlace alerta↔historia solo ≤12 h y lugar compatible (sin lugar no se enlaza);
+  `_revalidar_enlaces` deshace los viejos malos; simulacros no son alertas; `"anegad"` nunca
+  coincidía (ahora formas completas). Real: 23 enlaces → 4 válidos.
+- **P1-7, Pulso**: `social._iso_completo` — fecha con hora en las 5 fuentes (antes `[:10]`);
+  Mastodon fuera de ámbitos locales; Pulso local = señal positiva de aquí (`_post_senal_local`) y
+  ≤48 h (`MONITOR_SOCIAL_LOCAL_H`); "Sin conversación local detectada"; posts con "hace X (hora EC)".
+- **P1-8, velocidad**: latencia solo con el medio ya sondeado ≤30 min antes (`valida`); el backlog de
+  un arranque se cuenta aparte. Soporte de news sitemaps (`tipo: "sitemap"`) y
+  **`python monitor.py probar_sitemaps`** — prueba los candidatos de `feeds.SITEMAPS_Y_FEEDS_CANDIDATOS`
+  DESDE LA PC y guarda los que responden en `feeds_extra.json` (se suman a FEEDS al arrancar).
+  **Pendiente: correrlo en la PC de Fernando** y anotar resultados en feeds.py.
+- **P1-9, internacionales**: Infobae/Semana solo secciones de mundo/región (`rutas_permitidas`) +
+  lo que nombre Ecuador; farándula fuera (`es_farandula`); triaje Gemini en lotes de 20
+  (`get_triaje_intl`, global/region/ecuador/no + "Por qué importa (lectura IA)"; un marco que repite
+  el titular no se muestra); tope `MONITOR_INTL_MAX` (150).
+
+### P2
+- **P2-10, cobertura**: prioridad Guayaquil → Ecuador → internacional; contexto para TODO lo local
+  (antes top 10); el top `MONITOR_TOP_PROFUNDO` (10) con perfil profundo, el resto con el rápido.
+  Cupos por pasada: analizar 80, interpretar 80, contexto 100. Costo medido (corrida e2e real): 100
+  contextos ≈ 0,23 USD.
+- **P2-11, Contraste** (`contraste.py`, nuevo, sin red ni IA): clase de la afirmación (reglas +
+  Gemini en lotes, `get_clase_contraste`), documento primario en boletines/SERCOP, cifras entre
+  medios (solo si las dos notas son del mismo hecho), declaraciones previas. Estados `hallazgo /
+  documento_oficial / corroborado_medios / sin_hallazgo`; `veredicto_ia` guarda el viejo. El
+  veredicto viejo con IA queda apagado (`MONITOR_VEREDICTO_MAX` def. 0). **No cumplido: "≥1 hallazgo
+  real"** — la corrida del 2026-09-30 no tiene ninguno genuino (los 2 candidatos eran historias mal
+  agrupadas y ahora se filtran).
+- **P2-12, estadísticas**: `data.json["datos_meta"]` (fuente, alcance real, antigüedad por tema);
+  Wikipedia no es demanda de una nota local ("sin dato local"); >6 h "dato viejo", >48 h no se
+  grafica (tema por tema). **Trends `geo=EC-G` vía Apify: no implementado, decisión de Fernando.**
+- **P2-13, Consulta general**: `buscar_historias(ciudad, barrio)`, búsqueda semántica con los
+  embeddings del registro, reintento sin `q`, herramienta `senales_oportunidad`; la transcripción al
+  modelo ya no corta a 900 caracteres y la respuesta final tiene 4000 tokens (antes se cortaba).
+
+### Verificación
+- `pruebas/medir_fase18.py` — mide antes/después del agrupamiento sobre un registro real (copia).
+- `pruebas/verificar_dashboard.js` — ejecuta el dashboard COMPLETO en jsdom y recorre la navegación
+  (necesita `npm install jsdom`); 0 errores de JavaScript con datos reales.
+- Corrida e2e (`python monitor.py once` en copia aislada, feeds desde `fetch_cache.json`): pipeline
+  completo OK, registro migrado, 40 señales, 3 historias madre.
+- Bug encontrado en esa corrida y arreglado: `get_contexto` ignoraba `MONITOR_NO_IA`.
+
+### Pendientes reales de esta fase
+1. **Recompilar `Spike.exe` y probarlo** en la PC de Fernando.
+2. **Revisión de Codex** del código y de las pruebas.
+3. `python monitor.py probar_sitemaps` desde la PC (P1-8) y medir la latencia real después de un rato.
+4. Confirmar los usuarios de `x_cuentas_locales.json` y verificar en vivo que el actor de Apify
+   respeta `since:` y `OR` (P1-5; si no, el filtro por `createdAt` ya protege).
+5. Reproducir el caso del 29-sep con tweets REALES (solo se probó con sintéticos).
+6. Contraste: esperar una corrida con una discrepancia real para confirmar un "hallazgo" genuino.
+7. Fase 18-B (lluvia Open-Meteo, mareas, Waze, bot de tips): no implementada, espera el OK de Fernando.
