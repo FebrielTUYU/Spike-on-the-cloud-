@@ -110,6 +110,10 @@ try:
 except Exception:
     contexto = None
 try:
+    import comunidad  # Fase 20: lente Comunidad de Guayaquil (sin red ni IA); opcional
+except Exception:
+    comunidad = None
+try:
     import redes  # Fase 9, parte D3: orquestador de X+TikTok via Apify (xapi.py/tiktok.py) -- apagado sin token; opcional
 except Exception:
     redes = None
@@ -6063,6 +6067,19 @@ def estado_embeddings_dashboard():
     base = ia.estado_embeddings()
     return "%s -- %s historias con embedding" % (base, _embeddings_cobertura())
 
+def calcular_comunidad(stories, alertas_activas=None):
+    """Fase 20: lente Comunidad. Determinista y barato (sin red ni IA): corre
+    en cada pasada del hilo rapido. En modo muestra NO guarda comunidad.json
+    (no se ensucia el registro real con historias ficticias)."""
+    if comunidad is None:
+        return {"temas": [], "barrios": [], "total_notas": 0, "estado": "comunidad.py no disponible"}
+    try:
+        return comunidad.actualizar(stories, alertas=alertas_activas,
+                                    persistir=os.environ.get("MONITOR_SAMPLE") != "1")
+    except Exception as e:
+        return {"temas": [], "barrios": [], "total_notas": 0, "estado": "error: %s" % e}
+
+
 def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado="",
                   gdelt_data=None, gestado="", sstatus="", iastatus="",
                   social_data=None, social_status="", cstatus="", fcstatus="", vstatus="", dstatus="",
@@ -6070,6 +6087,7 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
     hist = append_history(stories, demand)
     estado_movil = avisar_movil(stories, demand)
     alertas_activas, alertas_estado = procesar_alertas(stories)
+    comunidad_data = calcular_comunidad(stories, alertas_activas)
     salud_fuentes = construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
                                              social_status, cstatus, fcstatus)
     payload = {
@@ -6135,6 +6153,9 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         # Fase 18 (P0-4): senales de la Fase 15, que nunca se habian conectado.
         # El hilo rapido solo LEE senales_estado.json (lo escribe senales_loop).
         **senales_para_dashboard(),
+        # Fase 20: temas comunitarios de Guayaquil (problemas de barrio,
+        # eventos, historias humanas) acumulados por barrio en comunidad.json.
+        "comunidad": comunidad_data,
     }
     # BUG REAL encontrado en el Fase 0 (2026-09-23): el CLAUDE.md documentaba
     # "data.json se escribe atomico (_escribir_atomico)" como ya hecho, pero

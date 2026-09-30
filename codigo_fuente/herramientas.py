@@ -260,6 +260,37 @@ def senales_oportunidad(ambito=None, limite=10):
     return out[:int(limite or 10)]
 
 
+def temas_comunitarios(categoria=None, barrio=None, limite=10):
+    """Fase 20: temas comunitarios de Guayaquil ya detectados por comunidad.py
+    (problemas de barrio que se repiten, eventos de la ciudad, historias
+    humanas), con el 'por que' medido, las pistas de reporteo y las notas de
+    respaldo. Solo lectura de data.json["comunidad"].
+    categoria: "problema", "evento" o "humana". barrio: nombre del sector
+    (ej. "Guasmo", "Sauces"), sin tildes ni mayusculas estrictas."""
+    d = _cargar("data.json", {}) or {}
+    temas = (d.get("comunidad") or {}).get("temas") or []
+    cat = str(categoria or "").lower().strip()
+    if cat.startswith("problem"):
+        cat = "problema"
+    elif cat.startswith("event"):
+        cat = "evento"
+    elif cat.startswith("human") or cat.startswith("histori"):
+        cat = "humana"
+    b = _norm_q(barrio or "").strip()
+    out = []
+    for t in temas:
+        if cat in ("problema", "evento", "humana") and t.get("categoria") != cat:
+            continue
+        if b and b not in _norm_q(t.get("barrio") or ""):
+            continue
+        out.append({"titulo": t.get("titulo"), "categoria": t.get("categoria_label"),
+                    "tipo": t.get("subtipo_label"), "barrio": t.get("barrio"),
+                    "por_que": t.get("por_que"), "pistas_reporteo_sugeridas": t.get("pistas"),
+                    "notas": [{"titular": a.get("titular"), "medios": a.get("outlets"), "fecha": a.get("fecha"),
+                               "link": a.get("link")} for a in (t.get("apariciones") or [])[:4]]})
+    return out[:int(limite or 10)]
+
+
 def detalle_historia(clave):
     """Trae el detalle COMPLETO de una historia por su clave (la que devuelve
     buscar_historias/buscar_guardadas) o por titular exacto: contexto
@@ -604,4 +635,5 @@ HERRAMIENTAS = {
     "buscar_boletines_oficiales": buscar_boletines_oficiales,
     "buscar_declaraciones": buscar_declaraciones,
     "senales_oportunidad": senales_oportunidad,
+    "temas_comunitarios": temas_comunitarios,
 }

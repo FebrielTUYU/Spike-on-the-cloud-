@@ -195,6 +195,7 @@
      quedar visibles siempre aunque el JS les pusiera hidden=true/false. */
   #live[hidden]{display:none;}
   #vermas[hidden]{display:none;}
+  #comVermas[hidden]{display:none;}
   .modalbox{background:var(--card);border-radius:14px;max-width:720px;width:100%;
     max-height:calc(100vh - 48px);overflow-y:auto;
     padding:20px 22px 18px;position:relative;box-shadow:0 12px 44px rgba(0,0,0,.35);margin:auto 0;}
@@ -418,6 +419,7 @@
 
   <div class="mainnav" id="mainnav">
     <button class="active" data-sec="noticias">Noticias</button>
+    <button data-sec="comunidad">Comunidad Guayaquil</button>
     <button data-sec="ultimahora">Última hora <span id="uhBadge" class="badge" hidden></span></button>
     <button data-sec="social">Pulso social <span id="alertasBadge" class="badge" hidden></span></button>
     <button data-sec="stats">Estadisticas</button>
@@ -678,6 +680,25 @@
       </details>
     </div>
     <div id="socialbox"></div>
+  </section>
+
+  <!-- Fase 20: lente Comunidad (comunidad.py). Temas para reportear en
+       Guayaquil: problemas de barrio que se repiten, eventos, historias humanas. -->
+  <section id="secComunidad" hidden>
+    <div class="panel" style="border-left:4px solid #0ea5e9">
+      <h2 style="margin:0 0 4px">Comunidad Guayaquil — temas para reportear</h2>
+      <p class="hint">Problemas de barrio, eventos de la ciudad e historias humanas, detectados en lo que ya publicaron los medios y las fuentes que Spike lee. Un problema que vuelve a aparecer varios días en el mismo sector sube en la lista; una nota suelta queda más abajo. Las "pistas" son preguntas sugeridas para reportear, no datos. Límite: lo que solo circula en grupos de Facebook o WhatsApp no llega aquí.</p>
+      <div class="seg" id="comSeg" style="margin:6px 0 8px">
+        <button class="active" data-cc="">Todo</button>
+        <button data-cc="problema">Problemas de barrio</button>
+        <button data-cc="evento">Eventos</button>
+        <button data-cc="humana">Historias humanas</button>
+      </div>
+      <div id="comBarrios" style="margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="comList"></div>
+      <button class="vermas" id="comVermas" hidden>Ver mas</button>
+      <p class="hint" id="comEstado"></p>
+    </div>
   </section>
 
   <section id="secGap" hidden>
@@ -1946,6 +1967,7 @@ function showSection(sec){
   document.querySelectorAll("#mainnav button").forEach(b=>b.classList.toggle("active",b.dataset.sec===sec));
   $("#secNoticias").hidden = sec!=="noticias";
   $("#secUltimaHora").hidden = sec!=="ultimahora";
+  $("#secComunidad").hidden = sec!=="comunidad";
   $("#secSocial").hidden = sec!=="social";
   $("#secStats").hidden = sec!=="stats";
   $("#secGap").hidden = sec!=="gap";
@@ -1958,6 +1980,7 @@ function showSection(sec){
   if(sec==="social"){ $("#alertasBadge").hidden=true; renderAlertas(); renderSocialHistorias(); renderSocial(); }
   if(sec==="stats") renderStats();
   if(sec==="gap") renderGap();
+  if(sec==="comunidad") renderComunidad();
   if(sec==="contraste") renderContraste();
   if(sec==="guardadas") cargarGuardadas().then(renderGuardadas);
   if(sec==="buscar") cargarHistorialBusquedas();
@@ -3484,11 +3507,69 @@ function hydrate(){
 }
 
 let sec="noticias";
+
+// ------- Fase 20: Comunidad Guayaquil (comunidad.py) -------
+let comCat="", comBarrio="", comExpandido=false;
+const COM_PAGE=12;
+const COM_COLOR={problema:"#e11d48", evento:"#7c3aed", humana:"#0891b2"};
+function comunidadCardHTML(t){
+  const ap=(t.apariciones||[]).map(a=>`<li>${esc(fmtHoraEC(a.fecha))} · ${esc((a.outlets||[]).join(", "))} —
+      ${a.link?`<a href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.titular)}</a>`:esc(a.titular)}</li>`).join("");
+  const pistas=(t.pistas||[]).map(p=>`<li>${esc(p)}</li>`).join("");
+  const titulo = t.categoria==="problema" ? esc(t.titulo)
+    : (t.apariciones&&t.apariciones[0]&&t.apariciones[0].link
+        ? `<a href="${esc(t.apariciones[0].link)}" target="_blank" rel="noopener">${esc(t.titulo)}</a>` : esc(t.titulo));
+  return `<div class="gapcard" style="margin-bottom:8px">
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      <span class="tag" style="background:${COM_COLOR[t.categoria]||"#64748b"}">${esc(t.categoria_label)}</span>
+      <span class="tag loc">${esc(t.barrio)}</span>
+      ${t.categoria!=="problema"?`<span class="hint">${esc(t.subtipo_label)}</span>`:""}
+      <span class="hint" style="margin-left:auto">${t.n} nota(s) · ${t.dias} día(s)${t.alertas?` · ${t.alertas} alerta(s)`:""}</span>
+    </div>
+    <div class="titular" style="margin:6px 0">${titulo}</div>
+    <div><b>Por qué:</b> ${esc(t.por_que)}</div>
+    ${pistas?`<details style="margin-top:4px"><summary>Pistas de reporteo (sugerencias, no datos)</summary><ul>${pistas}</ul></details>`:""}
+    ${t.categoria==="problema"?`<details style="margin-top:4px"><summary>Notas (${(t.apariciones||[]).length})</summary><ul>${ap}</ul></details>`
+      :`<div class="hint" style="margin-top:4px">${esc(fmtHoraEC(t.ultima))} · ${esc((t.medios||[]).join(", "))}</div>`}
+  </div>`;
+}
+function renderComunidad(){
+  const box=$("#comList"); if(!box) return;
+  const C=DATA.comunidad||{};
+  const todos=C.temas||[];
+  const barrios=(C.barrios||[]).filter(b=>b.barrio!=="Guayaquil (sin sector)").slice(0,20);
+  $("#comBarrios").innerHTML = barrios.length
+    ? `<button class="${comBarrio?"":"active"}" data-ci="-1" style="font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#ccc);background:${comBarrio?"transparent":"#0ea5e9"};color:${comBarrio?"inherit":"#fff"};cursor:pointer">Todos los sectores</button>`
+      + barrios.map((b,i)=>`<button data-ci="${i}" style="font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#ccc);background:${comBarrio===b.barrio?"#0ea5e9":"transparent"};color:${comBarrio===b.barrio?"#fff":"inherit"};cursor:pointer">${esc(b.barrio)} (${b.n_notas})</button>`).join("")
+    : "";
+  $("#comBarrios").querySelectorAll("button").forEach(bt=>bt.addEventListener("click",()=>{
+    const i=+bt.dataset.ci; comBarrio = i<0 ? "" : barrios[i].barrio; comExpandido=false; renderComunidad();
+  }));
+  const L=todos.filter(t=>(!comCat||t.categoria===comCat)&&(!comBarrio||t.barrio===comBarrio));
+  if(!L.length){
+    box.innerHTML=`<p class="hint">${todos.length?"Nada en este filtro.":"Todavía no hay temas comunitarios detectados. Se llenan solos con cada pasada del feed."}</p>`;
+    $("#comVermas").hidden=true;
+  } else {
+    const vis = comExpandido ? L : L.slice(0,COM_PAGE);
+    box.innerHTML = vis.map(comunidadCardHTML).join("");
+    const vm=$("#comVermas");
+    vm.hidden = L.length<=COM_PAGE || comExpandido;
+    vm.textContent = "Ver mas (" + (L.length-vis.length) + " tema(s) mas)";
+  }
+  $("#comEstado").textContent = C.estado||"";
+}
+document.querySelectorAll("#comSeg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#comSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); comCat=b.dataset.cc; comExpandido=false; renderComunidad();
+}));
+(function(){ const vm=document.getElementById("comVermas"); if(vm) vm.addEventListener("click",()=>{ comExpandido=true; renderComunidad(); }); })();
+
 function renderAll(){
   render();
   if(sec==="social"){ renderAlertas(); renderSocialHistorias(); renderSocial(); }
   if(sec==="stats") renderStats();
   if(sec==="gap") renderGap();
+  if(sec==="comunidad") renderComunidad();
   if(sec==="contraste") renderContraste();
   if(sec==="guardadas") cargarGuardadas().then(renderGuardadas);
 }

@@ -123,6 +123,22 @@ FEEDS = [
      "url": "https://news.google.com/rss/search?q=Dur%C3%A1n%20Ecuador&hl=es-419&gl=EC&ceid=EC:es-419"},
     {"outlet": "Busqueda: Samborondon", "seccion": "auto", "google_news": True,
      "url": "https://news.google.com/rss/search?q=Samborond%C3%B3n&hl=es-419&gl=EC&ceid=EC:es-419"},
+    # Fase 20 (foco comunitario en Guayaquil): busquedas por BARRIO y por la
+    # palabra que usa la prensa ecuatoriana para la voz del barrio
+    # ("moradores"). Solo nombres de sector que no existen como palabra comun
+    # ni en otros paises (Guasmo, Isla Trinitaria, Mapasingue...); "Sauces" o
+    # "Alborada" quedan fuera de la busqueda por ambiguos (siguen detectandose
+    # en el texto por comunidad.py). NO verificadas en vivo desde la sesion
+    # en la nube (sin red a Google): si alguna devuelve error, se ve en el
+    # reporte de feeds y no rompe nada.
+    {"outlet": "Busqueda: barrios sur/oeste GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Guasmo%22%20OR%20%22Isla%20Trinitaria%22%20OR%20%22Cristo%20del%20Consuelo%22%20OR%20%22Socio%20Vivienda%22%20OR%20%22Monte%20Sina%C3%AD%22&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: barrios norte/noroeste GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Mapasingue%22%20OR%20%22Pascuales%22%20OR%20%22Basti%C3%B3n%20Popular%22%20OR%20%22Flor%20de%20Basti%C3%B3n%22%20OR%20%22Mucho%20Lote%22%20OR%20%22Martha%20de%20Rold%C3%B3s%22&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: moradores Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=moradores%20Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: vecinos Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=vecinos%20Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
 
     # ---- INTERNACIONALES ("intl": True) ----
     # Politica y ECONOMIA DEL MUNDO desde medios de afuera. NO se filtran a Ecuador:
@@ -138,24 +154,24 @@ FEEDS = [
     {"outlet": "La Nacion (AR)","seccion": "auto", "intl": True, "url": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml"},
     # -- Mexico --
     # {"outlet": "El Universal (MX)","seccion":"auto","intl":True,"url":"https://www.eluniversal.com.mx/rss.xml"},  # HTTP 404
-    {"outlet": "La Jornada",       "seccion": "auto", "intl": True, "url": "https://www.jornada.com.mx/rss/mundo.xml"},
+    # {"outlet": "La Jornada",       "seccion": "auto", "intl": True, "url": "https://www.jornada.com.mx/rss/mundo.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- Estados Unidos (world + business) --
     {"outlet": "NYT",          "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"},
-    {"outlet": "NYT Business", "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"},
+    # {"outlet": "NYT Business", "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- Reino Unido (world + business) --
     {"outlet": "The Guardian","seccion": "auto", "intl": True, "url": "https://www.theguardian.com/world/rss"},
     {"outlet": "BBC News",    "seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/world/rss.xml"},
-    {"outlet": "BBC Business","seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+    # {"outlet": "BBC Business","seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- Alemania --
-    {"outlet": "Der Spiegel","seccion": "auto", "intl": True, "url": "https://www.spiegel.de/international/index.rss"},
+    # {"outlet": "Der Spiegel","seccion": "auto", "intl": True, "url": "https://www.spiegel.de/international/index.rss"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     {"outlet": "DW",         "seccion": "auto", "intl": True, "url": "https://rss.dw.com/rdf/rss-sp-all"},
     # -- Japon (ediciones en ingles) --
-    {"outlet": "The Japan Times","seccion": "auto", "intl": True, "url": "https://www.japantimes.co.jp/feed/"},
+    # {"outlet": "The Japan Times","seccion": "auto", "intl": True, "url": "https://www.japantimes.co.jp/feed/"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # {"outlet": "NHK World",    "seccion":"auto","intl":True,"url":"https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml"},  # HTTP 404
     # -- agregados 2026-09-23 (Problema 5), probados uno por uno --
     {"outlet": "Al Jazeera",   "seccion": "auto", "intl": True, "url": "https://www.aljazeera.com/xml/rss/all.xml"},
     {"outlet": "France24 (ES)","seccion": "auto", "intl": True, "url": "https://www.france24.com/es/rss"},
-    {"outlet": "SCMP",         "seccion": "auto", "intl": True, "url": "https://www.scmp.com/rss/91/feed"},
+    # {"outlet": "SCMP",         "seccion": "auto", "intl": True, "url": "https://www.scmp.com/rss/91/feed"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- probados 2026-09-23, fallaron --
     # {"outlet": "Reuters World","seccion":"auto","intl":True,"url":"https://www.reutersagency.com/feed/?best-topics=world&post_type=best"},  # HTTP 404
     # {"outlet": "AP Top",       "seccion":"auto","intl":True,"url":"https://apnews.com/apf-topnews?format=rss"},  # HTTP 403
@@ -168,17 +184,17 @@ FEEDS = [
     {"outlet": "ABC.es (Internacional)", "seccion": "auto", "intl": True, "url": "https://www.abc.es/rss/feeds/abc_Internacional.xml"},
     {"outlet": "Euronews (ES)",  "seccion": "auto", "intl": True, "url": "https://es.euronews.com/rss"},
     {"outlet": "RFI (ES)",       "seccion": "auto", "intl": True, "url": "https://www.rfi.fr/es/rss"},
-    {"outlet": "Le Figaro",      "seccion": "auto", "intl": True, "url": "https://www.lefigaro.fr/rss/figaro_international.xml"},
-    {"outlet": "Corriere della Sera", "seccion": "auto", "intl": True, "url": "https://xml2.corriereobjects.it/rss/esteri.xml"},
-    {"outlet": "Der Standard",   "seccion": "auto", "intl": True, "url": "https://www.derstandard.at/rss/international"},
+    # {"outlet": "Le Figaro",      "seccion": "auto", "intl": True, "url": "https://www.lefigaro.fr/rss/figaro_international.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "Corriere della Sera", "seccion": "auto", "intl": True, "url": "https://xml2.corriereobjects.it/rss/esteri.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "Der Standard",   "seccion": "auto", "intl": True, "url": "https://www.derstandard.at/rss/international"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- Reino Unido / Canada / Australia (mas anglo) --
-    {"outlet": "Sky News",       "seccion": "auto", "intl": True, "url": "https://feeds.skynews.com/feeds/rss/world.xml"},
-    {"outlet": "NPR (World)",    "seccion": "auto", "intl": True, "url": "https://feeds.npr.org/1004/rss.xml"},
-    {"outlet": "CBC News (World)","seccion": "auto", "intl": True, "url": "https://www.cbc.ca/webfeed/rss/rss-world"},
-    {"outlet": "ABC News (AU)",  "seccion": "auto", "intl": True, "url": "https://www.abc.net.au/news/feed/51120/rss.xml"},
+    # {"outlet": "Sky News",       "seccion": "auto", "intl": True, "url": "https://feeds.skynews.com/feeds/rss/world.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "NPR (World)",    "seccion": "auto", "intl": True, "url": "https://feeds.npr.org/1004/rss.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "CBC News (World)","seccion": "auto", "intl": True, "url": "https://www.cbc.ca/webfeed/rss/rss-world"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "ABC News (AU)",  "seccion": "auto", "intl": True, "url": "https://www.abc.net.au/news/feed/51120/rss.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- Asia --
-    {"outlet": "The Hindu",      "seccion": "auto", "intl": True, "url": "https://www.thehindu.com/news/international/feeder/default.rss"},
-    {"outlet": "Straits Times",  "seccion": "auto", "intl": True, "url": "https://www.straitstimes.com/news/world/rss.xml"},
+    # {"outlet": "The Hindu",      "seccion": "auto", "intl": True, "url": "https://www.thehindu.com/news/international/feeder/default.rss"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
+    # {"outlet": "Straits Times",  "seccion": "auto", "intl": True, "url": "https://www.straitstimes.com/news/world/rss.xml"},  # Fase 20: recortada (casi nunca toca Ecuador; el foco es Guayaquil)
     # -- America Latina (mas fuentes, mas Colombia -- vecino directo) --
     # Fase 18 (P1-9): el feed GENERAL de Infobae/Semana traia sobre todo
     # noticias locales de Mexico/Colombia, plantas, vallenato y farandula

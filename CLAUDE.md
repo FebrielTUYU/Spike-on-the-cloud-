@@ -4877,3 +4877,49 @@ que X/Apify, sitemaps, Bluesky y los feeds se probaron con fixtures reales o sin
 5. Reproducir el caso del 29-sep con tweets REALES (solo se probó con sintéticos).
 6. Contraste: esperar una corrida con una discrepancia real para confirmar un "hallazgo" genuino.
 7. Fase 18-B (lluvia Open-Meteo, mareas, Waze, bot de tips): no implementada, espera el OK de Fernando.
+
+## Fase 20 (2026-09-30) — foco en Guayaquil: menos internacionales, lente "Comunidad"
+
+Pedido de Fernando: que Spike sirva para **encontrar temas comunitarios de Guayaquil para
+reportajes** (problemas de barrio, eventos de la ciudad, historias humanas) y sacrificar la mitad de
+las fuentes internacionales. Se le dijo antes de implementar (y quedó así acordado): recortar
+internacionales baja ruido, gasto de Gemini y tiempo de pasada, pero **no aumenta** la presencia en
+Guayaquil — eso lo hacen fuentes nuevas de barrio y ordenar lo que ya llega por barrio.
+
+- **Recorte (`feeds.py`)**: 15 internacionales comentadas con motivo (La Jornada, NYT Business, BBC
+  Business, Der Spiegel, Japan Times, SCMP, Le Figaro, Corriere, Der Standard, Sky News, NPR, CBC,
+  ABC News AU, The Hindu, Straits Times). Quedan 16 (las de contexto regional). 54 → 43 feeds.
+- **Búsquedas por barrio (`feeds.py`)**: 4 de Google News — dos por grupos de sectores con nombres no
+  ambiguos (Guasmo, Isla Trinitaria, Cristo del Consuelo, Socio Vivienda, Monte Sinaí / Mapasingue,
+  Pascuales, Bastión Popular, Flor de Bastión, Mucho Lote, Martha de Roldós) y "moradores Guayaquil"
+  / "vecinos Guayaquil". **No verificadas en vivo** (la sesión en la nube no llega a Google): si
+  alguna falla, se ve en el reporte de feeds y no rompe nada.
+- **`comunidad.py` (nuevo, sin red ni IA, corre en el hilo rápido)**: `detectar(h)` decide si una
+  historia es de Guayaquil (o Samborondón/Durán/Daule), su clase (`problema` con subtipo agua/luz/
+  inundación/basura/incendios/inseguridad/vías/transporte/salud/educación/vivienda/espacio público/
+  ambiente; `evento`; `humana`) y su barrio (lista de `alertas.BARRIOS_GYE` + extras, cooperativas
+  por regex "cooperativa X", sectores norte/sur/noroeste/centro). Excluye boletines (clima, toque de
+  queda, feriado/IVA, leyes nacionales). `actualizar()` guarda cada detección en
+  **`comunidad.json`** (registro propio, 90 días, NO caché: no borrar a mano) y arma **temas**: un
+  problema se acumula por (barrio, subtipo) a lo largo de los días — sube por días distintos, notas,
+  recencia, poca cobertura y alertas de la gente del mismo tipo/sector; eventos e historias humanas
+  son temas de una nota. Variedad forzada (cada tema repetido del mismo subtipo vale ×0,6) para que
+  el top no sea todo inseguridad. Cada tema trae `por_que` (hechos medidos) y `pistas` (preguntas
+  genéricas, etiquetadas en el dashboard como "sugerencias, no datos"). En `MONITOR_SAMPLE=1` no se
+  guarda. `data.json["comunidad"]` = temas + barrios + estado.
+- **Dashboard**: pestaña **"Comunidad Guayaquil"** (segunda del nav) con filtro por clase, chips por
+  sector y "Ver mas" (con su `#comVermas[hidden]`, ver lección de CSS en Decisiones ya tomadas).
+- **Asistente**: herramienta `temas_comunitarios(categoria, barrio, limite)` (solo lectura de
+  data.json), primera opción del prompt para "¿qué tema comunitario/de barrio puedo reportear?".
+- **Verificado**: `test_fase20_comunidad.py` (15 pruebas, titulares reales del 30-sep); con el
+  data.json real salen 55 temas (34 problemas de barrio) de 96 notas; dashboard completo en jsdom sin
+  errores (filtros, chips, Ver mas); corrida `once` real en copia aislada escribe `comunidad.json`.
+  Suite: 399 pruebas, solo los 15 fallos conocidos de `test_fase9_xapi.py`.
+
+### Pendientes reales de la Fase 20
+1. Recompilar `Spike.exe` y verificar en la PC (búsquedas de barrio en vivo, pestaña nueva).
+2. Muchos temas quedan "Guayaquil (sin sector)": la prensa rara vez nombra el barrio. Mejoras
+   posibles: más sectores/ciudadelas en la lista, o pedir a Gemini el sector solo para los temas top.
+3. La detección es por palabras clave: revisar con uso real qué se escapa o se clasifica mal.
+4. Fuentes de la gente todavía débiles (X depende de cuentas sin verificar; Facebook cerrado). El
+   buzón de denuncias (Fase 18-B) sigue esperando el OK de Fernando.

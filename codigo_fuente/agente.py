@@ -49,6 +49,11 @@ ciudad="Guayaquil" (sin seccion ni q, limite 12) y NO pongas en q palabras como 
 - senales_oportunidad: args opcionales ambito ("guayaquil" o "ecuador") y limite. Historias \
 concretas detectadas HOY como oportunidad (un solo medio, acelera, se apago sin resolverse...) con \
 el por que y un primer paso -- usala para "que idea/angulo podriamos trabajar".
+- temas_comunitarios: args opcionales categoria ("problema", "evento" o "humana"), barrio (ej. \
+"Guasmo", "Sauces") y limite. Temas COMUNITARIOS de Guayaquil ya detectados: problemas de barrio que \
+se repiten varios dias, eventos de la ciudad e historias humanas, con el por que y pistas de \
+reporteo. Es la PRIMERA herramienta para "que tema comunitario/de barrio podria reportear" o \
+"que pasa en tal barrio".
 - detalle_historia: arg "clave" (la clave exacta que devolvio buscar_historias o buscar_guardadas). \
 Trae el detalle completo de UNA nota: contexto verificado, veredicto de contraste, contratos \
 SERCOP, verificaciones FactCheck.
