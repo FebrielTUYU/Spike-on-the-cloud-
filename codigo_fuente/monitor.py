@@ -3052,6 +3052,25 @@ def agrupar_eventos_en_curso(stories):
     return out
 
 
+def _adjuntar_tweets_eventos(stories, max_tweets=6):
+    """Fase 18 (P1-5.3): los tweets que trajo la busqueda reactiva de X
+    (redes._pasada_eventos, hilo trabajador) se muestran DENTRO de la
+    historia madre, con fecha y hora. Solo LEE x_cache.json (nunca red)."""
+    xa = getattr(redes, "xapi", None) if redes is not None else None
+    if xa is None:
+        return
+    for s in stories:
+        if not s.get("evento_en_curso"):
+            continue
+        link = ((s.get("fuentes") or [{}])[0].get("link") or s.get("titular", ""))[:180]
+        tw = xa.tweets_de_historia(link)
+        if not tw:
+            continue
+        tw = sorted(tw, key=lambda t: xa.fecha_iso(t.get("createdAt", "")) or "", reverse=True)[:max_tweets]
+        s["x_tweets"] = [{"texto": (t.get("text") or "")[:280], "autor": (t.get("author") or {}).get("userName", ""),
+                          "fecha": xa.fecha_iso(t.get("createdAt", "")), "url": t.get("url", "")} for t in tw]
+
+
 # ------------------------- demanda (Google Trends) -------------------------
 
 TREND_TTL = 3 * 3600  # no consultar Trends mas seguido que cada 3 horas
@@ -4708,6 +4727,31 @@ def _post_es_foraneo(p):
     texto = p.texto or ""
     return is_foreign(texto) and not is_ecuador(texto)
 
+# Fase 18 (P1-7): en el Pulso LOCAL un post cuenta solo con senal POSITIVA
+# de aqui (menciona Ecuador, una ciudad, un barrio de Guayaquil o una entidad
+# de la historia). Antes alcanzaba con "no nombra otro pais"
+# (_post_es_foraneo) -- y medido el 2026-09-30, los 20 temas mostraban posts
+# de Espana, Chile, Venezuela y Eslovaquia etiquetados como "guayaquil".
+SOCIAL_LOCAL_H = float(os.environ.get("MONITOR_SOCIAL_LOCAL_H", "48"))
+
+
+def _post_senal_local(p, entidades=()):
+    texto = p.texto or ""
+    if is_ecuador(texto) or ciudades_en(texto):
+        return True
+    blob = norm(texto)
+    if alertas is not None and any(geo_hit(t, blob) for ts in alertas.BARRIOS_GYE.values() for t in ts):
+        return True
+    return any(len(n) >= 3 and geo_hit(n, blob) for n in entidades)
+
+
+def _filtrar_pulso_local(posts, entidades=()):
+    """Posts que sirven para un Pulso local: con senal de aqui y de las
+    ultimas SOCIAL_LOCAL_H horas (con hora real, ver social._iso_completo)."""
+    return [p for p in posts if _post_senal_local(p, entidades)
+            and social._es_reciente(p.fecha, horas=SOCIAL_LOCAL_H)]
+
+
 def _dias_desde(fecha):
     """Antiguedad de 'fecha' (YYYY-MM-DD) en dias. Sin fecha valida se trata
     como MUY vieja (9999): no se puede confirmar que sea reciente, asi que no
@@ -4853,7 +4897,7 @@ def get_social(themes, modo_lectura=False, tema_ambito=None):
             if perr:
                 errs.extend(perr)
             if ambito in ("ecuador", "guayaquil"):
-                posts = [p for p in posts if not _post_es_foraneo(p)]
+                posts = _filtrar_pulso_local(posts)
             if not posts:
                 # igual se registra el tema (con 0 posts): asi el panel puede
                 # mostrar "sin conversacion captada" en vez de no decir nada,
@@ -5034,17 +5078,81 @@ def _historias_top_social(stories, max_hist):
 # (2 pronosticos del clima + "Fenomeno de El Niño") -- gastar presupuesto de
 # X/TikTok ahi es desperdiciarlo en ruido de baja prioridad periodistica.
 def _es_boletin_plantilla(s):
+    """Fase 18 (P1-5.5): solo pronosticos del clima y portadas son
+    "plantilla". Antes tambien sacaba de X toda historia con un servicio
+    mencionado (cortes de agua/luz) y todo lo de El Nino -- justo lo
+    comunitario: inundaciones, cortes y afectaciones SON la noticia local."""
     texto = s.get("titular", "") + " " + s.get("resumen", "")
     blob = norm(texto)
-    if _es_pronostico_clima(blob):
+    if _es_pronostico_clima(blob) or re.search(r"\b(pronostico|tendra lluvias|clima hoy)\b", blob):
         return True
-    if servicio_mencionado(texto):
-        return True
-    if "fenomeno de el nino" in blob or "fenomeno del nino" in blob:
-        return True
-    if fecha_mencionada(texto) and kw_hit("feriado", blob):
+    if _es_portada_o_noticiero(norm(s.get("titular", ""))):
         return True
     return False
+
+
+# Fase 18 (P1-5.1): palabras REALES (con tilde) para buscar alertas en X --
+# nunca la clave interna ("corte_luz"), que es lo que se mandaba antes.
+TERMINOS_X_POR_TIPO = {
+    "inundacion": ["inundación", "inundado", "anegado", "anegada", "calles inundadas"],
+    "lluvias": ["inundación", "anegado", "anegada", "lluvia", "aguacero", "acumulación de agua"],
+    "corte_luz": ["corte de luz", "sin luz", "apagón"],
+    "corte_agua": ["corte de agua", "sin agua"],
+    "cortes": ["corte de agua", "sin agua", "corte de luz", "sin luz", "apagón"],
+    "incendio": ["incendio"],
+    "balacera": ["balacera", "disparos", "tiroteo"],
+    "violencia": ["balacera", "disparos", "ataque armado", "sicariato"],
+    "accidente": ["choque", "accidente de tránsito", "volcamiento"],
+    "protesta": ["protesta", "plantón", "bloqueo de vía"],
+    "protestas": ["protesta", "plantón", "bloqueo de vía"],
+    "sismo": ["sismo", "temblor"],
+}
+_TIPOS_ALERTA_X = ["inundacion", "corte_luz", "corte_agua", "incendio", "balacera", "accidente", "protesta", "sismo"]
+
+
+def terminos_alerta_x():
+    vistos, out = set(), []
+    for tipo in _TIPOS_ALERTA_X:
+        for t in TERMINOS_X_POR_TIPO[tipo]:
+            if t not in vistos:
+                vistos.add(t)
+                out.append(t)
+    return out
+
+
+def terminos_evento_x(tipo):
+    return list(TERMINOS_X_POR_TIPO.get(tipo) or terminos_alerta_x())
+
+
+def consulta_x_historia(s):
+    """Fase 18 (P1-5.4): consulta de X para UNA historia solo con entidades
+    reales -- nombres propios, siglas o barrios. Antes tomaba como "nombre
+    propio" la primera palabra del titular (siempre va con mayuscula en
+    espanol): salian consultas como "hasta Guayaquil", "ataque Guayaquil" o
+    "fuerte Guayaquil". Sin una entidad buena devuelve None (no se gasta)."""
+    titular = s.get("titular", "") or ""
+    resumen = s.get("resumen", "") or ""
+    nombres = set(_nombres_propios(titular)) - EVENTO_GENERICO - LUGARES_COMUNES
+    palabras = titular.split()
+    if palabras:
+        primera = norm(palabras[0])
+        resto = " ".join(palabras[1:]) + " " + resumen
+        # la primera palabra cuenta solo si tambien aparece con mayuscula en
+        # otro lado (o es una sigla/lugar conocido)
+        if primera in nombres and not re.search(r"\b" + re.escape(palabras[0].strip(":,.")) + r"\b", resto) \
+                and primera not in {norm(x) for x in _siglas(titular)} and not ciudades_en(palabras[0]):
+            nombres.discard(primera)
+    partes = sorted(nombres, key=len, reverse=True)[:3]
+    if alertas is not None:
+        sector = alertas.detectar_lugar(titular + " " + resumen)
+        if sector and not sector.startswith("Guayaquil") and norm(sector) not in partes:
+            partes.append(sector)
+    if not partes:
+        return None
+    lugar = s.get("ciudad") or ("Ecuador" if s.get("es_local") else "")
+    if lugar and norm(lugar) not in {norm(p) for p in partes}:
+        partes.append(lugar)
+    return " ".join(partes)
 
 def _historias_top_redes(stories, max_hist):
     """Mismo orden que _historias_top_social (Guayaquil primero), pero
@@ -5096,7 +5204,8 @@ def get_social_historias(stories, modo_lectura=False):
             errs.append(type(e).__name__)
             continue
         n_total = len(posts)
-        pertenecen = [p for p in posts if _post_pertenece_historia(p, nombres, ciudad)]
+        pertenecen = [p for p in posts if _post_pertenece_historia(p, nombres, ciudad)
+                      and social._es_reciente(p.fecha, horas=SOCIAL_LOCAL_H)]
         n_descartados = n_total - len(pertenecen)
         if not pertenecen:
             out[key] = {"titular": s.get("titular", ""), "n_posts": 0, "n_descartados": n_descartados,
@@ -5683,6 +5792,7 @@ def run_once(verbose=True):
         # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
         # una historia madre en vez de ~10 tarjetas sueltas.
         stories = agrupar_eventos_en_curso(stories)
+        _adjuntar_tweets_eventos(stories)
     t0 = _fase("cluster", t0)
 
     # DEMANDA (Google Trends) por tema, y se cuelga en cada historia.
@@ -5954,6 +6064,7 @@ def run_fast(verbose=False):
         # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
         # una historia madre en vez de ~10 tarjetas sueltas.
         stories = agrupar_eventos_en_curso(stories)
+        _adjuntar_tweets_eventos(stories)
     t0 = _fase("cluster", t0)
 
     themes_present = sorted({t for s in stories for t in s.get("temas", [])})
@@ -6203,16 +6314,30 @@ def enrich_pass():
     with _medir_etapa("redes_pasada"):
         if redes is not None:
             try:
-                top_redes = _historias_top_redes(stories, 6)
+                top_redes = _historias_top_redes(stories, 12)
                 historias_redes = []
                 for s in top_redes:
-                    query, _nom, _ciudad = _social_query_historia(s)
+                    query = consulta_x_historia(s)
+                    if not query:
+                        continue  # Fase 18 (P1-5.4): sin entidad buena no se gasta
                     f0 = (s.get("fuentes") or [{}])[0]
                     historias_redes.append({"titular": s.get("titular", ""), "query": query,
                                              "link": (f0.get("link") or s.get("titular", ""))[:180]})
-                terminos_alerta = list(alertas.TIPO_KEYWORDS.keys()) if alertas else []
+                historias_redes = historias_redes[:6]
+                # Fase 18 (P1-5.3): eventos en curso de Gran Guayaquil de las
+                # ultimas 6 h -> busqueda reactiva, primero que todo.
+                eventos_redes = []
+                for s in stories:
+                    ev = s.get("evento_en_curso")
+                    if not ev or ev.get("lugar") != "Guayaquil" or (s.get("hours") or 99) > 6:
+                        continue
+                    f0 = (s.get("fuentes") or [{}])[0]
+                    eventos_redes.append({"titular": s.get("titular", ""), "evento": ev,
+                                          "terminos": terminos_evento_x(ev.get("tipo")),
+                                          "link": (f0.get("link") or s.get("titular", ""))[:180]})
                 barrios_redes = list(alertas.BARRIOS_GYE.keys()) if alertas else []
-                redesstatus = redes.pasada(historias_redes, terminos_alerta, barrios_redes)
+                redesstatus = redes.pasada(historias_redes, terminos_alerta_x(), barrios_redes,
+                                           eventos=eventos_redes[:3])
             except Exception as e:
                 redesstatus = "error: %s" % e
         else:

@@ -37,6 +37,8 @@ REPARTO_INICIAL = {"x": 0.65, "tiktok": 0.35}
 MALOS_DIAS_PARA_CEDER = 2
 
 FREQ_ALERTAS_X_H = 1
+FREQ_CUENTAS_X_H = 1       # Fase 18 (P1-5.2): cuentas hiperlocales
+FREQ_EVENTO_X_MIN = 45     # Fase 18 (P1-5.3): busqueda reactiva por evento en curso
 FREQ_HISTORIAS_X_H = 12
 FREQ_DEBATE_X_H = 24
 FREQ_TIKTOK_H = 24
@@ -270,7 +272,7 @@ def simular(historias_top, terminos_alerta, barrios):
 
 # ------------------------- orquestacion por pasada (prioridad D3-2.3) -------------------------
 
-def _registrar_alertas_x(tweets):
+def _registrar_alertas_x(tweets, oficiales=()):
     """Cada tweet nuevo entra a alertas.py con la MISMA funcion que usan
     Bluesky/Telegram, como fuente 'x' -- registrar_senal() ya exige que el
     texto mencione un tipo+lugar reconocido, mas especifico que mirar
@@ -281,14 +283,59 @@ def _registrar_alertas_x(tweets):
     nuevas = 0
     for t in tweets:
         author = t.get("author") or {}
-        r = alertas.registrar_senal("x", author.get("userName", "?"), t.get("text", ""),
-                                      t.get("url", ""), xapi.fecha_iso(t.get("createdAt", "")), oficial=False)
+        usuario = author.get("userName", "?")
+        fecha = xapi.fecha_iso(t.get("createdAt", ""))
+        if not fecha:
+            continue  # Fase 18 (P1-6): sin fecha real no se puede saber si es de hoy
+        r = alertas.registrar_senal("x", usuario, t.get("text", ""), t.get("url", ""), fecha,
+                                      oficial=usuario.lower() in {o.lower() for o in oficiales})
         if r:
             nuevas += 1
     return nuevas
 
 
-def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
+def tiktok_en_pausa():
+    """Fase 18 (P1-5.6): TikTok con MALOS_DIAS_PARA_CEDER dias malos seguidos
+    queda en pausa automatica (no se gasta presupuesto en el)."""
+    return _cargar_cache().get("malos_dias", {}).get("tiktok", 0) >= MALOS_DIAS_PARA_CEDER
+
+
+def _pasada_eventos(eventos, terminos_alerta, simular_red, r):
+    """Capa 0 (Fase 18, P1-5.3): busqueda REACTIVA por evento en curso -- la
+    detecta el agrupamiento (historia madre, ej. lluvias en Guayaquil) y
+    dispara una consulta X al instante (sin esperar las 12 h de la capa de
+    historias) con los sectores de las notas + palabras del tipo de hecho."""
+    hubo = False
+    for ev in eventos or []:
+        link = ev.get("link") or ev.get("titular", "")
+        clave = "_evento_x:%s" % link
+        if not _paso_frecuencia(clave, FREQ_EVENTO_X_MIN / 60.0):
+            continue
+        q = xapi.consulta_evento(ev.get("evento") or {}, ev.get("terminos") or terminos_alerta, horas=2)
+        costo_max = xapi.costo_estimado(20)
+        ok, razon = (True, "") if simular_red else cabe("x", costo_max)
+        if not ok:
+            r["saltadas_por_presupuesto"].append("evento_x: %s" % razon)
+            continue
+        tweets, costo = xapi.buscar_consulta(q, "evento:%s" % link, horas=3, max_items=20, simular=simular_red)
+        if tweets is None and xapi.last_error:
+            r["errores"].append("evento_x: %s" % xapi.last_error)
+            continue
+        if not simular_red and isinstance(tweets, list):
+            if tweets:
+                previos = {str(t.get("id")) for t in xapi.tweets_de_historia(link)}
+                xapi.guardar_tweets_historia(link, xapi.tweets_de_historia(link) +
+                                             [t for t in tweets if str(t.get("id")) not in previos])
+                _registrar_alertas_x(tweets)
+                hubo = True
+            if costo > 0:
+                registrar_gasto("x", costo, "evento_x: %s" % ev.get("titular", ""))
+            _marcar_corrida(clave)
+        r["evento_x"] += len(tweets) if isinstance(tweets, list) else 0
+    return hubo
+
+
+def pasada(historias_top, terminos_alerta, barrios, simular_red=False, eventos=None, cuentas=None):
     """Punto de entrada del hilo TRABAJADOR (nunca run_fast). Orden de
     prioridad (D3-2.3): 1) alertas Guayaquil por X (barato, sensible al
     tiempo) 2) tweets por historia (X) 3) debate en X 4) TikTok (videos +
@@ -299,16 +346,20 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
         return "desactivado (falta token de Apify)"
     simular_red = simular_red or os.environ.get("MONITOR_X_SIMULAR") == "1"
 
-    r = {"alertas_x": 0, "historias_x": 0, "debate_x": 0, "tiktok_videos": 0, "tiktok_comentarios": 0,
-         "errores": [], "saltadas_por_presupuesto": []}
+    r = {"evento_x": 0, "alertas_x": 0, "cuentas_x": 0, "historias_x": 0, "debate_x": 0,
+         "tiktok_videos": 0, "tiktok_comentarios": 0, "errores": [], "saltadas_por_presupuesto": []}
     hubo_x, hubo_tiktok = False, False
+
+    # 0) Fase 18: evento en curso primero (lo mas urgente).
+    hubo_x = _pasada_eventos(eventos, terminos_alerta, simular_red, r) or hubo_x
 
     # 1) Alertas Guayaquil por X -- cada hora, lo mas barato y sensible al tiempo.
     if _paso_frecuencia("_alertas_x", FREQ_ALERTAS_X_H):
-        costo_max = xapi.costo_estimado(10)
+        costo_max = xapi.costo_estimado(15)
         ok, razon = (True, "") if simular_red else cabe("x", costo_max)
         if ok:
-            tweets, costo = xapi.buscar_alertas_gye(terminos_alerta, barrios, max_items=10, simular=simular_red)
+            tweets, costo = xapi.buscar_alertas(terminos_alerta, "Guayaquil", horas=2, max_items=15,
+                                                simular=simular_red)
             if tweets is None and xapi.last_error:
                 r["errores"].append("alertas_x: %s" % xapi.last_error)
             elif isinstance(tweets, list):
@@ -322,11 +373,37 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
         if not simular_red:
             _marcar_corrida("_alertas_x")
 
+    # 1b) Fase 18 (P1-5.2): cuentas hiperlocales (x_cuentas_locales.json) --
+    # mas barato y con mas senal que buscar palabras sueltas.
+    cuentas = cuentas if cuentas is not None else xapi.cuentas_locales()
+    if cuentas and _paso_frecuencia("_cuentas_x", FREQ_CUENTAS_X_H):
+        costo_max = xapi.costo_estimado(20)
+        ok, razon = (True, "") if simular_red else cabe("x", costo_max)
+        if ok:
+            tweets, costo = xapi.buscar_consulta(xapi.consulta_cuentas(cuentas, horas=2), "cuentas",
+                                                 horas=2, max_items=20, simular=simular_red)
+            if tweets is None and xapi.last_error:
+                r["errores"].append("cuentas_x: %s" % xapi.last_error)
+            elif isinstance(tweets, list):
+                if not simular_red:
+                    _registrar_alertas_x(tweets, oficiales=[c["usuario"].lstrip("@") for c in cuentas if c.get("oficial")])
+                    if costo > 0:
+                        registrar_gasto("x", costo, "cuentas_x")
+                r["cuentas_x"] = len(tweets)
+                hubo_x = hubo_x or bool(tweets)
+        else:
+            r["saltadas_por_presupuesto"].append("cuentas_x: %s" % razon)
+        if not simular_red:
+            _marcar_corrida("_cuentas_x")
+
     # 2) Tweets por historia (X) -- 6 historias top, cada 12h. El llamador
-    # (monitor.py) ya excluye boletines de plantilla de 'historias_top'.
+    # (monitor.py) ya excluye boletines de plantilla de 'historias_top' y
+    # (Fase 18) las historias sin una entidad buena (query None).
     if _paso_frecuencia("_historias_x", FREQ_HISTORIAS_X_H):
         for h in historias_top[:6]:
-            q = h.get("query") or h.get("titular", "")
+            q = h.get("query")
+            if not q:
+                continue
             costo_max = xapi.costo_estimado(25)
             ok, razon = (True, "") if simular_red else cabe("x", costo_max)
             if not ok:
@@ -379,7 +456,9 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
     # 4) TikTok -- 2 historias top, una vez al dia. Videos primero, despues
     # comentarios del video con MAS comentarios de cada historia (el debate
     # de la gente vale mas que el video en si).
-    if _paso_frecuencia("_tiktok", FREQ_TIKTOK_H):
+    if tiktok_en_pausa():
+        r["tiktok_pausa"] = True
+    elif _paso_frecuencia("_tiktok", FREQ_TIKTOK_H):
         for h in historias_top[:2]:
             q = h.get("query") or h.get("titular", "")
             costo_max_v = tiktok.costo_estimado_videos(3)
@@ -422,7 +501,7 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
             _marcar_corrida("_tiktok")
 
     if not simular_red:
-        capas_x = ("alertas_x", "historias_x", "debate_x")
+        capas_x = ("evento_x", "alertas_x", "cuentas_x", "historias_x", "debate_x")
         capas_tiktok = ("tiktok_videos", "tiktok_comentarios")
         if r["errores"] and any(e.split(":")[0] in capas_x for e in r["errores"]):
             marcar_resultado_red("x", False)
@@ -433,8 +512,12 @@ def pasada(historias_top, terminos_alerta, barrios, simular_red=False):
         elif hubo_tiktok:
             marcar_resultado_red("tiktok", True)
 
-    estado = "ok (alertas_x:+%d, historias_x:+%d, debate_x:+%d, tiktok_videos:+%d, tiktok_comentarios:+%d)" % (
-        r["alertas_x"], r["historias_x"], r["debate_x"], r["tiktok_videos"], r["tiktok_comentarios"])
+    estado = ("ok (evento_x:+%d, alertas_x:+%d, cuentas_x:+%d, historias_x:+%d, debate_x:+%d, "
+              "tiktok_videos:+%d, tiktok_comentarios:+%d)") % (
+        r["evento_x"], r["alertas_x"], r["cuentas_x"], r["historias_x"], r["debate_x"],
+        r["tiktok_videos"], r["tiktok_comentarios"])
+    if r.get("tiktok_pausa"):
+        estado += " -- tiktok en pausa (%d dias malos seguidos)" % MALOS_DIAS_PARA_CEDER
     if r["saltadas_por_presupuesto"]:
         estado += " -- sin presupuesto hoy: %s" % "; ".join(r["saltadas_por_presupuesto"][:3])
     if r["errores"]:

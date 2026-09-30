@@ -1,0 +1,16 @@
+{
+  "_nota": "Fase 18 (P1-5.2). Cuentas de X que informan en tiempo real sobre Guayaquil. EDITABLE: Fernando confirma/corrige los usuarios. 'verificada': false = el nombre de usuario NO se comprobo en vivo (desde el entorno donde se armo esta lista no habia acceso a X/Apify). Un usuario que no existe no cuesta nada (from: devuelve 0 tweets). 'oficial': true = sus tweets cuentan como fuente oficial en Alertas (sube directo a 'confirmado oficial'). 'activa': false para apagar una sin borrarla.",
+  "cuentas": [
+    {"usuario": "ECU911_", "nombre": "ECU 911", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "ATMGuayaquil", "nombre": "ATM Guayaquil (transito)", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "BCBGuayaquil", "nombre": "Benemerito Cuerpo de Bomberos de Guayaquil", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "alcaldiagye", "nombre": "Municipio de Guayaquil", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "Interagua_Ec", "nombre": "Interagua", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "EmapagEP", "nombre": "EMAPAG EP", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "CNEL_EP", "nombre": "CNEL EP", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "PrefecturaGuayas", "nombre": "Prefectura del Guayas", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "Riesgos_Ec", "nombre": "Secretaria Nacional de Gestion de Riesgos", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "inamhi", "nombre": "INAMHI", "oficial": true, "verificada": false, "activa": true},
+    {"usuario": "EmergenciasEc", "nombre": "Emergencias Ecuador (ya visto en vivo por Fernando, Fase 9)", "oficial": false, "verificada": true, "activa": true}
+  ]
+}

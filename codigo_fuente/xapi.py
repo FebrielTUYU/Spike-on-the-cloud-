@@ -52,7 +52,10 @@ TIMEOUT_CORRIDA = 130  # una corrida real del actor midio ~25s; se deja margen g
 APIFY_BASE = "https://api.apify.com/v2"
 
 CONFIG_PATH = os.path.join(HERE, "x_config.json")
-CACHE_PATH = os.path.join(HERE, "x_cache.json")  # cache OPERATIVO (ids vistos, tweets por historia) -- el gasto vive en redes.py
+CACHE_PATH = os.path.join(HERE, "x_cache.json")
+# Fase 18 (P1-5.2): cuentas que informan en tiempo real (ATM, ECU 911,
+# Bomberos, Municipio...). Archivo EDITABLE por Fernando (no es un secreto).
+CUENTAS_PATH = os.path.join(HERE, "x_cuentas_locales.json")  # cache OPERATIVO (ids vistos, tweets por historia) -- el gasto vive en redes.py
 
 last_error = None
 
@@ -353,6 +356,88 @@ def tweet_pertenece(tweet, entidades):
     if any(w in loc for w in ("ecuador", "guayaquil", "quito", "cuenca", " ec", "gye")):
         return True
     return _menciona_entidad(tweet.get("text", ""), entidades)
+
+
+# ------------------------- Fase 18 (P1-5): consultas que encuentran lo que pasa AHORA -------------------------
+# Diagnostico real (Fase 18): las alertas buscaban "corte_luz Guayaquil" y
+# "corte_agua Guayaquil" (la CLAVE interna, con guion bajo -- no matchea nada
+# en X), "inundacion" sin tilde, y 8 terminos repartidos en 10 tweets por
+# hora (~1 por termino). Ahora: UNA consulta con OR, palabras reales con
+# tilde, y 'since:' de las ultimas horas. Por si el actor no respeta 'since:',
+# se vuelve a filtrar por createdAt al recibir.
+
+def _since(horas, ahora=None):
+    ahora = ahora or dt.datetime.now(dt.timezone.utc)
+    return (ahora - dt.timedelta(hours=horas)).strftime("since:%Y-%m-%d_%H:%M:%S_UTC")
+
+
+def _termino(t):
+    t = (t or "").strip()
+    return '"%s"' % t if " " in t else t
+
+
+def _or(terminos):
+    ts = [_termino(t) for t in terminos if t and t.strip()]
+    if not ts:
+        return ""
+    return ts[0] if len(ts) == 1 else "(%s)" % " OR ".join(ts)
+
+
+def consulta_alertas(terminos, lugar="Guayaquil", horas=2, ahora=None):
+    return " ".join(x for x in (_or(terminos), _termino(lugar), _since(horas, ahora)) if x)
+
+
+def cuentas_locales():
+    """Lista de cuentas de x_cuentas_locales.json ([] si no existe)."""
+    try:
+        with open(CUENTAS_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return []
+    return [c for c in (data.get("cuentas") or []) if c.get("usuario") and c.get("activa", True)]
+
+
+def consulta_cuentas(cuentas, horas=2, ahora=None):
+    usuarios = ["from:%s" % c["usuario"].lstrip("@") for c in cuentas if c.get("usuario")]
+    if not usuarios:
+        return ""
+    bloque = usuarios[0] if len(usuarios) == 1 else "(%s)" % " OR ".join(usuarios)
+    return "%s %s" % (bloque, _since(horas, ahora))
+
+
+def consulta_evento(evento, terminos, horas=2, ahora=None):
+    """Busqueda REACTIVA para un evento en curso (historia madre): palabras
+    del tipo de hecho + sectores de las notas. Sin sectores, la ciudad."""
+    sectores = [x for x in (evento.get("sectores") or []) if x and x not in ("Norte", "Sur")]
+    lugar = _or(sectores) if sectores else _termino(evento.get("lugar") or "Guayaquil")
+    return " ".join(x for x in (_or(terminos), lugar, _since(horas, ahora)) if x)
+
+
+def _dentro_de(tweet, horas):
+    f = fecha_iso(tweet.get("createdAt", ""))
+    if not f:
+        return False
+    d = dt.datetime.fromisoformat(f)
+    return (dt.datetime.now(dt.timezone.utc) - d).total_seconds() <= horas * 3600
+
+
+def buscar_consulta(consulta, clave_vistos, horas=2, max_items=15, simular=False, tope_seguridad_usd=0.30):
+    """Una consulta ya armada. Devuelve (tweets NUEVOS de las ultimas 'horas',
+    costo). Dedup por id (clave_vistos)."""
+    items, costo = _buscar([consulta], max_items=max_items, query_type="Latest",
+                            simular=simular, tope_seguridad_usd=tope_seguridad_usd)
+    if simular or items is None:
+        return items, costo
+    recientes = [t for t in items if _dentro_de(t, horas)]
+    vistos = _ids_vistos(clave_vistos)
+    nuevos = [t for t in recientes if str(t.get("id", "")) not in vistos]
+    _marcar_vistos(clave_vistos, [str(t.get("id", "")) for t in items])
+    return nuevos, costo
+
+
+def buscar_alertas(terminos, lugar="Guayaquil", horas=2, max_items=15, simular=False, tope_seguridad_usd=0.30):
+    return buscar_consulta(consulta_alertas(terminos, lugar, horas), "alertas_gye", horas=horas,
+                           max_items=max_items, simular=simular, tope_seguridad_usd=tope_seguridad_usd)
 
 
 # ------------------------- backend "oficial" (stub) -------------------------

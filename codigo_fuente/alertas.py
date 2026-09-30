@@ -80,6 +80,15 @@ ALERTAS_MAX_DIAS = int(os.environ.get("MONITOR_ALERTAS_MAX_DIAS", "14"))
 # mas generosa que CLUSTER_MAX_HORAS de noticias porque una alerta ciudadana
 # puntual (ej. un incendio) se resuelve en horas, no dias.
 ALERTA_VENTANA_H = float(os.environ.get("MONITOR_ALERTA_VENTANA_H", "6"))
+# Fase 18 (P1-6): nada viejo, nada mal enlazado. Una senal de mas de
+# ALERTA_MAX_EDAD_H horas se descarta al recibirla; alerta e historia solo se
+# enlazan si estan a <= ENLACE_MAX_H horas y el lugar es compatible. Caso real
+# que motivo esto (alertas.json): la alerta de un vehiculo incendiado en La
+# Atarazana (18-sep) quedo enlazada a "Incendio en vivienda del sur de
+# Guayaquil" (29-sep); y alertas SIN lugar se enlazaban con notas de Estonia,
+# Espana o Medellin porque sin lugar no se comparaba nada.
+ALERTA_MAX_EDAD_H = float(os.environ.get("MONITOR_ALERTA_MAX_EDAD_H", "24"))
+ENLACE_MAX_H = float(os.environ.get("MONITOR_ALERTA_ENLACE_H", "12"))
 
 last_error = None
 
@@ -90,7 +99,11 @@ TIPO_KEYWORDS = {
     "incendio": ["incendio", "incendian", "incendiaron", "quemandose", "llamas", "voraz incendio"],
     "accidente": ["accidente de transito", "choque", "volcamiento", "atropello", "colision",
                   "accidente vial"],
-    "inundacion": ["inundacion", "inundaciones", "anegad", "desborde", "aniego", "calles inundadas"],
+    # Fase 18: "anegad" era un PREFIJO pero _hit exige palabra completa -- nunca
+    # coincidia con "anegadas"/"anegado". Se listan las formas reales.
+    "inundacion": ["inundacion", "inundaciones", "inundada", "inundadas", "inundado", "inundados",
+                   "inunda", "anegada", "anegadas", "anegado", "anegados", "anegamiento",
+                   "desborde", "aniego", "calles inundadas", "acumulacion de agua"],
     "balacera": ["balacera", "disparos", "tiroteo", "bala perdida", "rafaga de disparos",
                  "enfrentamiento armado"],
     "corte_luz": ["corte de luz", "sin luz", "apagon", "corte electrico", "falla electrica",
@@ -137,8 +150,15 @@ def _hit(term, blob):
     return re.search(r"\b" + re.escape(term) + r"\b", blob) is not None
 
 
+# Un simulacro no es un evento real (caso real: el Simulacro Cantonal de sismo
+# de Guayaquil llego a "corroborado" como alerta de sismo).
+_NO_EVENTO = ("simulacro", "simulacros")
+
+
 def detectar_tipo(texto):
     blob = _norm(texto)
+    if any(_hit(w, blob) for w in _NO_EVENTO):
+        return None
     for tipo, palabras in TIPO_KEYWORDS.items():
         if any(_hit(_norm(p), blob) for p in palabras):
             return tipo
@@ -222,11 +242,13 @@ def registrar_senal(fuente, autor, texto, url, fecha_iso, oficial=False, tipo=No
 
     ahora = dt.datetime.now(dt.timezone.utc)
     try:
-        fecha = dt.datetime.fromisoformat(fecha_iso) if fecha_iso else ahora
+        fecha = dt.datetime.fromisoformat(str(fecha_iso).replace("Z", "+00:00")) if fecha_iso else ahora
         if fecha.tzinfo is None:
             fecha = fecha.replace(tzinfo=dt.timezone.utc)
     except Exception:
         fecha = ahora
+    if (ahora - fecha).total_seconds() > ALERTA_MAX_EDAD_H * 3600:
+        return None  # Fase 18 (P1-6): nada viejo
 
     # busca una alerta ABIERTA (misma clave, dentro de la ventana) para sumar
     # la señal ahi -- si no hay, crea una nueva.
@@ -294,22 +316,17 @@ def vincular_con_prensa(historias):
     Nunca dispara red: 'historias' ya viene calculado por el pipeline
     normal. Devuelve cuantas alertas se enlazaron esta pasada."""
     registro = _cargar()
+    cambiado = _revalidar_enlaces(registro)
     activas = [a for a in registro.values() if not a.get("ya_en_medios")]
     if not activas or not historias:
+        if cambiado:
+            _guardar(registro)
         return 0
     enlazadas = 0
     ahora = dt.datetime.now(dt.timezone.utc)
     for a in activas:
-        tipo, lugar = a["tipo"], a.get("lugar")
         for h in historias:
-            blob = _norm((h.get("titular", "") or "") + " " + (h.get("resumen", "") or ""))
-            if detectar_tipo(blob) != tipo:
-                continue
-            if lugar and lugar != "Guayaquil (sector sin precisar)":
-                terminos = BARRIOS_GYE.get(lugar, [lugar.lower()])
-                if not any(_hit(_norm(t), blob) for t in terminos):
-                    continue
-            elif lugar and not _hit("guayaquil", blob):
+            if not _enlace_compatible(a, h):
                 continue
             f0 = (h.get("fuentes") or [{}])[0]
             a["ya_en_medios"] = True
@@ -323,9 +340,70 @@ def vincular_con_prensa(historias):
                 a["adelanto_min"] = None
             enlazadas += 1
             break
-    if enlazadas:
+    if enlazadas or cambiado:
         _guardar(registro)
     return enlazadas
+
+
+def _dt(iso):
+    try:
+        d = dt.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
+    except Exception:
+        return None
+
+
+def _lugar_compatible(lugar, blob):
+    if not lugar:
+        return False  # sin lugar no hay nada que comparar: no se enlaza a ciegas
+    if lugar == "Guayaquil (sector sin precisar)":
+        return _hit("guayaquil", blob)
+    terminos = BARRIOS_GYE.get(lugar, [lugar.lower()])
+    return any(_hit(_norm(t), blob) for t in terminos)
+
+
+def _enlace_compatible(a, h):
+    """Fase 18 (P1-6): mismo tipo de hecho + lugar compatible + a <= ENLACE_MAX_H
+    horas entre la ultima senal de la alerta y la nota mas nueva de la historia."""
+    blob = _norm((h.get("titular", "") or "") + " " + (h.get("resumen", "") or ""))
+    if detectar_tipo(blob) != a.get("tipo"):
+        return False
+    if not _lugar_compatible(a.get("lugar"), blob):
+        return False
+    t_alerta = _dt(a.get("ultima_senal") or a.get("primera_deteccion"))
+    # historias sin hora (no pasa en el pipeline real, que siempre trae
+    # 'newest'): se toman como del feed actual -- vincular_con_prensa solo
+    # recibe las historias vivas de esta pasada.
+    t_hist = _dt(h.get("newest")) or max((d for d in (_dt(f.get("date")) for f in (h.get("fuentes") or []))
+                                          if d), default=None) or dt.datetime.now(dt.timezone.utc)
+    if t_alerta is None:
+        return False
+    return abs((t_hist - t_alerta).total_seconds()) <= ENLACE_MAX_H * 3600
+
+
+def _revalidar_enlaces(registro):
+    """Deshace enlaces viejos que no cumplen las reglas de la Fase 18 (sin
+    lugar, o el enlace se hizo mas de ENLACE_MAX_H horas despues de la
+    ultima senal de la alerta). Devuelve True si cambio algo."""
+    cambiado = False
+    # alertas registradas antes de las reglas actuales cuyo texto ya no
+    # describe un hecho real (ej. el simulacro de sismo) se borran.
+    for aid in [k for k, a in registro.items()
+                if a.get("senales") and not any(detectar_tipo(x.get("texto", "")) for x in a["senales"])]:
+        del registro[aid]
+        cambiado = True
+    for a in registro.values():
+        if not a.get("ya_en_medios"):
+            continue
+        t_alerta = _dt(a.get("ultima_senal") or a.get("primera_deteccion"))
+        t_enlace = _dt(a.get("ya_en_medios_ts"))
+        malo = not a.get("lugar") or t_alerta is None or t_enlace is None or \
+            (t_enlace - t_alerta).total_seconds() > ENLACE_MAX_H * 3600
+        if malo:
+            a.update({"ya_en_medios": False, "historia_link": "", "historia_titulo": "",
+                      "ya_en_medios_ts": None, "adelanto_min": None})
+            cambiado = True
+    return cambiado
 
 
 # ------------------------- recoleccion de señales (hilo TRABAJADOR, con red) -------------------------
@@ -382,6 +460,22 @@ def _parse_rss_simple(raw):
     return out
 
 
+def _fecha_rss(texto):
+    """Fecha de un item RSS (RFC 822 o ISO) en ISO UTC; '' si no se lee."""
+    if not texto:
+        return ""
+    try:
+        from email.utils import parsedate_to_datetime
+        d = parsedate_to_datetime(texto.strip())
+    except Exception:
+        d = _dt(texto.strip())
+    if d is None:
+        return ""
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=dt.timezone.utc)
+    return d.astimezone(dt.timezone.utc).isoformat()
+
+
 def _recolectar_oficiales():
     """Lee las 3 fuentes RSS oficiales confirmadas (ver docstring del
     modulo) y registra cada item nuevo como señal OFICIAL. Respeta
@@ -411,7 +505,7 @@ def _recolectar_oficiales():
                 continue
             vistos.add(it["link"])
             r = registrar_senal(f["nombre"], f["nombre"], it["titulo"] + " " + it["resumen"],
-                                 it["link"], "", oficial=True)
+                                 it["link"], _fecha_rss(it.get("fecha")), oficial=True)
             if r:
                 nuevas += 1
         entry["ultimo_fetch"] = ahora
@@ -442,8 +536,12 @@ def _recolectar_social():
         except Exception as e:
             last_error = "telegram %s" % type(e).__name__
         for p in posts:
+            # Fase 18 (P1-6): la fecha REAL del post (antes se pasaba "" y toda
+            # senal quedaba fechada "ahora", aunque fuera de dias atras).
+            if not getattr(p, "fecha", ""):
+                continue
             r = registrar_senal("bluesky" if getattr(p, "fuente", "") == "bluesky" else p.fuente,
-                                 p.autor, p.texto, p.url, "", oficial=False, tipo=None)
+                                 p.autor, p.texto, p.url, p.fecha, oficial=False, tipo=None)
             if r:
                 nuevas += 1
     return nuevas

@@ -897,6 +897,13 @@ function fmtAgo(iso){
 // Fase 0: hora ABSOLUTA siempre en America/Guayaquil, explicito -- sin esto,
 // toLocaleString usa la zona horaria del sistema del navegador, que puede no
 // ser Ecuador (aunque "es-EC" fija el idioma/formato, NO fija la zona).
+// Fase 18 (P1-7): los posts ahora traen fecha CON hora (ISO). Se muestra
+// "hace X" + hora de Guayaquil; si la fuente solo dio el dia, solo el dia.
+function fmtFechaPost(f){
+  if(!f) return "";
+  if(String(f).length<=10) return String(f);
+  return fmtAgo(f)+" ("+fmtHoraEC(f)+")";
+}
 function fmtHoraEC(iso){
   if(!iso) return "";
   try{
@@ -1496,7 +1503,7 @@ function renderSocialHistorias(){
     if(!d.n_posts){
       return `<div class="gapcard" style="border-left-color:#7c3aed;margin-bottom:12px">
         <h3>${esc(d.titular)}</h3>
-        <div class="o" style="font-style:italic">sin conversación captada${d.n_descartados?` (${d.n_descartados} publicaciones descartadas por no ser de Ecuador o no mencionar esta historia)`:""}</div>
+        <div class="o" style="font-style:italic">${d.ambito==="internacional"?"sin conversación captada":"Sin conversación local detectada"}${d.n_descartados?` (${d.n_descartados} publicaciones descartadas por no ser de Ecuador o no mencionar esta historia)`:""}</div>
       </div>`;
     }
     const posturasFiltradas = (d.posturas||[])
@@ -1628,7 +1635,7 @@ function renderSocial(){
   const esMedio=p=>p.tipo==="medio"||p.fuente==="telegram";
   const postHTML=p=>`<div class="src">
       <a href="${esc(p.url||'#')}" target="_blank" rel="noopener">${esc(p.texto||'(sin texto)')}</a>
-      <div class="o"><b>${esc(p.autor||'')}</b>${esMedio(p)?` <span class="chip" style="padding:1px 6px">medio</span>`:""}${p.canal?` · en un video de <b>${esc(p.canal)}</b>${p.canal_tipo?` (canal ${p.canal_tipo}${p.canal_subs?`, ${p.canal_subs.toLocaleString('es')} suscriptores`:''})`:''}`:""} · ${p.fuente==='telegram'?`${p.likes||0} vistas`:`${p.likes||0} me gusta · ${p.reposts||0} reposts`}${p.fecha?' · '+esc(p.fecha):''}</div></div>`;
+      <div class="o"><b>${esc(p.autor||'')}</b>${esMedio(p)?` <span class="chip" style="padding:1px 6px">medio</span>`:""}${p.canal?` · en un video de <b>${esc(p.canal)}</b>${p.canal_tipo?` (canal ${p.canal_tipo}${p.canal_subs?`, ${p.canal_subs.toLocaleString('es')} suscriptores`:''})`:''}`:""} · ${p.fuente==='telegram'?`${p.likes||0} vistas`:`${p.likes||0} me gusta · ${p.reposts||0} reposts`}${p.fecha?' · '+esc(fmtFechaPost(p.fecha)):''}</div></div>`;
   box.innerHTML = redesConDatos.map(f=>{
     const grupos = porRed[f].slice().sort((a,b)=>b.posts.length-a.posts.length);
     const totalPosts = grupos.reduce((n,g)=>n+g.posts.length,0);
@@ -2090,6 +2097,9 @@ function renderSubActualizaciones(h){
         <a href="${esc(u.link||'#')}" target="_blank" rel="noopener">${u.sector?'<b>'+esc(u.sector)+':</b> ':''}${esc(u.titular||'')}</a>
         <div class="o">${esc((u.outlets||[]).join(', '))}${u.fecha?' · '+esc(fmtHoraEC(u.fecha))+' ('+esc(fmtAgo(u.fecha))+')':''}</div>
       </div>`).join("")
+    + ((h.x_tweets||[]).length ? `<div style="margin-top:6px"><b>En X ahora ·</b></div>` + h.x_tweets.map(t=>`<div class="src">
+        <a href="${esc(t.url||'#')}" target="_blank" rel="noopener">${esc(t.texto||'')}</a>
+        <div class="o">@${esc(t.autor||'')}${t.fecha?' · '+esc(fmtFechaPost(t.fecha)):''}</div></div>`).join("") : "")
     + `</details>`;
 }
 
