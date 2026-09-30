@@ -1058,6 +1058,8 @@
 <script id="payload" type="application/json">/*__DATA__*/null</script>
 <script>
 let DATA = JSON.parse(document.getElementById("payload").textContent) || {};
+// Fase 22b: version del diseño con la que se armo ESTA pagina (ver poll()).
+const UI_VERSION = DATA.ui_version || "";
 let view = "";         // "", "politica", "economia", "seguridad", "sociedad", "general"
 let origin = "local";  // arranca en Ecuador; el mundo es un clic aparte
 let fresh = "recientes"; // "recientes" | "anteriores" (ver s.antigua, Parte B)
@@ -3973,6 +3975,9 @@ async function poll(){
     const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
     if(!r.ok) return false;
     const nuevo=await r.json();
+    // Fase 22b: si el diseño cambio (se actualizo Spike), recargar la pagina
+    // entera -- el refresco normal solo trae datos, nunca el diseño nuevo.
+    if(nuevo.ui_version && nuevo.ui_version!==UI_VERSION){ location.reload(); return false; }
     if(nuevo.generado===DATA.generado && !PENDIENTE) return false;
     PENDIENTE=nuevo;
     // Fase 0 (velocidad): "Ultima hora" se entera SIEMPRE, sin esperar a que

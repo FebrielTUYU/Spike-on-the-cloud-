@@ -5074,3 +5074,12 @@ ningun dato nuevo, ninguna llamada nueva.
   barra de pregunta, vuelta del Asistente al Dashboard); capturas reales con Chromium en escritorio,
   modo oscuro y ancho de celular. Pruebas de Python que leen la plantilla: OK.
 - Pendiente: recompilar `Spike.exe` y verlo en la PC.
+
+### Fase 22b (mismo dia) — "al abrirlo me sigue apareciendo la vieja interfaz"
+Causa real: desde la Fase 17, `serve()` muestra al instante el `dashboard.html` de la corrida
+ANTERIOR (armado con la plantilla vieja) y el refresco automatico solo trae `data.json`, nunca el
+diseño. Arreglo: `regenerar_dashboard_desde_data()` re-arma `dashboard.html` con la plantilla actual y
+el ultimo `data.json` al arrancar (sin red ni IA); `data.json["ui_version"]` (hash de la plantilla) y
+`poll()` recarga la pagina entera si la version cambio. `write_outputs` escribe `dashboard.html` antes
+que `data.json`. `test_fase22b_interfaz_nueva.py` (4). OJO: `dashboard_template.html` se lee del disco
+(tambien el `.exe`), asi que basta con que el archivo nuevo este en `codigo_fuente`.

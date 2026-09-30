@@ -6185,13 +6185,52 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
             f.write(contenido)
         os.replace(tmp, ruta)
 
-    _escribir_atomico(os.path.join(HERE, "data.json"),
-                       json.dumps(payload, ensure_ascii=False, indent=2))
-
+    # Fase 22b: la version del DISEÑO (hash de la plantilla) viaja en
+    # data.json; si la pagina abierta tiene otra, se recarga sola (ver poll()
+    # en dashboard_template.html). dashboard.html se escribe ANTES que
+    # data.json, asi al recargar ya encuentra la pagina nueva.
     tpl = open(os.path.join(HERE, "dashboard_template.html"), encoding="utf-8").read()
+    payload["ui_version"] = _ui_version(tpl)
     blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     html_out = tpl.replace("/*__DATA__*/null", blob)
     _escribir_atomico(os.path.join(HERE, "dashboard.html"), html_out)
+    _escribir_atomico(os.path.join(HERE, "data.json"),
+                       json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def _ui_version(tpl):
+    """Huella corta de la plantilla: cambia cada vez que cambia el diseño."""
+    import hashlib
+    return hashlib.md5(tpl.encode("utf-8")).hexdigest()[:12]
+
+
+def regenerar_dashboard_desde_data():
+    """Fase 22b (bug real: "al abrirlo me sigue apareciendo la vieja
+    interfaz"): al arrancar, serve() muestra el dashboard.html de la corrida
+    ANTERIOR para no hacer esperar (Fase 17) -- pero ese archivo se armo con
+    la plantilla VIEJA, y el refresco automatico solo trae datos nuevos,
+    nunca el diseño. Aca se re-arma dashboard.html con la plantilla ACTUAL y
+    el ultimo data.json, sin red ni IA (milisegundos). Nunca rompe el
+    arranque: ante cualquier error, deja todo como estaba."""
+    ruta_data = os.path.join(HERE, "data.json")
+    ruta_tpl = os.path.join(HERE, "dashboard_template.html")
+    if not (os.path.exists(ruta_data) and os.path.exists(ruta_tpl)):
+        return False
+    try:
+        with open(ruta_data, encoding="utf-8") as f:
+            payload = json.load(f)
+        tpl = open(ruta_tpl, encoding="utf-8").read()
+        payload["ui_version"] = _ui_version(tpl)
+        blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+        destino = os.path.join(HERE, "dashboard.html")
+        tmp = destino + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(tpl.replace("/*__DATA__*/null", blob))
+        os.replace(tmp, destino)
+        return True
+    except Exception as e:
+        print("No pude re-armar dashboard.html con la plantilla nueva: %s" % e)
+        return False
 
 
 def avisar_movil(stories, demand):
@@ -8181,6 +8220,9 @@ def serve(port=8000, minutes=None):
     # Si dashboard.html no existe todavia (primerisima corrida en esta
     # carpeta, o alguien lo borro a mano), no hay nada real que mostrar --
     # ahi si hace falta el esqueleto mientras se genera el primero.
+    # Fase 22b: lo que se muestra al instante ya sale con el diseño actual.
+    if regenerar_dashboard_desde_data():
+        _log_arranque("serve: dashboard.html re-armado con la plantilla actual")
     hay_dashboard_previo = os.path.exists(os.path.join(HERE, "dashboard.html"))
 
     def _arrancar_backend():
