@@ -299,8 +299,10 @@ class TestGetContextoTopLocal(unittest.TestCase):
         monitor.ia = _IAFalsa()
         monitor.wiki = object()
 
-        def _fake_construir(s, registro=None):
+        def _fake_construir(s, registro=None, perfil=None):
             self._llamadas.append(s["titular"])
+            self._perfiles = getattr(self, "_perfiles", {})
+            self._perfiles[s["titular"]] = perfil or "profundo"
             return {"texto": "x", "entidades": [], "comenciones": [], "principal": None, "previas": [],
                     "antecedentes": [], "actores": [], "que_es_nuevo": [], "que_falta_saber": [],
                     "limitaciones": "", "descartadas": 0}
@@ -333,7 +335,11 @@ class TestGetContextoTopLocal(unittest.TestCase):
         monitor.get_contexto(stories)
         self.assertIn("Local A (mas interes)", self._llamadas)
         self.assertIn("Local B", self._llamadas)
-        self.assertNotIn("Local C (deberia quedar afuera, top=2)", self._llamadas)
+        # Fase 18 (P2-10): lo local fuera del top N YA NO queda afuera -- se
+        # contextualiza con el perfil RAPIDO (el top N sigue con el profundo).
+        self.assertIn("Local C (deberia quedar afuera, top=2)", self._llamadas)
+        self.assertEqual(self._perfiles["Local A (mas interes)"], "profundo")
+        self.assertEqual(self._perfiles["Local C (deberia quedar afuera, top=2)"], "rapido")
         self.assertNotIn("Internacional grande", self._llamadas)
 
     def test_entrada_de_formato_viejo_se_recalcula_una_vez(self):

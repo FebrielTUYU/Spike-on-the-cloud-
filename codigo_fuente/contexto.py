@@ -144,7 +144,7 @@ def _validar(r, ids_validos):
     }
 
 
-def construir(titular, resumen, material, forzado="", timeout=TIMEOUT):
+def construir(titular, resumen, material, forzado="", timeout=TIMEOUT, perfil=None):
     """material: lista de {"id": "R1", "texto": "...", ...}. Sin material, ni
     siquiera se llama a la IA (mismo principio que ia.contextualizar()).
     Devuelve el dict de 4 bloques + 'limitaciones' + 'descartadas', o None si
@@ -155,7 +155,7 @@ def construir(titular, resumen, material, forzado="", timeout=TIMEOUT):
     ids_validos = {m["id"] for m in material if m.get("id")}
     material_txt = "\n".join("%s: %s" % (m["id"], m["texto"]) for m in material if m.get("id"))
     prompt = _PROMPT % ((titular or "")[:200], (resumen or "")[:400], material_txt[:4000])
-    r = ia._generar_json(prompt, perfil=ia.PERFIL_PROFUNDO, temperatura=0.2,
+    r = ia._generar_json(prompt, perfil=perfil or ia.PERFIL_PROFUNDO, temperatura=0.2,
                           max_tokens=MAX_TOKENS, timeout=timeout)
     if r is None:
         return None

@@ -3452,7 +3452,7 @@ def get_demand(themes, modo_lectura=False):
 # ------------------------- agente de IA local (Ollama) -------------------------
 
 IA_CACHE = os.path.join(HERE, "ia_cache.json")
-IA_MAX_NEW = int(os.environ.get("MONITOR_IA_MAX", "25"))  # analisis nuevos por corrida (resto usa cache)
+IA_MAX_NEW = int(os.environ.get("MONITOR_IA_MAX", "80"))  # analisis nuevos por corrida (resto usa cache)
 IA_MODEL = os.environ.get("MONITOR_IA_MODEL", "")
 IA_TEMA_MIN = float(os.environ.get("MONITOR_IA_TEMA_MIN", "0.6"))  # umbral de confianza para temas
 # Interpretacion editorial (ia.interpretar, llamada APARTE de analizar -- ver
@@ -3461,7 +3461,7 @@ IA_TEMA_MIN = float(os.environ.get("MONITOR_IA_TEMA_MIN", "0.6"))  # umbral de c
 # llenaba de verdad). Acotada aparte de IA_MAX_NEW porque cada intento puede
 # hacer HASTA DOS llamadas a Ollama (interpretar() reintenta si el primer
 # intento sigue literal).
-IA_INTERP_MAX = int(os.environ.get("MONITOR_IA_INTERP_MAX", "12"))
+IA_INTERP_MAX = int(os.environ.get("MONITOR_IA_INTERP_MAX", "80"))
 IA_INTERP_VERSION = 2
 
 
@@ -3507,9 +3507,33 @@ def _huella_contenido(s):
 # internacional de 1 solo medio queda al final del cupo, aunque su interes
 # calculado fuera alto.
 def _prioridad_cupo_ia(s):
-    es_local = 0 if s.get("es_local") else 1
-    ruido_intl = 1 if (not s.get("es_local") and len(s.get("fuentes") or []) <= 1) else 0
-    return (es_local, ruido_intl)
+    # Fase 18 (P2-10): Guayaquil -> resto de Ecuador -> internacional
+    # (con el ruido de 1 solo medio al final).
+    if s.get("ciudad") == "Guayaquil":
+        return (0, 0)
+    if s.get("es_local"):
+        return (1, 0)
+    return (2, 1 if len(s.get("fuentes") or []) <= 1 else 0)
+
+
+# Fase 18 (P2-10): cobertura. IA en 87/1563 y contexto en 34/1563 historias.
+# El perfil PROFUNDO cuesta ~10x el rapido (precios de ia.py), asi que se
+# reserva para las TOP_PROFUNDO locales mas importantes; el resto de lo local
+# (Guayaquil primero, despues Ecuador) se cubre con el perfil RAPIDO. Lo
+# internacional solo recibe lectura si sobra cupo.
+TOP_PROFUNDO = int(os.environ.get("MONITOR_TOP_PROFUNDO", "10"))
+
+
+def _claves_top_profundo(stories):
+    locales = sorted([s for s in stories if s.get("es_local")], key=lambda s: -(s.get("interes") or 0))
+    return {story_key(s) for s in locales[:TOP_PROFUNDO]}
+
+
+def _perfil_para(s, top_keys):
+    if ia is None:
+        return None
+    return (getattr(ia, "PERFIL_PROFUNDO", "profundo") if story_key(s) in top_keys
+            else getattr(ia, "PERFIL_RAPIDO", "rapido"))
 
 def get_ia(stories, modo_lectura=False):
     """Usa Ollama para revisar/corregir el etiquetado por palabras clave (temas y
@@ -3652,6 +3676,7 @@ def get_ia(stories, modo_lectura=False):
         return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")
 
     orden_cupo = sorted(stories, key=_prioridad_cupo_ia)  # ver comentario en _prioridad_cupo_ia (Problema B2)
+    top_keys = _claves_top_profundo(stories)
 
     new, new_interp, err = 0, 0, None
     for s in orden_cupo:  # local primero, ruido internacional de 1 medio al final del cupo
@@ -3695,7 +3720,11 @@ def get_ia(stories, modo_lectura=False):
         if entry.get("interp_v") != IA_INTERP_VERSION:
             if new_interp >= IA_INTERP_MAX:
                 continue
-            texto = ia.interpretar(s["titular"], s.get("resumen", ""))
+            perfil = _perfil_para(s, top_keys)
+            if perfil == getattr(ia, "PERFIL_PROFUNDO", "profundo"):
+                texto = ia.interpretar(s["titular"], s.get("resumen", ""))
+            else:
+                texto = ia.interpretar(s["titular"], s.get("resumen", ""), perfil=perfil)
             if texto is not None:  # None = fallo de Ollama; "" = literal tras 2 intentos (valido, se cachea igual)
                 entry["interp"] = texto
                 entry["interp_v"] = IA_INTERP_VERSION
@@ -3810,7 +3839,7 @@ def apariciones_previas(nombre, excluir_link=""):
 # desacoplando el "principal para GDELT" de la verificacion Wikipedia.
 
 CONTEXTO_CACHE = os.path.join(HERE, "contexto_cache.json")
-CONTEXTO_MAX_NEW = int(os.environ.get("MONITOR_CONTEXTO_MAX", "8"))  # tope de calculos NUEVOS por pasada (pacing)
+CONTEXTO_MAX_NEW = int(os.environ.get("MONITOR_CONTEXTO_MAX", "100"))  # tope de calculos NUEVOS por pasada (pacing)
 # Fase 11 (v2): antes se auto-calculaba contexto para hasta CONTEXTO_MAX_NEW
 # historias de CUALQUIER ambito (ordenadas local-primero por
 # _prioridad_cupo_ia). Ahora el pedido es explicito: automatico SOLO para las
@@ -4032,7 +4061,7 @@ def _material_contexto(s, registro, verificadas, candidatos, comenciones, titula
     return material
 
 
-def _construir_contexto(s, registro=None):
+def _construir_contexto(s, registro=None, perfil=None):
     """Arma el contexto de 4 bloques de UNA historia (Fase 11 v2). Nunca
     inventa: si no hay NADA de material real (ni entidad verificada, ni
     co-mencion, ni antecedente del registro, ni SERCOP, ni otro medio
@@ -4134,7 +4163,7 @@ def _construir_contexto(s, registro=None):
                 "antecedentes": [], "actores": [], "que_es_nuevo": [], "que_falta_saber": [],
                 "limitaciones": "modulo contexto.py no disponible", "descartadas": 0}
 
-    bloques = contexto.construir(titular, resumen, material, forzado=IA_MODEL)
+    bloques = contexto.construir(titular, resumen, material, forzado=IA_MODEL, perfil=perfil)
     if bloques is None:
         return None  # fallo real de la IA -- get_contexto() no cachea esto, reintenta despues
 
@@ -4197,8 +4226,12 @@ def get_contexto(stories, modo_lectura=False):
     # CONTEXTO_TOP historias LOCALES mejor rankeadas por corrida (antes era
     # cualquier ambito, con local solo como prioridad de orden). El resto se
     # calcula bajo demanda con GET /api/contexto?id= (ver _do_GET_contexto).
+    # Fase 18 (P2-10): TODO lo local, Guayaquil primero; las CONTEXTO_TOP
+    # mas importantes con el perfil profundo, el resto con el rapido.
     objetivo = sorted([s for s in stories if s.get("es_local")],
-                       key=lambda s: -(s.get("interes") or 0))[:CONTEXTO_TOP]
+                       key=lambda s: (0 if s.get("ciudad") == "Guayaquil" else 1, -(s.get("interes") or 0)))
+    top_ctx = {story_key(s) for s in sorted([s for s in stories if s.get("es_local")],
+                                             key=lambda s: -(s.get("interes") or 0))[:CONTEXTO_TOP]}
     registro = _cargar_registro() if objetivo else {}
     new = 0
     for s in objetivo:
@@ -4223,7 +4256,11 @@ def get_contexto(stories, modo_lectura=False):
                 s["contexto"] = entry
                 s["contexto_desactualizado"] = True
             continue
-        nuevo = _construir_contexto(s, registro)
+        perfil = _perfil_para(s, top_ctx)
+        if perfil == getattr(ia, "PERFIL_PROFUNDO", "profundo"):
+            nuevo = _construir_contexto(s, registro)  # el de siempre (profundo por defecto)
+        else:
+            nuevo = _construir_contexto(s, registro, perfil=perfil)
         new += 1  # el intento gasta cupo de esta pasada aunque la IA falle
         if nuevo is None:
             if entry is not None:
@@ -4238,7 +4275,7 @@ def get_contexto(stories, modo_lectura=False):
             json.dump(cache, f, ensure_ascii=False)
     except Exception:
         pass
-    return "ok (+%d nuevas, top %d locales)" % (new, len(objetivo))
+    return "ok (+%d nuevas, %d locales)" % (new, len(objetivo))
 
 
 # ------------------------- contraste con documentacion oficial (SERCOP) -------------------------

@@ -787,7 +787,7 @@ def es_literal(texto, titular=""):
         return True
     return False
 
-def interpretar(titular, resumen="", forzado="", timeout=90):
+def interpretar(titular, resumen="", forzado="", timeout=90, perfil=None):
     """Lectura editorial de UNA nota (texto libre). Devuelve el texto, "" si
     el modelo solo produjo parafrasis (dos intentos), o None si la IA fallo."""
     global last_error
@@ -798,7 +798,9 @@ def interpretar(titular, resumen="", forzado="", timeout=90):
     msgs.append({"role": "user", "content": "Titular: %s\nResumen: %s" % (
         titular or "", (resumen or "")[:400])})
     for temp in (0.5, 0.8):
-        texto = _generar(sistema=_INTERP_SISTEMA, mensajes=msgs, perfil=PERFIL_PROFUNDO,
+        # Fase 18 (P2-10): 'perfil' permite usar el rapido para la cobertura
+        # masiva de lo local (el profundo queda para las mas importantes).
+        texto = _generar(sistema=_INTERP_SISTEMA, mensajes=msgs, perfil=perfil or PERFIL_PROFUNDO,
                          temperatura=temp, max_tokens=900, timeout=timeout)
         if texto is None:
             return None
