@@ -180,8 +180,18 @@ FEEDS = [
     {"outlet": "The Hindu",      "seccion": "auto", "intl": True, "url": "https://www.thehindu.com/news/international/feeder/default.rss"},
     {"outlet": "Straits Times",  "seccion": "auto", "intl": True, "url": "https://www.straitstimes.com/news/world/rss.xml"},
     # -- America Latina (mas fuentes, mas Colombia -- vecino directo) --
-    {"outlet": "Infobae",        "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/"},
-    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/"},
+    # Fase 18 (P1-9): el feed GENERAL de Infobae/Semana traia sobre todo
+    # noticias locales de Mexico/Colombia, plantas, vallenato y farandula
+    # (medido en fetch_cache.json del 2026-09-30: Infobae 24 de 80 items
+    # /mexico/, 10 /colombia/, 4 /teleshow/; Semana casi todo /nacion/).
+    # 'rutas_permitidas': solo se quedan los items de esas secciones de la URL
+    # (mundo/region), mas cualquier item que mencione Ecuador. Si Fernando
+    # confirma un feed propio de mundo (ver SITEMAPS_Y_FEEDS_CANDIDATOS), se
+    # puede cambiar la URL y quitar el filtro.
+    {"outlet": "Infobae",        "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/",
+     "rutas_permitidas": ["america", "estados-unidos", "mundo", "economia"]},
+    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/",
+     "rutas_permitidas": ["mundo"]},
     {"outlet": "El Tiempo (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.eltiempo.com/rss/mundo.xml"},
     # -- probados 2026-09-23 (segunda tanda), fallaron --
     # {"outlet": "DW (ES)",        "seccion":"auto","intl":True,"url":"https://rss.dw.com/xml/rss-es-all"},  # "Error: no feed by that name"
@@ -315,3 +325,28 @@ WIKI_TERMS = {
     "Migracion": "Migración humana",
     "Cultura/Comunidad": "Cultura del Ecuador",
 }
+
+
+# ------------------------- Fase 18 (P1-8/P1-9): candidatos a probar desde la PC -------------------------
+# NO estan activos: la sesion donde se escribio esto no tenia acceso a los
+# medios. `python monitor.py probar_sitemaps` los prueba uno por uno desde la
+# PC de Fernando y guarda los que respondan (con notas de las ultimas 48 h) en
+# feeds_extra.json, que monitor.py suma a FEEDS al arrancar. Resultado de cada
+# prueba: ver la salida del comando (y CLAUDE.md, Fase 18).
+SITEMAPS_Y_FEEDS_CANDIDATOS = [
+    # news sitemaps ("ultimo minuto", suelen actualizarse antes que el RSS)
+    {"outlet": "El Comercio", "seccion": "auto", "tipo": "sitemap", "url": "https://www.elcomercio.com/sitemap-news.xml"},
+    {"outlet": "El Universo", "seccion": "auto", "tipo": "sitemap", "url": "https://www.eluniverso.com/arc/outboundfeeds/sitemap-news/?outputType=xml"},
+    {"outlet": "El Universo", "seccion": "auto", "tipo": "sitemap", "url": "https://www.eluniverso.com/sitemap-news.xml"},
+    {"outlet": "Expreso", "seccion": "auto", "tipo": "sitemap", "url": "https://www.expreso.ec/sitemap-news.xml"},
+    {"outlet": "Expreso", "seccion": "auto", "tipo": "sitemap", "url": "https://www.expreso.ec/news-sitemap.xml"},
+    {"outlet": "Extra", "seccion": "auto", "tipo": "sitemap", "url": "https://www.extra.ec/sitemap-news.xml"},
+    {"outlet": "Extra", "seccion": "auto", "tipo": "sitemap", "url": "https://www.extra.ec/news-sitemap.xml"},
+    {"outlet": "Primicias", "seccion": "auto", "tipo": "sitemap", "url": "https://www.primicias.ec/sitemap-news.xml"},
+    {"outlet": "Primicias", "seccion": "auto", "tipo": "sitemap", "url": "https://www.primicias.ec/news-sitemap.xml"},
+    {"outlet": "Ecuavisa", "seccion": "auto", "tipo": "sitemap", "url": "https://www.ecuavisa.com/sitemap-news.xml"},
+    {"outlet": "Ecuavisa", "seccion": "auto", "tipo": "sitemap", "url": "https://www.ecuavisa.com/arc/outboundfeeds/news-sitemap/?outputType=xml"},
+    # feeds de mundo de Infobae/Semana (P1-9), para reemplazar el filtro por ruta
+    {"outlet": "Infobae", "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/category/america/"},
+    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/category/mundo/"},
+]

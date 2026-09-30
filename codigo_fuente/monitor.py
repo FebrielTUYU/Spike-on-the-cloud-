@@ -34,6 +34,17 @@ except Exception:
     print("No encuentro feeds.py en esta carpeta. Debe estar junto a monitor.py.")
     sys.exit(1)
 
+# Fase 18 (P1-8): feeds/sitemaps que 'python monitor.py probar_sitemaps'
+# confirmo que responden desde ESTA PC (feeds_extra.json, se genera solo).
+FEEDS_EXTRA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feeds_extra.json")
+try:
+    with open(FEEDS_EXTRA_PATH, encoding="utf-8") as _f:
+        _extra = [x for x in json.load(_f).get("feeds", []) if x.get("url")]
+    _urls = {x["url"] for x in FEEDS}
+    FEEDS = list(FEEDS) + [x for x in _extra if x["url"] not in _urls]
+except Exception:
+    pass
+
 try:
     import trends  # cliente de Google Trends (demanda); opcional
 except Exception:
@@ -983,6 +994,92 @@ def parse_feed(raw, outlet, seccion, scope=None, ciudad_feed="", google_news=Fal
         })
     return out
 
+def filtrar_por_ruta(arts, rutas):
+    """Fase 18 (P1-9): de un feed GENERAL, se queda solo con los items cuya
+    URL cae en una de 'rutas' (primer segmento del path, ej. 'mundo'), mas
+    los que mencionan Ecuador."""
+    rutas = {r.strip("/").lower() for r in rutas}
+    out = []
+    for a in arts:
+        m = re.match(r"https?://[^/]+/([^/?#]+)/", a.get("link") or "")
+        if (m and m.group(1).lower() in rutas) or is_ecuador(a["title"] + " " + (a.get("summary") or "")):
+            out.append(a)
+    return out
+
+
+def probar_sitemaps(guardar=True):
+    """Fase 18 (P1-8): prueba desde ESTA PC los candidatos de
+    feeds.SITEMAPS_Y_FEEDS_CANDIDATOS e imprime cuales responden. Los que
+    traen notas de las ultimas 48 h se guardan en feeds_extra.json (se suman
+    a FEEDS al proximo arranque). Un candidato cuyo medio ya tiene feed
+    propio se agrega igual: dedup() junta los repetidos por link."""
+    try:
+        from feeds import SITEMAPS_Y_FEEDS_CANDIDATOS as cands
+    except Exception:
+        print("feeds.py no tiene SITEMAPS_Y_FEEDS_CANDIDATOS")
+        return []
+    ok = []
+    for f in cands:
+        try:
+            got, st, _ = _fetch_feed(f, {}, False)
+        except Exception as e:
+            got, st = [], type(e).__name__
+        recientes = [a for a in got if a.get("date") and (now_utc() - a["date"]).total_seconds() < 48 * 3600]
+        ultimo = max((a["date"] for a in got if a.get("date")), default=None)
+        print("%-18s %-70s %-8s items=%-3d recientes48h=%-3d ultimo=%s" % (
+            f["outlet"], f["url"][:70], st[:8], len(got), len(recientes),
+            ultimo.isoformat()[:16] if ultimo else "-"))
+        if st == "ok" and recientes:
+            ok.append(f)
+    if guardar:
+        with open(FEEDS_EXTRA_PATH, "w", encoding="utf-8") as fh:
+            json.dump({"_nota": "Generado por 'python monitor.py probar_sitemaps' (Fase 18). Borrar para desactivar.",
+                       "generado": now_utc().isoformat(), "feeds": ok}, fh, ensure_ascii=False, indent=1)
+        print("\n%d de %d candidatos responden; guardados en feeds_extra.json" % (len(ok), len(cands)))
+    return ok
+
+
+def parse_sitemap_news(raw, outlet, seccion, ciudad_feed="", scope=None):
+    """Fase 18 (P1-8): "news sitemap" (sitemap-news.xml / news-sitemap.xml,
+    formato estandar de Google News). Varios diarios lo actualizan antes que
+    su RSS -- y algunos con el RSS muerto (Primicias, Ecuavisa) podrian
+    tener sitemap vivo. Mismo formato de salida que parse_feed()."""
+    root = ET.fromstring(raw.lstrip())
+    out = []
+    for u in [e for e in root.iter() if tag(e) == "url"]:
+        link = title = date = None
+        for ch in u.iter():
+            t = tag(ch)
+            if t == "loc" and not link:
+                link = (ch.text or "").strip()
+            elif t == "title" and not title:
+                title = (ch.text or "").strip()
+            elif t == "publication_date":
+                date = (ch.text or "").strip()
+            elif t == "lastmod" and not date:
+                date = (ch.text or "").strip()
+        if not title or not link:
+            continue
+        title = html.unescape(title)
+        if scope == "ec" and not is_ecuador(title):
+            continue
+        if is_junk(title, "", link):
+            continue
+        d = None
+        if date:
+            try:
+                d = dt.datetime.fromisoformat(date.replace("Z", "+00:00"))
+                d = (d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)).astimezone(dt.timezone.utc)
+            except ValueError:
+                d = parse_date(date)
+        sec = seccion
+        if seccion == "auto":
+            sec = classify_section(title) or "general"
+        out.append({"outlet": outlet, "seccion": normalizar_categoria(sec), "title": title, "link": link,
+                    "date": d, "summary": "", "image": "", "ciudad_feed": ciudad_feed})
+    return out
+
+
 # ------------------------- Fase 0 (velocidad): cache de fetch por feed -------------------------
 # fetch_cache.json (distinto de los *_cache.json de siempre: NO es solo un TTL
 # fijo, guarda ETag/Last-Modified para peticion condicional Y los ultimos
@@ -1061,8 +1158,13 @@ def _fetch_feed(f, cache_entry, respetar_frecuencia=True):
         cache_entry["etag"], cache_entry["last_modified"] = etag, last_mod
         return items_cache, "ok (304 sin cambios)", cache_entry
 
-    got = parse_feed(data, f["outlet"], f["seccion"], f.get("scope"), f.get("ciudad", ""),
-                      google_news=f.get("google_news", False))
+    if f.get("tipo") == "sitemap":
+        got = parse_sitemap_news(data, f["outlet"], f["seccion"], f.get("ciudad", ""), f.get("scope"))
+    else:
+        got = parse_feed(data, f["outlet"], f["seccion"], f.get("scope"), f.get("ciudad", ""),
+                          google_news=f.get("google_news", False))
+    if f.get("rutas_permitidas"):
+        got = filtrar_por_ruta(got, f["rutas_permitidas"])
     cache_entry["etag"], cache_entry["last_modified"] = etag, last_mod
     cache_entry["items"] = [_serializar_articulo(a) for a in got]
     cache_entry["ultimo_ok"] = ahora
@@ -1075,6 +1177,13 @@ def collect(respetar_frecuencia=True):
     Fase 0: lee/actualiza fetch_cache.json (ETag + frecuencia propia por
     feed + ultimos items) -- ver _fetch_feed()."""
     fetch_cache = _cargar_fetch_cache()
+    # Fase 18 (P1-8): ultimo sondeo OK de cada medio ANTES de esta pasada --
+    # para medir latencia solo sobre lo que aparecio con el feed ya vigilado.
+    prev_ok = {}
+    for f in FEEDS:
+        ok_ts = (fetch_cache.get(f["url"]) or {}).get("ultimo_ok")
+        if ok_ts:
+            prev_ok[f["outlet"]] = max(prev_ok.get(f["outlet"], 0), ok_ts)
     resultados = [None] * len(FEEDS)
     tiempos_feed = [0.0] * len(FEEDS)  # Fase 17: diagnostico, no cambia el resultado
     def _tarea(i, f):
@@ -1110,7 +1219,7 @@ def collect(respetar_frecuencia=True):
                        "; ".join("%s=%.2fs(%s)" % (o, t, st) for o, t, st in con_error[:10]))
     _log_arranque("collect: %d feeds en %.2fs (paralelo, max 20 hilos)" %
                   (len(FEEDS), time.time() - t_collect0))
-    _registrar_first_seen(articles)
+    _registrar_first_seen(articles, prev_ok)
     return articles, report
 
 
@@ -1136,22 +1245,34 @@ def _guardar_latencia(reg):
         json.dump(reg, f, ensure_ascii=False)
     os.replace(tmp, LATENCIA_PATH)
 
-def _registrar_first_seen(articles):
+# Fase 18 (P1-8): un articulo cuenta para la latencia solo si su medio ya
+# se habia sondeado con exito hace <= LATENCIA_VENTANA_MIN. Si no (arranque de
+# la PC, feed caido), lo que llega es BACKLOG: "lo vimos" mide cuanto estuvo
+# apagado el programa, no cuanto tarda el medio. Eso inflaba las medianas
+# (El Universo 405 min, El Diario 666 min).
+LATENCIA_VENTANA_MIN = float(os.environ.get("MONITOR_LATENCIA_VENTANA_MIN", "30"))
+
+
+def _registrar_first_seen(articles, prev_ok_por_outlet=None):
     """Para cada articulo visto por PRIMERA VEZ (por link, clave estable):
-    guarda cuando el medio dice que lo publico (pub_date, del propio feed) y
-    cuando lo vimos nosotros (first_seen, ahora). Un link ya registrado no se
+    guarda cuando el medio dice que lo publico (pub_date, del propio feed),
+    cuando lo vimos nosotros (first_seen, ahora) y si la medicion es VALIDA
+    (feed ya vigilado, ver LATENCIA_VENTANA_MIN). Un link ya registrado no se
     vuelve a tocar -- 'primera vez que lo vimos' tiene que quedar fijo."""
     reg = _cargar_latencia()
     ahora = now_utc()
     nuevos = 0
+    prev_ok_por_outlet = prev_ok_por_outlet or {}
     for a in articles:
         link = a.get("link")
         if not link or link in reg:
             continue
+        prev = prev_ok_por_outlet.get(a["outlet"])
         reg[link] = {
             "outlet": a["outlet"],
             "pub_date": a["date"].isoformat() if a.get("date") else None,
             "first_seen": ahora.isoformat(),
+            "valida": bool(prev and (ahora.timestamp() - prev) <= LATENCIA_VENTANA_MIN * 60),
         }
         nuevos += 1
     if nuevos:
@@ -1169,9 +1290,14 @@ def calcular_latencia_por_feed():
     (fecha del feed en el futuro respecto a cuando lo vimos -- casi siempre
     zona horaria mal interpretada), se deja tal cual, no se recorta a 0."""
     reg = _cargar_latencia()
-    por_outlet = {}
+    por_outlet, backlog = {}, {}
     for v in reg.values():
         if not v.get("pub_date"):
+            continue
+        if not v.get("valida"):
+            # Fase 18: backlog tras un arranque (o registro de antes de este
+            # cambio): no mide la demora del medio, se cuenta aparte.
+            backlog[v["outlet"]] = backlog.get(v["outlet"], 0) + 1
             continue
         try:
             pub = dt.datetime.fromisoformat(v["pub_date"])
@@ -1179,7 +1305,8 @@ def calcular_latencia_por_feed():
         except Exception:
             continue
         por_outlet.setdefault(v["outlet"], []).append((visto - pub).total_seconds() / 60)
-    out = {}
+    out = {o: {"n": 0, "mediana_min": None, "peor_min": None, "mas_de_10min": 0,
+               "sin_fecha": 0, "n_descartados_backlog": n} for o, n in backlog.items()}
     for outlet, demoras in por_outlet.items():
         ds = sorted(demoras)
         n = len(ds)
@@ -1190,6 +1317,7 @@ def calcular_latencia_por_feed():
             "peor_min": round(max(ds), 1),
             "mas_de_10min": sum(1 for d in ds if d > 10),
             "sin_fecha": sum(1 for a in reg.values() if a["outlet"] == outlet and not a.get("pub_date")),
+            "n_descartados_backlog": backlog.get(outlet, 0),
         }
     return out
 
@@ -3069,6 +3197,121 @@ def _adjuntar_tweets_eventos(stories, max_tweets=6):
         tw = sorted(tw, key=lambda t: xa.fecha_iso(t.get("createdAt", "")) or "", reverse=True)[:max_tweets]
         s["x_tweets"] = [{"texto": (t.get("text") or "")[:280], "autor": (t.get("author") or {}).get("userName", ""),
                           "fecha": xa.fecha_iso(t.get("createdAt", "")), "url": t.get("url", "")} for t in tw]
+
+
+# ------------------------- internacionales con marco (Fase 18, P1-9) -------------------------
+# 1303 de 1563 historias eran internacionales, muchas sin relacion con
+# Ecuador ni con la region (conciertos en la CDMX, plantas de interior,
+# vallenato). Dos capas: (1) farandula/espectaculos fuera, deterministico;
+# (2) triaje con IA (perfil rapido, EN LOTE de 20 titulares por llamada) que
+# decide si importa (global / region / ecuador / no) y escribe UNA linea de
+# "por que importa". El hilo rapido solo LEE el cache. Tope INTL_MAX.
+TRIAJE_INTL_PATH = os.path.join(HERE, "triaje_intl_cache.json")
+INTL_MAX = int(os.environ.get("MONITOR_INTL_MAX", "150"))
+TRIAJE_MAX_NEW = int(os.environ.get("MONITOR_TRIAJE_MAX", "60"))
+TRIAJE_LOTE = 20
+_RELEVANCIAS = ("global", "region", "ecuador", "no")
+_FARANDULA_RE = re.compile(
+    r"\b(concierto|conciertos|boletos|boleteria|preventa|gira mundial|festival|reality|farandula|"
+    r"telenovela|cantante|reguetonero|influencer|streamer|paquetes vip|en vivo desde|horoscopo|"
+    r"alfombra roja|premios grammy|premios oscar|serie de netflix|estreno de la pelicula)\b")
+
+
+def es_farandula(titulo):
+    return bool(_FARANDULA_RE.search(norm(titulo or "")))
+
+
+def _cargar_triaje():
+    try:
+        with open(TRIAJE_INTL_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+_PROMPT_TRIAJE = (
+    "Eres editor de un medio de Guayaquil, Ecuador. Para cada titular internacional "
+    "numerado decide su relevancia para un lector ecuatoriano:\n"
+    "- \"global\": afecta al mundo (guerra, economia mundial, diplomacia grande).\n"
+    "- \"region\": importa para America Latina.\n"
+    "- \"ecuador\": tiene efecto directo en Ecuador.\n"
+    "- \"no\": noticia local de otro pais, farandula, deportes, curiosidades, consumo.\n"
+    "Para las que NO son \"no\", escribe \"marco\": UNA linea (max. 25 palabras) que diga POR QUE "
+    "IMPORTA o QUE CONSECUENCIA puede tener -- NO repitas el titular con otras palabras. No inventes "
+    "datos que el titular no dice; si no hay como explicar la consecuencia, usa relevancia \"no\".\n"
+    "Mal (repite): \"Trump pregunto a Xi si quiere comprar armas estadounidenses.\"\n"
+    "Bien: \"Una venta de armas a China cambiaria la tension comercial EE.UU.-China, que mueve "
+    "precios de materias primas que exporta la region.\"\n"
+    "Responde SOLO JSON: {\"items\": [{\"i\": 0, \"relevancia\": \"...\", \"marco\": \"...\"}]}\n\n%s")
+
+
+def get_triaje_intl(stories):
+    """Hilo TRABAJADOR (o corrida unica): clasifica las internacionales que
+    faltan, en lotes. Devuelve texto de estado '+N nuevas'."""
+    if ia is None or os.environ.get("MONITOR_NO_IA") == "1" or not ia.backend_listo():
+        return "desactivado"
+    cache = _cargar_triaje()
+    pend = [s for s in stories if s.get("ambito") == "internacional" and not es_farandula(s.get("titular"))
+            and story_key(s) not in cache]
+    pend.sort(key=lambda s: s.get("interes") or 0, reverse=True)
+    pend = pend[:TRIAJE_MAX_NEW]
+    nuevas = 0
+    for i in range(0, len(pend), TRIAJE_LOTE):
+        lote = pend[i:i + TRIAJE_LOTE]
+        lista = "\n".join("%d. %s" % (j, (s.get("titular") or "")[:160]) for j, s in enumerate(lote))
+        r = ia._generar_json(_PROMPT_TRIAJE % lista, max_tokens=1600)
+        if not r:
+            break  # fallo transitorio / sin presupuesto: se reintenta en otra pasada
+        for it in r.get("items") or []:
+            try:
+                j = int(it.get("i"))
+            except (TypeError, ValueError):
+                continue
+            rel = it.get("relevancia")
+            if not (0 <= j < len(lote)) or rel not in _RELEVANCIAS:
+                continue
+            marco = (it.get("marco") or "").strip()[:220]
+            if rel != "no" and not marco:
+                continue  # candado en codigo: relevante sin marco no se acepta
+            # candado: un "marco" que solo repite el titular no aporta nada
+            tt, tm = tokens(lote[j].get("titular", "")), tokens(marco)
+            if tm and len(tt & tm) / len(tm) >= 0.6:
+                marco = ""
+            cache[story_key(lote[j])] = {"relevancia": rel, "marco": marco if rel != "no" else "",
+                                         "titular": lote[j].get("titular", ""), "ts": now_utc().isoformat()}
+            nuevas += 1
+    if nuevas:
+        if len(cache) > 4000:
+            cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("ts", ""))[-3000:])
+        tmp = TRIAJE_INTL_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
+        os.replace(tmp, TRIAJE_INTL_PATH)
+    return "+%d nuevas (triaje internacional, pendientes: %d)" % (nuevas, max(0, len(pend) - nuevas))
+
+
+def aplicar_triaje_intl(stories, modo_lectura=True):
+    """Filtra y marca las internacionales: farandula fuera, 'no' del triaje
+    fuera, 'marco' pegado, y tope INTL_MAX (primero las ya clasificadas como
+    relevantes, despues las pendientes, por interes). Lo local no se toca."""
+    cache = _cargar_triaje()
+    orden = {"ecuador": 0, "global": 1, "region": 2}
+    intl = []
+    for s in stories:
+        if s.get("ambito") != "internacional":
+            continue
+        if es_farandula(s.get("titular")):
+            continue
+        t = cache.get(story_key(s))
+        if t:
+            if t.get("relevancia") == "no":
+                continue
+            s["relevancia_intl"] = t.get("relevancia")
+            s["marco"] = t.get("marco", "")
+        intl.append(s)
+    intl.sort(key=lambda s: (orden.get(s.get("relevancia_intl"), 3), -(s.get("interes") or 0)))
+    quedan = {id(s) for s in intl[:INTL_MAX]}
+    return [s for s in stories if s.get("ambito") != "internacional" or id(s) in quedan]
 
 
 # ------------------------- demanda (Google Trends) -------------------------
@@ -5793,6 +6036,12 @@ def run_once(verbose=True):
         # una historia madre en vez de ~10 tarjetas sueltas.
         stories = agrupar_eventos_en_curso(stories)
         _adjuntar_tweets_eventos(stories)
+        try:
+            print("Triaje internacional: %s" % get_triaje_intl(stories)) if verbose else get_triaje_intl(stories)
+        except Exception as e:
+            print("Error en triaje internacional: %s" % e)
+        # Fase 18 (P1-9): internacionales con marco (farandula fuera, triaje, tope)
+        stories = aplicar_triaje_intl(stories)
     t0 = _fase("cluster", t0)
 
     # DEMANDA (Google Trends) por tema, y se cuelga en cada historia.
@@ -6065,6 +6314,8 @@ def run_fast(verbose=False):
         # una historia madre en vez de ~10 tarjetas sueltas.
         stories = agrupar_eventos_en_curso(stories)
         _adjuntar_tweets_eventos(stories)
+        # Fase 18 (P1-9): internacionales con marco (farandula fuera, triaje, tope)
+        stories = aplicar_triaje_intl(stories)
     t0 = _fase("cluster", t0)
 
     themes_present = sorted({t for s in stories for t in s.get("temas", [])})
@@ -6354,6 +6605,11 @@ def enrich_pass():
                 pass
     with _medir_etapa("get_ia"):
         iastatus = get_ia(stories)             # bounded por IA_MAX_NEW, cachea por link
+    with _medir_etapa("get_triaje_intl"):
+        try:
+            triajestatus = get_triaje_intl(stories)  # Fase 18 (P1-9): lotes de 20, TRIAJE_MAX_NEW por pasada
+        except Exception as e:
+            triajestatus = "error: %s" % e
     # Fase 14, Paso 2: clasificacion con evidencia para notas ambiguas --
     # solo llama a la IA para historias con s["ciudad_discrepancia"]=True,
     # acotado a GEO_EVIDENCIA_MAX_NEW por pasada, cachea por story_key.
@@ -6385,7 +6641,7 @@ def enrich_pass():
             get_social_historias(stories)
         except Exception as e:
             print("Error en get_social_historias: %s" % e)
-    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus):
+    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus, triajestatus):
         m = _RE_NUEVAS.search(st or "")
         if m and int(m.group(1)) > 0:
             return True
@@ -7766,6 +8022,10 @@ def main():
         port = int(args[1]) if len(args) > 1 else 8000
         minutes = float(args[2]) if len(args) > 2 else None  # None: usa MONITOR_FEED_MIN (def. 1)
         serve(port, minutes)
+    elif args[0] == "probar_sitemaps":
+        probar_sitemaps()
+    elif args[0] == "reconstruir_registro":
+        reconstruir_registro(verbose=True)
     elif args[0] == "once":
         # La corrida unica bloqueante (el default de antes de esta fase)
         # queda accesible a mano con "once" -- la siguen necesitando

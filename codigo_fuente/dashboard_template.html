@@ -1161,13 +1161,17 @@ function renderLatenciaFeeds(){
       +'lleve un rato corriendo con `serve` para acumular medidas reales.</div>';
     return;
   }
+  // Fase 18 (P1-8): solo mediciones con el feed ya vigilado; el backlog de
+  // un arranque se cuenta aparte (no es demora del medio).
   box.innerHTML = `<div class="dist">` + outlets.map(o=>{
     const d=lat[o];
-    const feo = d.mediana_min>10 ? 'color:#e11d48;font-weight:700' : '';
+    const bk = d.n_descartados_backlog ? ` <span class="dv" title="Notas vistas tras un arranque o un feed caído: no miden la demora del medio">${d.n_descartados_backlog} de backlog (no cuentan)</span>` : "";
+    if(!d.n) return `<div class="drow"><span class="dk">${esc(o)}</span><span class="dv">sin mediciones válidas todavía</span>${bk}</div>`;
+    const feo = d.mediana_min>20 ? 'color:#e11d48;font-weight:700' : '';
     return `<div class="drow"><span class="dk">${esc(o)}</span>
       <span class="dv" style="${feo}">mediana ${d.mediana_min<1?'<1':Math.round(d.mediana_min)} min</span>
       <span class="dv">peor ${Math.round(d.peor_min)} min</span>
-      <span class="dv">${d.mas_de_10min}/${d.n} tardaron &gt;10min</span></div>`;
+      <span class="dv">${d.mas_de_10min}/${d.n} tardaron &gt;10min</span>${bk}</div>`;
   }).join("") + `</div>`;
 }
 
@@ -2160,6 +2164,7 @@ function cardHTML(h, i, opts){
     <div class="cardbody">
       <div class="titular">${esc(h.titular)}</div>
       ${h.resumen?`<p class="resumen">${esc(h.resumen)}</p>`:""}
+      ${h.marco?`<p class="ia"><b>Por qué importa (lectura IA) ·</b> ${esc(h.marco)}</p>`:""}
       ${h.ia?`<p class="ia"><b>Lectura IA ·</b> ${esc(h.ia)}${h.ia_desactualizada?' <span class="chip" style="border-color:#f59e0b;color:#f59e0b" title="La historia sumo medios o cambio de titular despues de que se calculo esta lectura -- el trabajador la va a rehacer en breve">desactualizada</span>':""}</p>`:""}
       ${renderContexto(h)}
       ${renderSubActualizaciones(h)}
