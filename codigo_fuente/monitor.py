@@ -218,6 +218,23 @@ PALABRAS_GENERICAS_CONTENIDO = set("""
 menores casos parque lineal
 """.split())
 
+# Fase 18 (P0-2, "veto de plantilla"): palabras de FORMATO que se repiten en
+# notas de hechos distintos -- "fechas y precios" (un show en Samborondon y
+# otro en la CDMX), "ataque armado" (Guayaquil, Huaquillas y La Libertad el
+# mismo dia), "corte de agua ... lista completa de zonas" (Guayaquil y
+# Cartagena). Casos reales del 29-sep, pruebas/fase18_casos_reales.json. No se
+# restan del solape (siguen sumando cuando HAY otra cosa en comun); lo que
+# cambia es que por si solas ya no alcanzan como puente: hace falta ademas un
+# nombre propio, una cifra, la misma ciudad o 2+ palabras especificas.
+TOKENS_PLANTILLA = set("""
+fechas fecha precios precio boletos entradas preventa horarios horario hora
+ataque armado armada disparos balacera muere muerto muertos murieron asesinado
+asesinada asesinan matan sicariato herido heridos
+corte cortes agua servicio lista completa zonas sectores sector interrupcion
+personas requeridas justicia detenidos detenido capturado capturados
+lluvias lluvia pronostico clima temperatura semana hoy este esta
+""".split())
+
 # Fase 9, Problema A2 -- siglas que _nombres_propios (pensada para palabras en
 # Sentence/Title Case) no captaba: CJNG, ATM, CTE, BDE, DAC, INAMHI, CNEL, etc.
 # La sigla suele ser justo la entidad puntual que comparten dos notas de la
@@ -516,7 +533,15 @@ EC_TERMS = ["ecuador", "ecuatorian", "quito", "guayaquil", "guayas", "samborondo
             "cotopaxi", "chimborazo", "carchi", "imbabura", "canar",
             "santa elena", "napo", "pastaza", "morona santiago",
             "zamora chinchipe", "sucumbios", "orellana", "yasuni", "petroecuador",
-            "asamblea nacional", "iess", "cfn", "senae", "dgac"]
+            "asamblea nacional", "iess", "cfn", "senae", "dgac",
+            # Fase 18 (P0-2/P0-3): ciudades/cantones reales que aparecian en
+            # titulares del 29-sep sin que nada los reconociera como Ecuador
+            # (Huaquillas, La Libertad de Santa Elena) -- sin esto, una nota de
+            # Huaquillas no tenia ningun lugar propio y se pegaba a la de
+            # Guayaquil por compartir "ataque armado".
+            "huaquillas", "latacunga", "riobamba", "ibarra", "tulcan", "otavalo",
+            "chone", "jipijapa", "montecristi", "pedernales", "atacames",
+            "nueva loja", "lago agrio", "macas", "puyo", "daule"]
 
 # Fase 17 (diagnostico de arranque lento -- ver COORDINACION.md, Frente B):
 # EC_TERMS/FOREIGN_TERMS son listas FIJAS (nunca se les hace .append/+= en
@@ -531,7 +556,12 @@ EC_TERMS = ["ecuador", "ecuatorian", "quito", "guayaquil", "guayas", "samborondo
 # byte-a-byte el mismo que armaba geo_hit(termino, blob), asi que el
 # resultado de is_ecuador/is_foreign no cambia en nada, solo se deja de
 # repetir el trabajo de construir el patron.
-_EC_TERMS_RE = {t: re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in EC_TERMS}
+_EC_TERMS_RE = {t: re.compile(r"\b" + re.escape(norm(t)) + ("" if t == "ecuatorian" else r"\b"))
+                for t in EC_TERMS}
+# Fase 18: "ecuatorian" es un PREFIJO a proposito (ecuatoriano/a/os/as), pero
+# con limite de palabra al final nunca coincidia con nada -- "narcotraficante
+# ecuatoriano" no contaba como senal de Ecuador (bug real encontrado midiendo
+# el caso Fito del 29-sep).
 
 # "Asamblea Nacional" tambien es el nombre del parlamento de VENEZUELA, muy
 # cubierto en prensa internacional (mucho mas que la ecuatoriana en medios de
@@ -594,6 +624,17 @@ FOREIGN_TERMS = [
     "tegucigalpa", "managua", "ciudad de panama", "santo domingo de guzman",
     "la habana", "barcelona", "sevilla", "valencia", "miami", "houston",
     "los angeles", "toronto", "monteria", "barranquilla", "cartagena de indias",
+    # Fase 18 (P0-2): casos reales del 29-sep que se fundian con historias de
+    # Guayaquil porque el pais/ciudad no estaba en esta lista. "cartagena"
+    # suelta es segura: Ecuador no tiene ninguna Cartagena. "santo domingo"
+    # suelto NO se agrega (es provincia de Ecuador) -- solo "republica
+    # dominicana".
+    "cartagena", "cdmx", "ciudad de mexico", "republica dominicana",
+    "puerto rico", "costa rica", "panama", "guatemala", "honduras", "cuba",
+    "uruguay", "paraguay", "canada", "italia", "portugal", "lisboa",
+    "nueva york", "new york", "chicago", "texas", "california",
+    "turquia", "siria", "libano", "arabia saudita", "qatar", "india", "pakistan",
+    "corea del sur", "corea del norte", "egipto", "santiago de chile",
 ]
 
 # Fase 17: mismo criterio que _EC_TERMS_RE (ver el comentario grande ahi).
@@ -640,7 +681,9 @@ def _es_enumeracion_paises(blob, minimo=3):
 
 def _es_enumeracion_ciudades(text, minimo=3):
     blob = norm(text)
-    encontradas = {ciudad for ciudad, terminos in CITIES.items()
+    # Fase 18: se cuentan AREAS, no ciudades -- "Guayaquil, Samborondon y
+    # Duran" es un solo lugar (Gran Guayaquil), no una enumeracion.
+    encontradas = {_area_de(ciudad) for ciudad, terminos in CITIES.items()
                    if any(geo_hit(t, blob) for t in terminos)}
     return len(encontradas) >= minimo
 
@@ -673,7 +716,27 @@ CITIES = {
     "Esmeraldas": ["esmeraldas"],
     "Santo Domingo": ["santo domingo"],
     "Babahoyo": ["babahoyo", "quevedo"],  # provincia Los Rios (ver nota en EC_TERMS)
+    # Fase 18 (P0-3): sin estas entradas, una nota de Santa Elena/Huaquillas/
+    # Cotopaxi no tenia ciudad propia y heredaba "Guayaquil" de la seccion del
+    # feed que la publico (casos reales del 29-sep).
+    "Santa Elena": ["santa elena"],
+    "Huaquillas": ["huaquillas"],
+    "Latacunga": ["latacunga", "cotopaxi"],
+    "Riobamba": ["riobamba", "chimborazo"],
+    "Ibarra": ["ibarra", "imbabura"],
 }
+
+# Nombre con tilde para mostrar la localidad de Gran Guayaquil (chip).
+LOCALIDAD_NOMBRE = {"Samborondon": "Samborondón", "Duran": "Durán", "Daule": "Daule"}
+
+
+def ciudades_en(text):
+    """Todas las ciudades de CITIES que nombra el texto (orden de CITIES).
+    Fase 18 (P0-3): detect_city() devuelve solo la PRIMERA -- y como
+    "Guayaquil" es la primera de la lista, un texto que nombra Guayaquil Y
+    otra ciudad siempre salia Guayaquil."""
+    blob = norm(text)
+    return [c for c, terminos in CITIES.items() if any(geo_hit(t, blob) for t in terminos)]
 
 GUAYAQUIL_AREA = [c.strip() for c in os.environ.get(
     "MONITOR_GUAYAQUIL_AREA", "Guayaquil,Samborondon,Duran,Daule").split(",") if c.strip()]
@@ -1736,12 +1799,16 @@ def _match_registro(art, registro, cache_entry=None):
         if c is not None and c["huella"] == huella_e:
             e_extranjero, tok_rep, tok_fund = c["extranjero"], c["tok_rep"], c["tok_fund"]
         else:
-            e_extranjero = extranjero_sin_ecuador(rep_titulo_e + " " + rep_resumen_e)
+            # Fase 18 (P0-2): el veto mira el representante Y el fundador --
+            # si cualquiera de los dos es "extranjero sin Ecuador" y el
+            # articulo no (o al reves), no se fusionan.
+            e_extranjero = (extranjero_sin_ecuador(rep_titulo_e + " " + rep_resumen_e),
+                            extranjero_sin_ecuador(fundador_titulo_e + " " + _quitar_dateline(e.get("fundador_resumen", "") or "")))
             tok_rep = tokens(rep_titulo_e) - EVENTO_GENERICO - LUGARES_COMUNES
             tok_fund = tokens(fundador_titulo_e) - EVENTO_GENERICO - LUGARES_COMUNES
             cache_entry[eid] = {"huella": huella_e, "extranjero": e_extranjero,
                                  "tok_rep": tok_rep, "tok_fund": tok_fund}
-        if a_extranjero != e_extranjero:
+        if a_extranjero != e_extranjero[0] or a_extranjero != e_extranjero[1]:
             continue
         # BUG REAL propio, encontrado escribiendo la prueba de la
         # "Actualizacion" (Problema 1): comparar contra el UNION acumulado
@@ -1788,6 +1855,13 @@ def _match_registro(art, registro, cache_entry=None):
         # anclajes) porque esta via no tiene ninguna otra corroboracion.
         elif sim_asistida >= CLUSTER_THRESHOLD_CONTENIDO and min(len(a_tok & tok_rep), len(a_tok & tok_fund)) >= 2:
             sim, via = sim_asistida, "palabras+contenido"
+        # Fase 18 (P0-2, veto de plantilla): las vias por palabras necesitan
+        # un ancla real ademas del vocabulario de formato.
+        if via is not None:
+            reales = (a_tok & (tok_rep | tok_fund)) - TOKENS_PLANTILLA
+            ancla = bool(a_nom & nom_e) or bool(a_num & num_e) or bool(a_ciudad and a_ciudad == e_ciudad)
+            if len(reales) < 2 and not ancla:
+                sim, via = 0.0, None
         e_emb = e.get("embedding")
         if a_emb and e_emb and ((a_nom & nom_e) or (a_num & num_e)):
             esim = _cos_sim(a_emb, e_emb)
@@ -1913,7 +1987,8 @@ def _registro_a_clusters(registro):
         arts = [dict(f_) for f_ in e.get("fuentes", [])]
         if not arts:
             continue
-        clusters.append({"articles": arts, "actualizaciones": e.get("actualizaciones", [])})
+        clusters.append({"articles": arts, "actualizaciones": e.get("actualizaciones", []),
+                         "creado": e.get("creado"), "fundador_titulo": e.get("fundador_titulo", "")})
     return clusters
 
 def agrupar_con_memoria(articles):
@@ -1931,6 +2006,93 @@ def agrupar_con_memoria(articles):
         _guardar_registro(registro)
     clusters = _registro_a_clusters(registro)
     return build_stories(clusters)
+
+REGISTRO_VERSION = "fase18"
+REGISTRO_VERSION_PATH = os.path.join(HERE, "historias_registro_version.json")
+
+
+def _registro_version():
+    try:
+        with open(REGISTRO_VERSION_PATH, encoding="utf-8") as f:
+            return json.load(f).get("version")
+    except Exception:
+        return None
+
+
+def reconstruir_registro(verbose=False, lote_horas=1):
+    """Fase 18 (P0-2/P0-3): el registro guardado ya trae historias mal
+    fundidas con las reglas viejas (Cartagena dentro de cortes de agua de
+    Guayaquil, "fechas y precios", "ataque armado"...). Las reglas nuevas solo
+    actuan sobre lo que llega DESPUES, asi que esas mezclas se quedarian para
+    siempre. Esto re-procesa TODAS las fuentes guardadas, en orden de fecha y
+    por lotes de 'lote_horas' (simula las pasadas reales), con las reglas
+    actuales. Hace respaldo antes (historias_registro.json.bak-fase18-...).
+    Los embeddings ya calculados se conservan cuando el texto coincide (no se
+    vuelve a pagar Gemini por ellos). Devuelve (entradas_antes, entradas_despues)."""
+    with _REGISTRO_LOCK:
+        viejo = _cargar_registro()
+        if os.path.exists(REGISTRO_PATH):
+            bak = REGISTRO_PATH + ".bak-fase18-" + now_utc().strftime("%Y%m%d_%H%M%S")
+            import shutil
+            shutil.copy2(REGISTRO_PATH, bak)
+        vectores = {}
+        for e in viejo.values():
+            if e.get("embedding") and e.get("embedding_modelo"):
+                for texto in (e.get("fundador_titulo"), e.get("rep_titulo")):
+                    if texto:
+                        vectores.setdefault(texto.strip(), (e["embedding"], e["embedding_modelo"]))
+        arts, vistos = [], set()
+        for e in viejo.values():
+            for f_ in e.get("fuentes", []):
+                clave = (f_.get("outlet"), norm(f_.get("title", ""))[:80])
+                if clave in vistos or not f_.get("title"):
+                    continue
+                vistos.add(clave)
+                arts.append({"outlet": f_.get("outlet", ""), "title": f_.get("title", ""),
+                             "link": f_.get("link"), "date": f_.get("date"),
+                             "seccion": f_.get("seccion", ""), "summary": f_.get("summary", "") or "",
+                             "image": f_.get("image", ""), "ciudad_feed": f_.get("ciudad_feed", "")})
+        arts.sort(key=lambda a: a.get("date") or dt.datetime.min.replace(tzinfo=dt.timezone.utc))
+        nuevo, lote, inicio_lote = {}, [], None
+        for a in arts:
+            d = a.get("date")
+            if lote and d and inicio_lote and (d - inicio_lote).total_seconds() > lote_horas * 3600:
+                nuevo = _fusionar_en_registro(lote, nuevo)
+                lote, inicio_lote = [], None
+            if inicio_lote is None:
+                inicio_lote = d
+            lote.append(a)
+        if lote:
+            nuevo = _fusionar_en_registro(lote, nuevo)
+        reusados = 0
+        for e in nuevo.values():
+            v = vectores.get(_texto_embedding(e))
+            if v:
+                e["embedding"], e["embedding_modelo"] = v
+                reusados += 1
+        _guardar_registro(nuevo)
+        try:
+            with open(REGISTRO_VERSION_PATH, "w", encoding="utf-8") as f:
+                json.dump({"version": REGISTRO_VERSION, "ts": now_utc().isoformat(),
+                           "antes": len(viejo), "despues": len(nuevo)}, f)
+        except OSError:
+            pass
+    if verbose:
+        print("registro reconstruido: %d -> %d entradas (%d articulos, %d embeddings reusados)" % (
+            len(viejo), len(nuevo), len(arts), reusados))
+    return len(viejo), len(nuevo)
+
+
+def migrar_registro_si_hace_falta(verbose=False):
+    """Una sola vez por instalacion: si el registro es de antes de la Fase
+    18, se reconstruye con las reglas nuevas (ver reconstruir_registro)."""
+    if _registro_version() == REGISTRO_VERSION or not os.path.exists(REGISTRO_PATH):
+        return None
+    _log_arranque("registro: reconstruyendo con reglas de Fase 18 (una sola vez)...")
+    r = reconstruir_registro(verbose=verbose)
+    _log_arranque("registro: reconstruido %d -> %d entradas" % r)
+    return r
+
 
 def _embed_pendientes_registro():
     """Trabajo del hilo TRABAJADOR (nunca run_fast): calcula embeddings para
@@ -2031,6 +2193,9 @@ def _reconciliar_por_embedding(registro):
                 continue
             si, sj = ei.get("servicio", ""), ej.get("servicio", "")
             if si and sj and si != sj:
+                continue
+            # Fase 18 (P0-2): mismo veto de lugar extranjero que _match_registro.
+            if extranjero_sin_ecuador(ei.get("fundador_titulo", "")) != extranjero_sin_ecuador(ej.get("fundador_titulo", "")):
                 continue
             if _cos_sim(ei["embedding"], ej["embedding"]) < EMBED_SIM_UMBRAL:
                 continue
@@ -2505,6 +2670,32 @@ def _ciudad_por_mayoria(ciudades):
     return "", discrepancia
 
 
+# Fase 18 (P0-2): horas desde la creacion para que una tarjeta diga "Nueva".
+NUEVA_H = float(os.environ.get("MONITOR_NUEVA_H", "3"))
+
+# Fase 18 (P0-3): senales de que una nota es NACIONAL (no de una ciudad),
+# aunque la publique la seccion Guayaquil de un diario. Solo se mira el
+# TITULAR, por frase o palabra completa.
+NACIONAL_TERMS = ["ecuador", "ecuatorian", "noboa", "gobierno", "asamblea", "iva", "sri",
+                  "cne", "presidente de la republica", "ministerio", "ministro", "ministra",
+                  "a nivel nacional", "todo el pais", "codigo organico", "codigo de la ninez",
+                  "decreto", "registro oficial", "corte constitucional", "fiscalia general",
+                  "elecciones seccionales", "consulta popular", "banco central", "inec"]
+_NACIONAL_RE = [re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in NACIONAL_TERMS]
+# Subconjunto "fuerte": medidas de alcance nacional que siguen siendo
+# nacionales aunque el titular nombre Guayaquil (caso real: "Daniel Noboa
+# reduce el IVA al 8 % durante el feriado por la Independencia de Guayaquil").
+NACIONAL_FUERTE = ["iva", "sri", "decreto", "registro oficial", "codigo organico",
+                   "codigo de la ninez", "consulta popular", "elecciones seccionales",
+                   "a nivel nacional", "todo el pais", "asamblea"]
+_NACIONAL_FUERTE_RE = [re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in NACIONAL_FUERTE]
+
+
+def es_nacional(titulo, fuerte=False):
+    blob = norm(titulo)
+    return any(p.search(blob) for p in (_NACIONAL_FUERTE_RE if fuerte else _NACIONAL_RE))
+
+
 def build_stories(clusters):
     stories = []
     for c in clusters:
@@ -2513,8 +2704,15 @@ def build_stories(clusters):
         outlets_intl = [o for o in outlets if o in INTL_OUTLETS]
         dates = [a["date"] for a in arts if a["date"]]
         newest = max(dates) if dates else None
-        # representante = la nota mas reciente del grupo (tras el merge el orden no es fiable)
-        rep = max(arts, key=lambda a: a["date"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc))
+        # Fase 18 (P0-2): representante = la nota FUNDADORA (la primera que
+        # creo la historia), ya no la mas nueva. Antes, una historia vieja
+        # "subia" con el titular de la ultima nota que se le pegaba y parecia
+        # nueva; lo nuevo va en 'actualizaciones' con su hora.
+        rep = None
+        if c.get("fundador_titulo"):
+            rep = next((a for a in arts if a["title"] == c["fundador_titulo"]), None)
+        if rep is None:
+            rep = min(arts, key=lambda a: a["date"] or dt.datetime.max.replace(tzinfo=dt.timezone.utc))
         seccion = rep["seccion"]
         blob = " ".join(a["title"] + " " + a["summary"] for a in arts)
         # Fase 14, bug real encontrado verificando en vivo: el fallback final
@@ -2580,6 +2778,27 @@ def build_stories(clusters):
         # ciudad=Guayaquil".
         ciudad = (_area_de(ciudad_mayoritaria) if es_local and ciudad_mayoritaria else "") or \
                  (("" if _es_enumeracion_ciudades(blob_geo) else detect_city(blob_geo)) if es_local else "")
+        # Fase 18 (P0-3): el titular que se muestra manda. Si nombra OTRA
+        # ciudad/provincia (y no Gran Guayaquil), la historia no es de
+        # Guayaquil; si es noticia NACIONAL (IVA, ley, Gobierno...), queda en
+        # Ecuador sin ciudad aunque la haya publicado la seccion Guayaquil de
+        # un diario.
+        rep_texto_geo = rep["title"] + " " + _quitar_dateline(rep.get("summary") or "")
+        rep_ciudades = ciudades_en(rep["title"])
+        rep_gye = [c_ for c_ in rep_ciudades if c_ in GUAYAQUIL_AREA]
+        if es_local and ciudad == "Guayaquil" and not rep_gye:
+            otras = [c_ for c_ in rep_ciudades if c_ not in GUAYAQUIL_AREA]
+            if otras:
+                ciudad = otras[0]
+            elif es_nacional(rep["title"]):
+                ciudad = ""
+        elif es_local and ciudad == "Guayaquil" and es_nacional(rep["title"], fuerte=True):
+            ciudad = ""
+        localidad = ""
+        if ciudad == "Guayaquil":
+            sub = [c_ for c_ in ciudades_en(rep_texto_geo) if c_ in GUAYAQUIL_AREA and c_ != "Guayaquil"]
+            if sub and "Guayaquil" not in ciudades_en(rep["title"]):
+                localidad = LOCALIDAD_NOMBRE.get(sub[0], sub[0])
         temas = themes_for(blob, seccion)
         # Base geografica por palabras clave (jerarquica): la IA la puede corregir
         # despues, con candado (ver _apply en get_ia).
@@ -2588,6 +2807,8 @@ def build_stories(clusters):
         else:
             geo = ["internacional"]
         hours = (now_utc() - newest).total_seconds() / 3600 if newest else None
+        creado = c.get("creado") or (min(dates) if dates else None)
+        horas_creado = (now_utc() - creado).total_seconds() / 3600 if creado else None
         # se descarta de verdad solo mas alla de MAX_AGE_DAYS (columnas, notas
         # rezagadas). Entre FEED_FRESH_H y MAX_AGE_DAYS ya NO se descarta: queda
         # marcada "antigua" y la pestaña "Anteriores" del dashboard la muestra
@@ -2642,6 +2863,15 @@ def build_stories(clusters):
             "es_local": es_local,
             "ambito": ambito,
             "ciudad": ciudad,
+            # Fase 18 (P0-3): Samborondon/Duran/Daule cuentan como Gran
+            # Guayaquil (ciudad="Guayaquil" para todos los filtros) pero
+            # llevan su nombre aca para el chip de la tarjeta.
+            "localidad": localidad,
+            # Fase 18 (P0-2): "Nueva" solo si la historia se creo hace poco;
+            # si solo se sumo una fuente, la tarjeta dice "Actualizacion".
+            "creado": creado.isoformat() if creado else None,
+            "horas_desde_creacion": round(horas_creado, 1) if horas_creado is not None else None,
+            "es_nueva": bool(horas_creado is not None and horas_creado <= NUEVA_H),
             # Fase 14, Paso 2: True solo si las fuentes fusionadas mencionan
             # ciudades DISTINTAS (ya normalizadas por area metropolitana) --
             # la señal que usa get_geo_evidencia() para elegir que historias
@@ -2694,6 +2924,128 @@ def build_stories(clusters):
         })
     stories.sort(key=lambda s: s["score"], reverse=True)
     return stories
+
+
+# ------------------------- evento en curso (Fase 18, P0-2.4) -------------------------
+# Las lluvias de Guayaquil del 29-sep terminaron en ~10-18 tarjetas separadas
+# (cada medio contaba un sector distinto: Av. de las Americas, el norte, la
+# Atarazana, calzada mojada segun la ATM...). Ninguna comparte suficiente
+# vocabulario con las otras para fusionarse -- y no deben fusionarse en el
+# registro (son notas distintas), pero en la vista son UN evento. Esta capa
+# las agrupa SOLO para mostrar: >=3 historias del mismo lugar (Gran
+# Guayaquil cuenta como uno), del mismo tipo de hecho, el mismo dia local ->
+# una historia madre con sub-actualizaciones por sector. No toca el registro
+# ni gasta IA.
+EVENTO_TIPOS = {
+    "lluvias": ("Lluvias", ["lluvia", "lluvias", "inundacion", "inundaciones", "inunda", "anegad",
+                             "aguacero", "acumulacion de agua", "calzada mojada", "marea alta",
+                             "desborde", "desbordamiento"]),
+    "cortes": ("Cortes de servicio", ["corte de agua", "cortes de agua", "corte de luz", "cortes de luz",
+                                      "sin agua", "sin luz", "apagon", "corte electrico"]),
+    "violencia": ("Violencia armada", ["balacera", "ataque armado", "disparos", "tiroteo", "sicariato"]),
+    "protestas": ("Protestas", ["protesta", "planton", "marcha", "paro", "bloqueo de via"]),
+}
+_EVENTO_RE = {k: [re.compile(r"\b" + re.escape(norm(w))) for w in ws] for k, (_, ws) in EVENTO_TIPOS.items()}
+EVENTO_MIN = int(os.environ.get("MONITOR_EVENTO_MIN", "3"))
+_MESES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+_SECTORES_EXTRA = {"Norte": ["norte de guayaquil", "el norte", "del norte"],
+                   "Sur": ["sur de guayaquil", "el sur", "del sur"]}
+
+
+def tipo_evento(titulo):
+    blob = norm(titulo)
+    for k, pats in _EVENTO_RE.items():
+        if any(p.search(blob) for p in pats):
+            return k
+    return ""
+
+
+def _sector_de(texto):
+    blob = norm(texto)
+    if alertas is not None:
+        for nombre, terms in alertas.BARRIOS_GYE.items():
+            if any(re.search(r"\b" + re.escape(norm(t)) + r"\b", blob) for t in terms):
+                return nombre
+    for nombre, terms in _SECTORES_EXTRA.items():
+        if any(t in blob for t in terms):
+            return nombre
+    return ""
+
+
+def _dia_local(iso):
+    d = _iso_a_dt(iso) if isinstance(iso, str) else iso
+    return (d - dt.timedelta(hours=5)).date() if d else None  # Guayaquil = UTC-5, sin horario de verano
+
+
+def agrupar_eventos_en_curso(stories):
+    """Devuelve una lista NUEVA de historias donde cada grupo de >=EVENTO_MIN
+    historias locales (misma ciudad, mismo tipo de hecho, mismo dia local)
+    se reemplaza por una historia madre. Las historias hijas quedan dentro,
+    en 'sub_actualizaciones' (titular, hora, medios, sector, link)."""
+    grupos = {}
+    for i, s in enumerate(stories):
+        if not s.get("es_local") or not s.get("ciudad") or s.get("evento_en_curso"):
+            continue
+        tipo = tipo_evento(s.get("titular", ""))
+        dia = _dia_local(s.get("newest"))
+        if not tipo or not dia:
+            continue
+        grupos.setdefault((s["ciudad"], tipo, dia), []).append(i)
+    usados, madres = set(), []
+    for (ciudad, tipo, dia), idx in grupos.items():
+        if len(idx) < EVENTO_MIN:
+            continue
+        hijas = sorted((stories[i] for i in idx), key=lambda s: s.get("newest") or "")
+        base = dict(max(hijas, key=lambda s: s.get("score", 0)))
+        fuentes, links = [], set()
+        for h in hijas:
+            for f_ in h.get("fuentes", []):
+                if f_.get("link") not in links:
+                    links.add(f_.get("link"))
+                    fuentes.append(f_)
+        fuentes.sort(key=lambda f_: f_.get("date") or "")
+        subs, sectores = [], []
+        for h in hijas:
+            sector = _sector_de(h.get("titular", "") + " " + (h.get("resumen") or ""))
+            if sector and sector not in sectores:
+                sectores.append(sector)
+            subs.append({"titular": h.get("titular", ""), "fecha": h.get("newest"),
+                         "outlets": h.get("outlets", []), "sector": sector,
+                         "link": (h.get("fuentes") or [{}])[0].get("link", "")})
+        outlets = sorted({o for h in hijas for o in h.get("outlets", [])})
+        etiqueta = EVENTO_TIPOS[tipo][0]
+        creados = [h.get("creado") for h in hijas if h.get("creado")]
+        horas_c = [h.get("horas_desde_creacion") for h in hijas if h.get("horas_desde_creacion") is not None]
+        base.update({
+            "titular": "%s en %s — %d %s" % (etiqueta, ciudad, dia.day, _MESES_CORTO[dia.month - 1]),
+            "resumen": "%d notas de %d medios%s." % (
+                len(hijas), len(outlets), (". Sectores: " + ", ".join(sectores)) if sectores else ""),
+            "fuentes": fuentes, "outlets": outlets, "n_outlets": len(outlets),
+            "n_articles": sum(h.get("n_articles", 1) for h in hijas),
+            "newest": max(h.get("newest") or "" for h in hijas) or None,
+            "hours": min((h["hours"] for h in hijas if h.get("hours") is not None), default=None),
+            "antigua": all(h.get("antigua") for h in hijas),
+            "temas": sorted({t for h in hijas for t in h.get("temas", [])}),
+            "score": max(h.get("score", 0) for h in hijas) + 10 * len(hijas),
+            "interes": max(h.get("interes", 0) for h in hijas) + 10 * len(hijas),
+            "actualizaciones": sorted(
+                [u for h in hijas for u in h.get("actualizaciones", [])], key=lambda u: u.get("fecha") or ""),
+            "sub_actualizaciones": subs,
+            "creado": min(creados) if creados else None,
+            "horas_desde_creacion": max(horas_c) if horas_c else None,
+            "es_nueva": any(h.get("es_nueva") for h in hijas) and (max(horas_c) if horas_c else 0) <= NUEVA_H,
+            "localidad": "",
+            "evento_en_curso": {"tipo": tipo, "etiqueta": etiqueta, "lugar": ciudad, "dia": dia.isoformat(),
+                                "n_historias": len(hijas), "sectores": sectores,
+                                "desde": hijas[0].get("newest"), "hasta": hijas[-1].get("newest")},
+        })
+        usados.update(idx)
+        madres.append(base)
+    if not madres:
+        return list(stories)
+    out = [s for i, s in enumerate(stories) if i not in usados] + madres
+    out.sort(key=lambda s: s.get("score", 0), reverse=True)
+    return out
 
 
 # ------------------------- demanda (Google Trends) -------------------------
@@ -5319,7 +5671,11 @@ def run_once(verbose=True):
         clusters = cluster(articles)
         stories = build_stories(clusters)
     else:
+        migrar_registro_si_hace_falta(verbose=verbose)
         stories = agrupar_con_memoria(articles)
+        # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
+        # una historia madre en vez de ~10 tarjetas sueltas.
+        stories = agrupar_eventos_en_curso(stories)
     t0 = _fase("cluster", t0)
 
     # DEMANDA (Google Trends) por tema, y se cuelga en cada historia.
@@ -5577,6 +5933,9 @@ def run_fast(verbose=False):
         # aviso directo de "estoy en agrupar_con_memoria ahora mismo".
         _log_arranque("cluster: agrupando %d articulos contra el registro persistente..." % len(articles))
         stories = agrupar_con_memoria(articles)
+        # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
+        # una historia madre en vez de ~10 tarjetas sueltas.
+        stories = agrupar_eventos_en_curso(stories)
     t0 = _fase("cluster", t0)
 
     themes_present = sorted({t for s in stories for t in s.get("temas", [])})
@@ -7010,6 +7369,12 @@ def serve(port=8000, minutes=None):
         # ACA, en un hilo aparte cuando hay ventana nativa, para no bloquear
         # su aparicion (el puerto/servidor YA estan arriba, ver mas arriba).
         try:
+            # Fase 18 (P0-2/P0-3): una sola vez por instalacion, rehace el
+            # registro con las reglas nuevas (mezclas viejas separadas).
+            try:
+                migrar_registro_si_hace_falta(verbose=True)
+            except Exception as ex:
+                _log_arranque("registro: migracion fase18 fallo (%s) -- se sigue con el registro tal cual" % ex)
             _log_arranque("_arrancar_backend: primera pasada del feed (rapida, no espera a la IA)...")
             _t_backend0 = time.time()
             run_fast(verbose=True)

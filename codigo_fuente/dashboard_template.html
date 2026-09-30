@@ -2044,6 +2044,29 @@ function renderActualizaciones(h){
     + `</div>`;
 }
 
+// Fase 18 (P0-2.4): historia madre de un evento en curso (ej. lluvias en
+// Guayaquil) -- las notas hijas, una por sector, con hora y medios.
+function renderSubActualizaciones(h){
+  const subs = h.sub_actualizaciones || [];
+  if(!subs.length) return "";
+  return `<details class="actualizaciones" open><summary><b>Evento en curso · ${subs.length} notas</b></summary>`
+    + subs.slice().reverse().map(u=>`<div class="src actualizacion">
+        <a href="${esc(u.link||'#')}" target="_blank" rel="noopener">${u.sector?'<b>'+esc(u.sector)+':</b> ':''}${esc(u.titular||'')}</a>
+        <div class="o">${esc((u.outlets||[]).join(', '))}${u.fecha?' · '+esc(fmtHoraEC(u.fecha))+' ('+esc(fmtAgo(u.fecha))+')':''}</div>
+      </div>`).join("")
+    + `</details>`;
+}
+
+// Fase 18 (P0-2.5): "Nueva" solo si la historia se creo hace poco; si solo
+// se le sumo una fuente, "Actualizacion · vista por primera vez hace X h".
+function chipNueva(h){
+  if(h.es_nueva) return `<span class="tag" style="background:#16a34a;color:#fff;border-color:#16a34a">Nueva</span>`;
+  const hc = h.horas_desde_creacion;
+  if(hc==null || h.hours==null || h.hours > 6) return "";
+  const txt = hc < 1 ? Math.round(hc*60)+" min" : (hc < 48 ? Math.round(hc)+" h" : Math.round(hc/24)+" d");
+  return `<span class="tag" style="border-color:#f59e0b;color:#b45309" title="La historia ya existia; se sumo una fuente nueva">Actualización · vista por primera vez hace ${txt}</span>`;
+}
+
 // ------- tarjeta de una historia (usada por Noticias y por Guardadas) -------
 function cardHTML(h, i, opts){
   opts = opts || {};
@@ -2054,7 +2077,7 @@ function cardHTML(h, i, opts){
     ? ` title="Evidencia: “${esc(h.geo_evidencia.frase_evidencia)}”"` : "";
   const amb = h.ambito==="internacional"
     ? `<span class="tag intl">Mundo</span>`
-    : (h.ciudad ? `<span class="tag loc"${geoEvid}>${esc(h.ciudad)}</span>` : `<span class="tag loc">Ecuador</span>`);
+    : (h.ciudad ? `<span class="tag loc"${geoEvid}>${esc(h.localidad ? h.localidad+" · Gran Guayaquil" : h.ciudad)}</span>` : `<span class="tag loc">Ecuador</span>`);
   const gap = h.brecha?`<span class="tag gap" title="Mucha busqueda + poca cobertura">Brecha</span>`:"";
   const impacto = h.alto_impacto?`<span class="tag" style="background:#dc2626;color:#fff;border-color:#dc2626" title="Suceso de alto impacto en Ecuador/Guayaquil (crimen/violencia grave)">Alto impacto</span>`:"";
   const dem = (h.demanda!=null)?`<span class="dem">busq <b>${h.demanda}</b></span>`:"";
@@ -2093,9 +2116,10 @@ function cardHTML(h, i, opts){
       ${h.resumen?`<p class="resumen">${esc(h.resumen)}</p>`:""}
       ${h.ia?`<p class="ia"><b>Lectura IA ·</b> ${esc(h.ia)}${h.ia_desactualizada?' <span class="chip" style="border-color:#f59e0b;color:#f59e0b" title="La historia sumo medios o cambio de titular despues de que se calculo esta lectura -- el trabajador la va a rehacer en breve">desactualizada</span>':""}</p>`:""}
       ${renderContexto(h)}
+      ${renderSubActualizaciones(h)}
       ${renderActualizaciones(h)}
       ${nota?`<div class="nota"><b>Tu nota ·</b> ${esc(nota.texto.length>160?nota.texto.slice(0,160)+"…":nota.texto)}</div>`:""}
-      <div class="row">${medios}${sectag}${amb}${impacto}${gap}${dem}
+      <div class="row">${chipNueva(h)}${medios}${sectag}${amb}${impacto}${gap}${dem}
         <span class="time">${fmtWhen(h.hours)}</span></div>
       <details><summary>Ver ${h.fuentes.length} fuente(s)</summary>${fuentes}</details>
       ${contr}${fc}

@@ -119,6 +119,10 @@ BARRIOS_GYE = {
     "Nueve de Octubre": ["9 de octubre", "nueve de octubre"],
     "Puerto Lisa": ["puerto lisa"], "Sergio Toral": ["sergio toral"],
     "Prosperina": ["prosperina"], "Monte Sinai": ["monte sinai"],
+    # Fase 18 (P1-5): sectores reales de las lluvias del 29-sep que faltaban.
+    "Atarazana": ["atarazana"], "Av. de las Americas": ["avenida de las americas", "av de las americas"],
+    "Martha de Roldos": ["martha de roldos"], "Acacias": ["las acacias"],
+    "Via a Daule": ["via a daule"], "Perimetral": ["via perimetral", "perimetral"],
 }
 
 
