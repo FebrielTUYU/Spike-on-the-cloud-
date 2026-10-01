@@ -1,0 +1,39 @@
+{
+  "_ayuda": "Canales de YouTube de medios de Guayaquil cuyos comentarios lee Comunidad. 'verificado': true = el id se comprobo en vivo (nombre y pais). Para agregar uno: su id de canal (empieza con UC). 'activo': false para apagarlo sin borrarlo.",
+  "canales": [
+    {
+      "nombre": "El Universo",
+      "id": "UCLwBAR1YA6bQRNVCLYOM6Sg",
+      "usuario": "@eluniversocom",
+      "verificado": true,
+      "activo": true
+    },
+    {
+      "nombre": "Ecuavisa",
+      "id": "UCRUV3nUNSc-xpBrTwQOCQQg",
+      "usuario": "@ecuavisa",
+      "verificado": true,
+      "activo": true
+    },
+    {
+      "nombre": "RTS",
+      "id": "UCRZXwgQXvT-Hm-7XiKAwMxA",
+      "usuario": "@rtsec",
+      "verificado": true,
+      "activo": true
+    },
+    {
+      "nombre": "Diario Extra",
+      "id": "UCb4WHdnja-OjVo8OKuc2n-Q",
+      "usuario": "@diarioextraec",
+      "verificado": true,
+      "activo": true
+    }
+  ],
+  "pendientes": [
+    "Expreso",
+    "Teleamazonas",
+    "TC Television",
+    "Gama TV"
+  ]
+}

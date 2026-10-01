@@ -110,8 +110,12 @@ class DetectarSinResolverTests(unittest.TestCase):
         self.assertEqual(len(senales.detectar_sin_resolver([entrada_registro()], ahora=AHORA)), 1)
 
     def test_otro_ambito_no_señala(self):
-        entry = entrada_registro(ciudad="Quito")
+        # Fase 18 (P0-4): las senales cubren TODO Ecuador (antes solo
+        # Guayaquil) -- una entrada sin ciudad de Ecuador sigue sin senalar;
+        # Quito ahora SI (ver test_fase18_senales.py).
+        entry = entrada_registro(ciudad="")
         self.assertEqual(senales.detectar_sin_resolver([entry], ahora=AHORA), [])
+        self.assertEqual(len(senales.detectar_sin_resolver([entrada_registro(ciudad="Quito")], ahora=AHORA)), 1)
 
 
 class DetectarActorRepetidoTests(unittest.TestCase):

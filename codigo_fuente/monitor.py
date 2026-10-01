@@ -34,6 +34,17 @@ except Exception:
     print("No encuentro feeds.py en esta carpeta. Debe estar junto a monitor.py.")
     sys.exit(1)
 
+# Fase 18 (P1-8): feeds/sitemaps que 'python monitor.py probar_sitemaps'
+# confirmo que responden desde ESTA PC (feeds_extra.json, se genera solo).
+FEEDS_EXTRA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feeds_extra.json")
+try:
+    with open(FEEDS_EXTRA_PATH, encoding="utf-8") as _f:
+        _extra = [x for x in json.load(_f).get("feeds", []) if x.get("url")]
+    _urls = {x["url"] for x in FEEDS}
+    FEEDS = list(FEEDS) + [x for x in _extra if x["url"] not in _urls]
+except Exception:
+    pass
+
 try:
     import trends  # cliente de Google Trends (demanda); opcional
 except Exception:
@@ -67,6 +78,10 @@ try:
 except Exception:
     movil = None
 try:
+    import categorias  # Fase 24 (C1/C2): taxonomia de 12 categorias y tipo de afirmacion
+except Exception:
+    categorias = None
+try:
     import agente  # Asistente de IA (Bloque 2, Parte F): agente con herramientas sobre los datos; opcional
 except Exception:
     agente = None
@@ -87,9 +102,37 @@ try:
 except Exception:
     alertas = None
 try:
+    import contraste  # Fase 18 (P2-11): contraste rediseñado (documento oficial primero, hallazgo o nada); opcional
+except Exception:
+    contraste = None
+try:
+    import senales  # Fase 15/18 (P0-4): motor de senales -- escrito en la Fase 15, conectado recien ahora; opcional
+except Exception:
+    senales = None
+try:
     import contexto  # Fase 11 (v2): contexto de 4 bloques (antecedentes/actores/que_es_nuevo/que_falta_saber); opcional
 except Exception:
     contexto = None
+try:
+    import comunidad  # Fase 20: lente Comunidad de Guayaquil (sin red ni IA); opcional
+except Exception:
+    comunidad = None
+try:
+    import mapa  # Fase 22c: mapa de Guayaquil con lo que pasa por sector (sin red ni IA)
+except Exception:
+    mapa = None
+try:
+    import cuentas  # Fase 23: cuentas comunitarias de X y fuentes de Facebook (panel de Comunidad)
+except Exception:
+    cuentas = None
+try:
+    import estadisticas  # Fase 23: calendario, actividad por hora y alertas por dia (sin red ni IA)
+except Exception:
+    estadisticas = None
+try:
+    import pulso  # Fase 23: Pulso social ordenado por red (sin red ni IA)
+except Exception:
+    pulso = None
 try:
     import redes  # Fase 9, parte D3: orquestador de X+TikTok via Apify (xapi.py/tiktok.py) -- apagado sin token; opcional
 except Exception:
@@ -132,6 +175,64 @@ def _log_arranque(linea):
         _log_arranque_truncado = True
     except Exception:
         pass
+
+# Fase 24: Spike.exe se cerro dos veces sin dejar nada en arranque.log (y una
+# vez Windows lo marco "no responde"). Sin esto no se distingue "lo cerraron"
+# de "se cayo". Queda anotado: errores de Python en cualquier hilo, la salida
+# del proceso, y (en fallos.log) cualquier caida nativa (faulthandler). Un
+# hilo anota la memoria del proceso cada 5 min para ver si crece sin control.
+_FALLOS_ARCHIVO = None
+
+def _memoria_mb():
+    """Memoria privada del proceso en MB (Windows, ctypes stdlib); None si no se puede."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _PMC(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t), ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+        pmc = _PMC()
+        pmc.cb = ctypes.sizeof(pmc)
+        k32 = ctypes.windll.kernel32
+        k32.GetCurrentProcess.restype = wintypes.HANDLE  # sin esto el pseudo-handle -1 se trunca en 64 bits
+        k32.K32GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD]
+        if not k32.K32GetProcessMemoryInfo(k32.GetCurrentProcess(), ctypes.byref(pmc), pmc.cb):
+            return None
+        return round(pmc.PagefileUsage / 1048576.0)
+    except Exception:
+        return None
+
+def _instalar_diagnostico_cierre():
+    global _FALLOS_ARCHIVO
+    import atexit
+    try:
+        import faulthandler
+        _FALLOS_ARCHIVO = open(os.path.join(HERE, "fallos.log"), "a", encoding="utf-8")
+        _FALLOS_ARCHIVO.write("\n=== %s proceso %d ===\n" % (dt.datetime.now().isoformat(timespec="seconds"), os.getpid()))
+        _FALLOS_ARCHIVO.flush()
+        faulthandler.enable(file=_FALLOS_ARCHIVO, all_threads=True)
+    except Exception:
+        pass
+
+    def _hook(exc_type, exc, tb, hilo="principal"):
+        import traceback
+        texto = "".join(traceback.format_exception(exc_type, exc, tb)).strip().replace("\n", " | ")
+        _log_arranque("ERROR sin capturar en hilo %s: %s" % (hilo, texto[:1500]))
+
+    sys.excepthook = lambda t, e, tb: _hook(t, e, tb)
+    threading.excepthook = lambda a: _hook(a.exc_type, a.exc_value, a.exc_traceback,
+                                            getattr(a.thread, "name", "?"))
+    atexit.register(lambda: _log_arranque("proceso terminando (salida normal de Python), memoria %s MB" % _memoria_mb()))
+
+    def _latido():
+        while True:
+            time.sleep(300)
+            _log_arranque("latido: memoria %s MB, hilos %d" % (_memoria_mb(), threading.active_count()))
+    threading.Thread(target=_latido, daemon=True, name="latido").start()
 
 @contextlib.contextmanager
 def _medir_etapa(nombre):
@@ -216,6 +317,25 @@ sierra oriente santa elena pichincha azuay manabi tungurahua chimborazo
 # Fase 14: términos demasiado genéricos para unir historias distintas.
 PALABRAS_GENERICAS_CONTENIDO = set("""
 menores casos parque lineal
+""".split())
+
+# Fase 18 (P0-2, "veto de plantilla"): palabras de FORMATO que se repiten en
+# notas de hechos distintos -- "fechas y precios" (un show en Samborondon y
+# otro en la CDMX), "ataque armado" (Guayaquil, Huaquillas y La Libertad el
+# mismo dia), "corte de agua ... lista completa de zonas" (Guayaquil y
+# Cartagena). Casos reales del 29-sep, pruebas/fase18_casos_reales.json. No se
+# restan del solape (siguen sumando cuando HAY otra cosa en comun); lo que
+# cambia es que por si solas ya no alcanzan como puente: hace falta ademas un
+# nombre propio, una cifra, la misma ciudad o 2+ palabras especificas.
+TOKENS_PLANTILLA = set("""
+fechas fecha precios precio boletos entradas preventa horarios horario hora
+ataque armado armada disparos balacera muere muerto muertos murieron asesinado
+asesinada asesinan matan sicariato herido heridos
+corte cortes agua servicio lista completa zonas sectores sector interrupcion
+personas requeridas justicia detenidos detenido capturado capturados
+lluvias lluvia pronostico clima temperatura semana hoy este esta
+invierte invertira inversion millones dolares
+aprehendidos aprehendido decomiso decomisan operativo operativos droga
 """.split())
 
 # Fase 9, Problema A2 -- siglas que _nombres_propios (pensada para palabras en
@@ -516,7 +636,15 @@ EC_TERMS = ["ecuador", "ecuatorian", "quito", "guayaquil", "guayas", "samborondo
             "cotopaxi", "chimborazo", "carchi", "imbabura", "canar",
             "santa elena", "napo", "pastaza", "morona santiago",
             "zamora chinchipe", "sucumbios", "orellana", "yasuni", "petroecuador",
-            "asamblea nacional", "iess", "cfn", "senae", "dgac"]
+            "asamblea nacional", "iess", "cfn", "senae", "dgac",
+            # Fase 18 (P0-2/P0-3): ciudades/cantones reales que aparecian en
+            # titulares del 29-sep sin que nada los reconociera como Ecuador
+            # (Huaquillas, La Libertad de Santa Elena) -- sin esto, una nota de
+            # Huaquillas no tenia ningun lugar propio y se pegaba a la de
+            # Guayaquil por compartir "ataque armado".
+            "huaquillas", "latacunga", "riobamba", "ibarra", "tulcan", "otavalo",
+            "chone", "jipijapa", "montecristi", "pedernales", "atacames",
+            "nueva loja", "lago agrio", "macas", "puyo", "daule"]
 
 # Fase 17 (diagnostico de arranque lento -- ver COORDINACION.md, Frente B):
 # EC_TERMS/FOREIGN_TERMS son listas FIJAS (nunca se les hace .append/+= en
@@ -531,7 +659,12 @@ EC_TERMS = ["ecuador", "ecuatorian", "quito", "guayaquil", "guayas", "samborondo
 # byte-a-byte el mismo que armaba geo_hit(termino, blob), asi que el
 # resultado de is_ecuador/is_foreign no cambia en nada, solo se deja de
 # repetir el trabajo de construir el patron.
-_EC_TERMS_RE = {t: re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in EC_TERMS}
+_EC_TERMS_RE = {t: re.compile(r"\b" + re.escape(norm(t)) + ("" if t == "ecuatorian" else r"\b"))
+                for t in EC_TERMS}
+# Fase 18: "ecuatorian" es un PREFIJO a proposito (ecuatoriano/a/os/as), pero
+# con limite de palabra al final nunca coincidia con nada -- "narcotraficante
+# ecuatoriano" no contaba como senal de Ecuador (bug real encontrado midiendo
+# el caso Fito del 29-sep).
 
 # "Asamblea Nacional" tambien es el nombre del parlamento de VENEZUELA, muy
 # cubierto en prensa internacional (mucho mas que la ecuatoriana en medios de
@@ -594,6 +727,17 @@ FOREIGN_TERMS = [
     "tegucigalpa", "managua", "ciudad de panama", "santo domingo de guzman",
     "la habana", "barcelona", "sevilla", "valencia", "miami", "houston",
     "los angeles", "toronto", "monteria", "barranquilla", "cartagena de indias",
+    # Fase 18 (P0-2): casos reales del 29-sep que se fundian con historias de
+    # Guayaquil porque el pais/ciudad no estaba en esta lista. "cartagena"
+    # suelta es segura: Ecuador no tiene ninguna Cartagena. "santo domingo"
+    # suelto NO se agrega (es provincia de Ecuador) -- solo "republica
+    # dominicana".
+    "cartagena", "cdmx", "ciudad de mexico", "republica dominicana",
+    "puerto rico", "costa rica", "panama", "guatemala", "honduras", "cuba",
+    "uruguay", "paraguay", "canada", "italia", "portugal", "lisboa",
+    "nueva york", "new york", "chicago", "texas", "california",
+    "turquia", "siria", "libano", "arabia saudita", "qatar", "india", "pakistan",
+    "corea del sur", "corea del norte", "egipto", "santiago de chile",
 ]
 
 # Fase 17: mismo criterio que _EC_TERMS_RE (ver el comentario grande ahi).
@@ -640,7 +784,9 @@ def _es_enumeracion_paises(blob, minimo=3):
 
 def _es_enumeracion_ciudades(text, minimo=3):
     blob = norm(text)
-    encontradas = {ciudad for ciudad, terminos in CITIES.items()
+    # Fase 18: se cuentan AREAS, no ciudades -- "Guayaquil, Samborondon y
+    # Duran" es un solo lugar (Gran Guayaquil), no una enumeracion.
+    encontradas = {_area_de(ciudad) for ciudad, terminos in CITIES.items()
                    if any(geo_hit(t, blob) for t in terminos)}
     return len(encontradas) >= minimo
 
@@ -662,7 +808,13 @@ CITIES = {
     "Guayaquil": ["guayaquil", "guayas", "pascuales", "urdesa",
                   "isla trinitaria", "kennedy norte", "flor de bastion"],
     "Samborondon": ["samborondon"],
-    "Duran": ["duran"],
+    # Fase 22c (bug real: "Murio Nafer Duran", cantante colombiano de
+    # vallenato, quedo como noticia de Guayaquil/Duran): "duran" suelto es un
+    # apellido comun (ver el caso Jhon Duran de arriba). Solo cuenta como
+    # LUGAR con la preposicion o la palabra que lo delata.
+    "Duran": ["en duran", "canton duran", "canton de duran", "a duran", "desde duran", "hacia duran",
+              "via duran", "via a duran", "municipio de duran", "alcaldia de duran", "alcalde de duran",
+              "puente duran", "duran-tambo", "duran tambo"],
     "Daule": ["daule"],
     "Quito": ["quito", "pichincha"],
     "Cuenca": ["cuenca", "azuay"],
@@ -673,7 +825,27 @@ CITIES = {
     "Esmeraldas": ["esmeraldas"],
     "Santo Domingo": ["santo domingo"],
     "Babahoyo": ["babahoyo", "quevedo"],  # provincia Los Rios (ver nota en EC_TERMS)
+    # Fase 18 (P0-3): sin estas entradas, una nota de Santa Elena/Huaquillas/
+    # Cotopaxi no tenia ciudad propia y heredaba "Guayaquil" de la seccion del
+    # feed que la publico (casos reales del 29-sep).
+    "Santa Elena": ["santa elena"],
+    "Huaquillas": ["huaquillas"],
+    "Latacunga": ["latacunga", "cotopaxi"],
+    "Riobamba": ["riobamba", "chimborazo"],
+    "Ibarra": ["ibarra", "imbabura"],
 }
+
+# Nombre con tilde para mostrar la localidad de Gran Guayaquil (chip).
+LOCALIDAD_NOMBRE = {"Samborondon": "Samborondón", "Duran": "Durán", "Daule": "Daule"}
+
+
+def ciudades_en(text):
+    """Todas las ciudades de CITIES que nombra el texto (orden de CITIES).
+    Fase 18 (P0-3): detect_city() devuelve solo la PRIMERA -- y como
+    "Guayaquil" es la primera de la lista, un texto que nombra Guayaquil Y
+    otra ciudad siempre salia Guayaquil."""
+    blob = norm(text)
+    return [c for c, terminos in CITIES.items() if any(geo_hit(t, blob) for t in terminos)]
 
 GUAYAQUIL_AREA = [c.strip() for c in os.environ.get(
     "MONITOR_GUAYAQUIL_AREA", "Guayaquil,Samborondon,Duran,Daule").split(",") if c.strip()]
@@ -916,6 +1088,92 @@ def parse_feed(raw, outlet, seccion, scope=None, ciudad_feed="", google_news=Fal
         })
     return out
 
+def filtrar_por_ruta(arts, rutas):
+    """Fase 18 (P1-9): de un feed GENERAL, se queda solo con los items cuya
+    URL cae en una de 'rutas' (primer segmento del path, ej. 'mundo'), mas
+    los que mencionan Ecuador."""
+    rutas = {r.strip("/").lower() for r in rutas}
+    out = []
+    for a in arts:
+        m = re.match(r"https?://[^/]+/([^/?#]+)/", a.get("link") or "")
+        if (m and m.group(1).lower() in rutas) or is_ecuador(a["title"] + " " + (a.get("summary") or "")):
+            out.append(a)
+    return out
+
+
+def probar_sitemaps(guardar=True):
+    """Fase 18 (P1-8): prueba desde ESTA PC los candidatos de
+    feeds.SITEMAPS_Y_FEEDS_CANDIDATOS e imprime cuales responden. Los que
+    traen notas de las ultimas 48 h se guardan en feeds_extra.json (se suman
+    a FEEDS al proximo arranque). Un candidato cuyo medio ya tiene feed
+    propio se agrega igual: dedup() junta los repetidos por link."""
+    try:
+        from feeds import SITEMAPS_Y_FEEDS_CANDIDATOS as cands
+    except Exception:
+        print("feeds.py no tiene SITEMAPS_Y_FEEDS_CANDIDATOS")
+        return []
+    ok = []
+    for f in cands:
+        try:
+            got, st, _ = _fetch_feed(f, {}, False)
+        except Exception as e:
+            got, st = [], type(e).__name__
+        recientes = [a for a in got if a.get("date") and (now_utc() - a["date"]).total_seconds() < 48 * 3600]
+        ultimo = max((a["date"] for a in got if a.get("date")), default=None)
+        print("%-18s %-70s %-8s items=%-3d recientes48h=%-3d ultimo=%s" % (
+            f["outlet"], f["url"][:70], st[:8], len(got), len(recientes),
+            ultimo.isoformat()[:16] if ultimo else "-"))
+        if st == "ok" and recientes:
+            ok.append(f)
+    if guardar:
+        with open(FEEDS_EXTRA_PATH, "w", encoding="utf-8") as fh:
+            json.dump({"_nota": "Generado por 'python monitor.py probar_sitemaps' (Fase 18). Borrar para desactivar.",
+                       "generado": now_utc().isoformat(), "feeds": ok}, fh, ensure_ascii=False, indent=1)
+        print("\n%d de %d candidatos responden; guardados en feeds_extra.json" % (len(ok), len(cands)))
+    return ok
+
+
+def parse_sitemap_news(raw, outlet, seccion, ciudad_feed="", scope=None):
+    """Fase 18 (P1-8): "news sitemap" (sitemap-news.xml / news-sitemap.xml,
+    formato estandar de Google News). Varios diarios lo actualizan antes que
+    su RSS -- y algunos con el RSS muerto (Primicias, Ecuavisa) podrian
+    tener sitemap vivo. Mismo formato de salida que parse_feed()."""
+    root = ET.fromstring(raw.lstrip())
+    out = []
+    for u in [e for e in root.iter() if tag(e) == "url"]:
+        link = title = date = None
+        for ch in u.iter():
+            t = tag(ch)
+            if t == "loc" and not link:
+                link = (ch.text or "").strip()
+            elif t == "title" and not title:
+                title = (ch.text or "").strip()
+            elif t == "publication_date":
+                date = (ch.text or "").strip()
+            elif t == "lastmod" and not date:
+                date = (ch.text or "").strip()
+        if not title or not link:
+            continue
+        title = html.unescape(title)
+        if scope == "ec" and not is_ecuador(title):
+            continue
+        if is_junk(title, "", link):
+            continue
+        d = None
+        if date:
+            try:
+                d = dt.datetime.fromisoformat(date.replace("Z", "+00:00"))
+                d = (d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)).astimezone(dt.timezone.utc)
+            except ValueError:
+                d = parse_date(date)
+        sec = seccion
+        if seccion == "auto":
+            sec = classify_section(title) or "general"
+        out.append({"outlet": outlet, "seccion": normalizar_categoria(sec), "title": title, "link": link,
+                    "date": d, "summary": "", "image": "", "ciudad_feed": ciudad_feed})
+    return out
+
+
 # ------------------------- Fase 0 (velocidad): cache de fetch por feed -------------------------
 # fetch_cache.json (distinto de los *_cache.json de siempre: NO es solo un TTL
 # fijo, guarda ETag/Last-Modified para peticion condicional Y los ultimos
@@ -994,8 +1252,13 @@ def _fetch_feed(f, cache_entry, respetar_frecuencia=True):
         cache_entry["etag"], cache_entry["last_modified"] = etag, last_mod
         return items_cache, "ok (304 sin cambios)", cache_entry
 
-    got = parse_feed(data, f["outlet"], f["seccion"], f.get("scope"), f.get("ciudad", ""),
-                      google_news=f.get("google_news", False))
+    if f.get("tipo") == "sitemap":
+        got = parse_sitemap_news(data, f["outlet"], f["seccion"], f.get("ciudad", ""), f.get("scope"))
+    else:
+        got = parse_feed(data, f["outlet"], f["seccion"], f.get("scope"), f.get("ciudad", ""),
+                          google_news=f.get("google_news", False))
+    if f.get("rutas_permitidas"):
+        got = filtrar_por_ruta(got, f["rutas_permitidas"])
     cache_entry["etag"], cache_entry["last_modified"] = etag, last_mod
     cache_entry["items"] = [_serializar_articulo(a) for a in got]
     cache_entry["ultimo_ok"] = ahora
@@ -1008,6 +1271,13 @@ def collect(respetar_frecuencia=True):
     Fase 0: lee/actualiza fetch_cache.json (ETag + frecuencia propia por
     feed + ultimos items) -- ver _fetch_feed()."""
     fetch_cache = _cargar_fetch_cache()
+    # Fase 18 (P1-8): ultimo sondeo OK de cada medio ANTES de esta pasada --
+    # para medir latencia solo sobre lo que aparecio con el feed ya vigilado.
+    prev_ok = {}
+    for f in FEEDS:
+        ok_ts = (fetch_cache.get(f["url"]) or {}).get("ultimo_ok")
+        if ok_ts:
+            prev_ok[f["outlet"]] = max(prev_ok.get(f["outlet"], 0), ok_ts)
     resultados = [None] * len(FEEDS)
     tiempos_feed = [0.0] * len(FEEDS)  # Fase 17: diagnostico, no cambia el resultado
     def _tarea(i, f):
@@ -1043,7 +1313,7 @@ def collect(respetar_frecuencia=True):
                        "; ".join("%s=%.2fs(%s)" % (o, t, st) for o, t, st in con_error[:10]))
     _log_arranque("collect: %d feeds en %.2fs (paralelo, max 20 hilos)" %
                   (len(FEEDS), time.time() - t_collect0))
-    _registrar_first_seen(articles)
+    _registrar_first_seen(articles, prev_ok)
     return articles, report
 
 
@@ -1069,22 +1339,34 @@ def _guardar_latencia(reg):
         json.dump(reg, f, ensure_ascii=False)
     os.replace(tmp, LATENCIA_PATH)
 
-def _registrar_first_seen(articles):
+# Fase 18 (P1-8): un articulo cuenta para la latencia solo si su medio ya
+# se habia sondeado con exito hace <= LATENCIA_VENTANA_MIN. Si no (arranque de
+# la PC, feed caido), lo que llega es BACKLOG: "lo vimos" mide cuanto estuvo
+# apagado el programa, no cuanto tarda el medio. Eso inflaba las medianas
+# (El Universo 405 min, El Diario 666 min).
+LATENCIA_VENTANA_MIN = float(os.environ.get("MONITOR_LATENCIA_VENTANA_MIN", "30"))
+
+
+def _registrar_first_seen(articles, prev_ok_por_outlet=None):
     """Para cada articulo visto por PRIMERA VEZ (por link, clave estable):
-    guarda cuando el medio dice que lo publico (pub_date, del propio feed) y
-    cuando lo vimos nosotros (first_seen, ahora). Un link ya registrado no se
+    guarda cuando el medio dice que lo publico (pub_date, del propio feed),
+    cuando lo vimos nosotros (first_seen, ahora) y si la medicion es VALIDA
+    (feed ya vigilado, ver LATENCIA_VENTANA_MIN). Un link ya registrado no se
     vuelve a tocar -- 'primera vez que lo vimos' tiene que quedar fijo."""
     reg = _cargar_latencia()
     ahora = now_utc()
     nuevos = 0
+    prev_ok_por_outlet = prev_ok_por_outlet or {}
     for a in articles:
         link = a.get("link")
         if not link or link in reg:
             continue
+        prev = prev_ok_por_outlet.get(a["outlet"])
         reg[link] = {
             "outlet": a["outlet"],
             "pub_date": a["date"].isoformat() if a.get("date") else None,
             "first_seen": ahora.isoformat(),
+            "valida": bool(prev and (ahora.timestamp() - prev) <= LATENCIA_VENTANA_MIN * 60),
         }
         nuevos += 1
     if nuevos:
@@ -1093,18 +1375,24 @@ def _registrar_first_seen(articles):
                if v.get("first_seen") and dt.datetime.fromisoformat(v["first_seen"]) > corte}
         _guardar_latencia(reg)
 
-def calcular_latencia_por_feed():
+def calcular_latencia_por_feed(reg=None):
     """Demora real medida (no estimada): por medio, mediana/peor caso/cuantos
     articulos tardaron mas de 10 min en pasar de 'publicado' (pub_date del
     feed) a 'lo vimos' (first_seen). Solo cuenta articulos con pub_date real
     -- si el medio no manda fecha, no hay con que medir demora, no se
     inventa un numero. Una demora NEGATIVA es señal real de un problema
     (fecha del feed en el futuro respecto a cuando lo vimos -- casi siempre
-    zona horaria mal interpretada), se deja tal cual, no se recorta a 0."""
-    reg = _cargar_latencia()
-    por_outlet = {}
+    zona horaria mal interpretada), se deja tal cual, no se recorta a 0.
+    Fase 23: 'reg' opcional, para no leer el archivo dos veces por pasada."""
+    reg = _cargar_latencia() if reg is None else reg
+    por_outlet, backlog = {}, {}
     for v in reg.values():
         if not v.get("pub_date"):
+            continue
+        if not v.get("valida"):
+            # Fase 18: backlog tras un arranque (o registro de antes de este
+            # cambio): no mide la demora del medio, se cuenta aparte.
+            backlog[v["outlet"]] = backlog.get(v["outlet"], 0) + 1
             continue
         try:
             pub = dt.datetime.fromisoformat(v["pub_date"])
@@ -1112,7 +1400,8 @@ def calcular_latencia_por_feed():
         except Exception:
             continue
         por_outlet.setdefault(v["outlet"], []).append((visto - pub).total_seconds() / 60)
-    out = {}
+    out = {o: {"n": 0, "mediana_min": None, "peor_min": None, "mas_de_10min": 0,
+               "sin_fecha": 0, "n_descartados_backlog": n} for o, n in backlog.items()}
     for outlet, demoras in por_outlet.items():
         ds = sorted(demoras)
         n = len(ds)
@@ -1123,6 +1412,7 @@ def calcular_latencia_por_feed():
             "peor_min": round(max(ds), 1),
             "mas_de_10min": sum(1 for d in ds if d > 10),
             "sin_fecha": sum(1 for a in reg.values() if a["outlet"] == outlet and not a.get("pub_date")),
+            "n_descartados_backlog": backlog.get(outlet, 0),
         }
     return out
 
@@ -1454,8 +1744,17 @@ def _merge_close(clusters, threshold=0.5):
 # el coseno es una señal MAS, nunca la unica. Subido de 0.75 a 0.80 (con
 # margen real: el peor positivo mide 0.82, por encima del umbral).
 EMBED_SIM_UMBRAL = float(os.environ.get("MONITOR_EMBED_SIM", "0.80"))
-EMBED_MAX_NEW = int(os.environ.get("MONITOR_EMBED_MAX", "40"))  # embeddings nuevos por pasada del trabajador
+EMBED_MAX_NEW = int(os.environ.get("MONITOR_EMBED_MAX", "120"))  # embeddings nuevos por pasada (Fase 24: 40 -> 120, van por la clave gratis)
 REGISTRO_PATH = os.path.join(HERE, "historias_registro.json")
+# Fase 18 (P0-1): run_fast (agrupar_con_memoria) y el trabajador
+# (_embed_pendientes_registro / _embed_multilingue_... / _coherencia_...)
+# cargaban y guardaban este MISMO archivo sin coordinarse -- ganaba el ultimo
+# en escribir y borraba lo del otro (medido: 190 llamadas de embeddings en un
+# dia sin que la cobertura subiera). Todo "cargar -> modificar -> guardar" del
+# registro pasa ahora por este lock. El trabajador NUNCA lo retiene mientras
+# espera a la IA: calcula afuera sobre una foto, y adentro del lock recarga el
+# registro FRESCO y aplica solo sus campos.
+_REGISTRO_LOCK = threading.RLock()
 REGISTRO_MAX_HORAS = CLUSTER_MAX_HORAS  # misma ventana de 72h que ya usaba cluster() intra-pasada
 # Fase 11 (v2): las historias LOCALES (Ecuador/Guayaquil) se retienen en el
 # registro mas tiempo que las internacionales -- son la materia prima de los
@@ -1727,12 +2026,16 @@ def _match_registro(art, registro, cache_entry=None):
         if c is not None and c["huella"] == huella_e:
             e_extranjero, tok_rep, tok_fund = c["extranjero"], c["tok_rep"], c["tok_fund"]
         else:
-            e_extranjero = extranjero_sin_ecuador(rep_titulo_e + " " + rep_resumen_e)
+            # Fase 18 (P0-2): el veto mira el representante Y el fundador --
+            # si cualquiera de los dos es "extranjero sin Ecuador" y el
+            # articulo no (o al reves), no se fusionan.
+            e_extranjero = (extranjero_sin_ecuador(rep_titulo_e + " " + rep_resumen_e),
+                            extranjero_sin_ecuador(fundador_titulo_e + " " + _quitar_dateline(e.get("fundador_resumen", "") or "")))
             tok_rep = tokens(rep_titulo_e) - EVENTO_GENERICO - LUGARES_COMUNES
             tok_fund = tokens(fundador_titulo_e) - EVENTO_GENERICO - LUGARES_COMUNES
             cache_entry[eid] = {"huella": huella_e, "extranjero": e_extranjero,
                                  "tok_rep": tok_rep, "tok_fund": tok_fund}
-        if a_extranjero != e_extranjero:
+        if a_extranjero != e_extranjero[0] or a_extranjero != e_extranjero[1]:
             continue
         # BUG REAL propio, encontrado escribiendo la prueba de la
         # "Actualizacion" (Problema 1): comparar contra el UNION acumulado
@@ -1779,6 +2082,13 @@ def _match_registro(art, registro, cache_entry=None):
         # anclajes) porque esta via no tiene ninguna otra corroboracion.
         elif sim_asistida >= CLUSTER_THRESHOLD_CONTENIDO and min(len(a_tok & tok_rep), len(a_tok & tok_fund)) >= 2:
             sim, via = sim_asistida, "palabras+contenido"
+        # Fase 18 (P0-2, veto de plantilla): las vias por palabras necesitan
+        # un ancla real ademas del vocabulario de formato.
+        if via is not None:
+            reales = (a_tok & (tok_rep | tok_fund)) - TOKENS_PLANTILLA
+            ancla = bool(a_nom & nom_e) or bool(a_num & num_e) or bool(a_ciudad and a_ciudad == e_ciudad)
+            if len(reales) < 2 and not ancla:
+                sim, via = 0.0, None
         e_emb = e.get("embedding")
         if a_emb and e_emb and ((a_nom & nom_e) or (a_num & num_e)):
             esim = _cos_sim(a_emb, e_emb)
@@ -1904,7 +2214,8 @@ def _registro_a_clusters(registro):
         arts = [dict(f_) for f_ in e.get("fuentes", [])]
         if not arts:
             continue
-        clusters.append({"articles": arts, "actualizaciones": e.get("actualizaciones", [])})
+        clusters.append({"articles": arts, "actualizaciones": e.get("actualizaciones", []),
+                         "creado": e.get("creado"), "fundador_titulo": e.get("fundador_titulo", "")})
     return clusters
 
 def agrupar_con_memoria(articles):
@@ -1916,11 +2227,99 @@ def agrupar_con_memoria(articles):
     intactas -- las siguen usando sus propias pruebas (test_cluster.py,
     test_cluster_evento_generico.py) -- el pipeline real (run_once/run_fast)
     usa esta funcion en su lugar."""
-    registro = _cargar_registro()
-    registro = _fusionar_en_registro(articles, registro)
-    _guardar_registro(registro)
+    with _REGISTRO_LOCK:
+        registro = _cargar_registro()
+        registro = _fusionar_en_registro(articles, registro)
+        _guardar_registro(registro)
     clusters = _registro_a_clusters(registro)
     return build_stories(clusters)
+
+REGISTRO_VERSION = "fase18"
+REGISTRO_VERSION_PATH = os.path.join(HERE, "historias_registro_version.json")
+
+
+def _registro_version():
+    try:
+        with open(REGISTRO_VERSION_PATH, encoding="utf-8") as f:
+            return json.load(f).get("version")
+    except Exception:
+        return None
+
+
+def reconstruir_registro(verbose=False, lote_horas=1):
+    """Fase 18 (P0-2/P0-3): el registro guardado ya trae historias mal
+    fundidas con las reglas viejas (Cartagena dentro de cortes de agua de
+    Guayaquil, "fechas y precios", "ataque armado"...). Las reglas nuevas solo
+    actuan sobre lo que llega DESPUES, asi que esas mezclas se quedarian para
+    siempre. Esto re-procesa TODAS las fuentes guardadas, en orden de fecha y
+    por lotes de 'lote_horas' (simula las pasadas reales), con las reglas
+    actuales. Hace respaldo antes (historias_registro.json.bak-fase18-...).
+    Los embeddings ya calculados se conservan cuando el texto coincide (no se
+    vuelve a pagar Gemini por ellos). Devuelve (entradas_antes, entradas_despues)."""
+    with _REGISTRO_LOCK:
+        viejo = _cargar_registro()
+        if os.path.exists(REGISTRO_PATH):
+            bak = REGISTRO_PATH + ".bak-fase18-" + now_utc().strftime("%Y%m%d_%H%M%S")
+            import shutil
+            shutil.copy2(REGISTRO_PATH, bak)
+        vectores = {}
+        for e in viejo.values():
+            if e.get("embedding") and e.get("embedding_modelo"):
+                for texto in (e.get("fundador_titulo"), e.get("rep_titulo")):
+                    if texto:
+                        vectores.setdefault(texto.strip(), (e["embedding"], e["embedding_modelo"]))
+        arts, vistos = [], set()
+        for e in viejo.values():
+            for f_ in e.get("fuentes", []):
+                clave = (f_.get("outlet"), norm(f_.get("title", ""))[:80])
+                if clave in vistos or not f_.get("title"):
+                    continue
+                vistos.add(clave)
+                arts.append({"outlet": f_.get("outlet", ""), "title": f_.get("title", ""),
+                             "link": f_.get("link"), "date": f_.get("date"),
+                             "seccion": f_.get("seccion", ""), "summary": f_.get("summary", "") or "",
+                             "image": f_.get("image", ""), "ciudad_feed": f_.get("ciudad_feed", "")})
+        arts.sort(key=lambda a: a.get("date") or dt.datetime.min.replace(tzinfo=dt.timezone.utc))
+        nuevo, lote, inicio_lote = {}, [], None
+        for a in arts:
+            d = a.get("date")
+            if lote and d and inicio_lote and (d - inicio_lote).total_seconds() > lote_horas * 3600:
+                nuevo = _fusionar_en_registro(lote, nuevo)
+                lote, inicio_lote = [], None
+            if inicio_lote is None:
+                inicio_lote = d
+            lote.append(a)
+        if lote:
+            nuevo = _fusionar_en_registro(lote, nuevo)
+        reusados = 0
+        for e in nuevo.values():
+            v = vectores.get(_texto_embedding(e))
+            if v:
+                e["embedding"], e["embedding_modelo"] = v
+                reusados += 1
+        _guardar_registro(nuevo)
+        try:
+            with open(REGISTRO_VERSION_PATH, "w", encoding="utf-8") as f:
+                json.dump({"version": REGISTRO_VERSION, "ts": now_utc().isoformat(),
+                           "antes": len(viejo), "despues": len(nuevo)}, f)
+        except OSError:
+            pass
+    if verbose:
+        print("registro reconstruido: %d -> %d entradas (%d articulos, %d embeddings reusados)" % (
+            len(viejo), len(nuevo), len(arts), reusados))
+    return len(viejo), len(nuevo)
+
+
+def migrar_registro_si_hace_falta(verbose=False):
+    """Una sola vez por instalacion: si el registro es de antes de la Fase
+    18, se reconstruye con las reglas nuevas (ver reconstruir_registro)."""
+    if _registro_version() == REGISTRO_VERSION or not os.path.exists(REGISTRO_PATH):
+        return None
+    _log_arranque("registro: reconstruyendo con reglas de Fase 18 (una sola vez)...")
+    r = reconstruir_registro(verbose=verbose)
+    _log_arranque("registro: reconstruido %d -> %d entradas" % r)
+    return r
+
 
 def _embed_pendientes_registro():
     """Trabajo del hilo TRABAJADOR (nunca run_fast): calcula embeddings para
@@ -1936,8 +2335,8 @@ def _embed_pendientes_registro():
     palabras/nombres/cifras nomas, sin romperse)."""
     if ia is None or not ia.embed_disponible():
         return "sin modelo de embeddings (%s)" % (getattr(ia, "EMBED_MODEL", "nomic-embed-text") if ia else "?")
-    registro = _cargar_registro()
-    if not registro:
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
     # Fase 10, parte B: candado de espacio vectorial -- un vector de OTRO
     # modelo (ej. nomic-embed-text, retirado con Ollama) o sin etiqueta
@@ -1947,16 +2346,63 @@ def _embed_pendientes_registro():
     # vectores viejos se recalculan solos, una pasada a la vez, sin tocar el
     # archivo a mano (ver migracion real hecha en esta misma sesion: backup +
     # recalculo, documentado en CLAUDE.md).
-    pendientes = [eid for eid, e in registro.items()
-                  if e.get("rep_titulo") and e.get("embedding_modelo") != ia.EMBED_MODEL]
-    calculados = 0
-    for eid in pendientes[:EMBED_MAX_NEW]:
-        emb = ia.embed(registro[eid]["rep_titulo"])
-        if emb:
-            registro[eid]["embedding"] = emb
-            registro[eid]["embedding_modelo"] = ia.EMBED_MODEL
-            calculados += 1
+    pendientes = [eid for eid, e in foto.items()
+                  if _texto_embedding(e) and e.get("embedding_modelo") != ia.EMBED_MODEL]
+    # Fase 24 (C3), bug real: los pendientes iban en el orden del registro (lo
+    # mas viejo primero). Con ~2000 sin vector y 120 por pasada, la historia de
+    # la Corte Suprema de EE.UU. (8 medios, 30-sep) seguia sin embedding y por
+    # eso nunca se unia con su version en espanol (coseno medido 0.908). Ahora:
+    # primero lo que todavia puede fusionarse (ultimas REGISTRO_MAX_HORAS),
+    # y dentro de eso lo que tiene mas medios y lo mas reciente.
+    _ahora_emb = dt.datetime.now(dt.timezone.utc)
 
+    def _prioridad_emb(eid):
+        e = foto[eid]
+        u = e.get("ultimo")
+        horas = (_ahora_emb - u).total_seconds() / 3600 if isinstance(u, dt.datetime) else 1e9
+        return (0 if horas <= REGISTRO_MAX_HORAS else 1, -len(e.get("fuentes") or []), horas)
+    pendientes.sort(key=_prioridad_emb)
+    # Fase 18 (P0-1): las llamadas a la IA van AFUERA del lock (pueden tardar
+    # segundos cada una) -- se guarda el texto exacto que se vectorizo para
+    # aplicar el vector solo si la entrada sigue diciendo lo mismo.
+    nuevos = {}
+    for eid in pendientes[:EMBED_MAX_NEW]:
+        texto = _texto_embedding(foto[eid])
+        emb = ia.embed(texto)
+        if emb:
+            nuevos[eid] = (texto, emb)
+    with _REGISTRO_LOCK:
+        registro = _cargar_registro()
+        calculados = 0
+        for eid, (texto, emb) in nuevos.items():
+            e = registro.get(eid)
+            if e is None or _texto_embedding(e) != texto:
+                continue  # la entrada cambio o se fusiono mientras tanto: se recalcula en otra pasada
+            e["embedding"] = emb
+            e["embedding_modelo"] = ia.EMBED_MODEL
+            calculados += 1
+        fusiones = _reconciliar_por_embedding(registro)
+        if calculados or fusiones:
+            _guardar_registro(registro)
+    # formato "+N nuevas" a proposito (mismo patron que iastatus/cstatus/etc,
+    # ver _RE_NUEVAS en enrich_pass): asi el trabajador no espera
+    # MONITOR_WORKER_PAUSA completo si todavia queda backlog de embeddings.
+    return "+%d nuevas (embeddings, pendientes: %d), +%d fusiones por parafraseo" % (
+        calculados, max(0, len(pendientes) - calculados), fusiones)
+
+
+def _texto_embedding(e):
+    """Texto que se vectoriza por entrada. Fase 18 (P0-2): el titular
+    FUNDADOR (inmutable), no el mas nuevo -- asi el vector no queda viejo
+    cada vez que la historia suma un medio."""
+    return (e.get("fundador_titulo") or e.get("rep_titulo") or "").strip()
+
+
+def _reconciliar_por_embedding(registro):
+    """Fusiona entradas duplicadas por coseno + entidad compartida (el
+    cuerpo de lo que antes vivia dentro de _embed_pendientes_registro). Se
+    llama SIEMPRE con _REGISTRO_LOCK tomado y sobre el registro recien
+    recargado. Devuelve cuantas fusiones hizo."""
     fusiones = 0
     ids = [eid for eid, e in registro.items()
            if e.get("embedding") and e.get("embedding_modelo") == ia.EMBED_MODEL]
@@ -1989,44 +2435,171 @@ def _embed_pendientes_registro():
             si, sj = ei.get("servicio", ""), ej.get("servicio", "")
             if si and sj and si != sj:
                 continue
+            # Fase 18 (P0-2): mismo veto de lugar extranjero que _match_registro.
+            if extranjero_sin_ecuador(ei.get("fundador_titulo", "")) != extranjero_sin_ecuador(ej.get("fundador_titulo", "")):
+                continue
             if _cos_sim(ei["embedding"], ej["embedding"]) < EMBED_SIM_UMBRAL:
                 continue
-            # la mas vieja ("creado" mas chico) absorbe a la mas nueva -- asi
-            # fuentes[0] (story_key/storyKey, clave de saved.json/notas.json)
-            # sigue siendo la misma nota de siempre.
-            if (ei.get("creado") or now_utc()) <= (ej.get("creado") or now_utc()):
-                vieja, vieja_id, nueva, nueva_id = ei, ids[i], ej, ids[j]
-            else:
-                vieja, vieja_id, nueva, nueva_id = ej, ids[j], ei, ids[i]
-            links_ya = {f_.get("link") for f_ in vieja["fuentes"]}
-            for f_ in nueva["fuentes"]:
-                if f_.get("link") not in links_ya:
-                    vieja["fuentes"].append(f_)
-                    links_ya.add(f_.get("link"))
-            vieja.setdefault("actualizaciones", []).extend(nueva.get("actualizaciones", []))
-            vieja["tokens"] = vieja.get("tokens", set()) | nueva.get("tokens", set())
-            vieja["nombres"] = vieja.get("nombres", set()) | nueva.get("nombres", set())
-            vieja["numeros"] = vieja.get("numeros", set()) | nueva.get("numeros", set())
-            vieja["fechas"] = vieja.get("fechas", set()) | nueva.get("fechas", set())
-            if not vieja.get("ciudad") and nueva.get("ciudad"):
-                vieja["ciudad"] = nueva["ciudad"]
-            if not vieja.get("servicio") and nueva.get("servicio"):
-                vieja["servicio"] = nueva["servicio"]
-            if nueva.get("ultimo") and (not vieja.get("ultimo") or nueva["ultimo"] > vieja["ultimo"]):
-                vieja["ultimo"] = nueva["ultimo"]
-                vieja["rep_titulo"] = nueva.get("rep_titulo", vieja.get("rep_titulo"))
-                vieja["rep_resumen"] = nueva.get("rep_resumen", vieja.get("rep_resumen"))
-            absorbidos.add(nueva_id)
+            absorbidos.add(_fusionar_par_registro(registro, ids[i], ids[j]))
             fusiones += 1
+            if ids[i] in absorbidos:
+                break
     for eid in absorbidos:
         del registro[eid]
-    if calculados or fusiones:
-        _guardar_registro(registro)
-    # formato "+N nuevas" a proposito (mismo patron que iastatus/cstatus/etc,
-    # ver _RE_NUEVAS en enrich_pass): asi el trabajador no espera
-    # MONITOR_WORKER_PAUSA completo si todavia queda backlog de embeddings.
-    return "+%d nuevas (embeddings, pendientes: %d), +%d fusiones por parafraseo" % (
-        calculados, max(0, len(pendientes) - calculados), fusiones)
+    return fusiones
+
+
+# Fase 24 (C3): franja dudosa del coseno. Por encima de EMBED_SIM_UMBRAL (con
+# entidad o cifra en comun) se une solo, como siempre. Entre MISMO_HECHO_COS_MIN
+# y ese umbral, medido sobre el registro real (30-sep), hay de todo: el mismo
+# hecho contado distinto (el auto con USD 250.000, el ataque en Tarifa) y notas
+# de plantilla o del mismo tema (dos temblores, El Nino contra un corte de
+# agua). Ahi decide la IA gratuita (ia.mismo_hecho_lote), par por par, y la
+# respuesta queda en cache para no volver a preguntar.
+MISMO_HECHO_COS_MIN = float(os.environ.get("MONITOR_MISMO_HECHO_COS_MIN", "0.70"))
+MISMO_HECHO_MAX = int(os.environ.get("MONITOR_MISMO_HECHO_MAX", "20"))  # pares por pasada (una llamada)
+MISMO_HECHO_CACHE = os.path.join(HERE, "mismo_hecho_cache.json")
+
+
+def _senal_compartida(ei, ej):
+    """Entidad, cifra o dos palabras de contenido en comun (barato, antes del coseno)."""
+    if _canon_set(ei.get("nombres")) & _canon_set(ej.get("nombres")):
+        return True
+    if (ei.get("numeros") or set()) & (ej.get("numeros") or set()):
+        return True
+    ti = {t for t in (ei.get("tokens") or set()) if len(t) >= 5}
+    tj = {t for t in (ej.get("tokens") or set()) if len(t) >= 5}
+    return len(ti & tj) >= 2
+
+
+def _vetado_por_plantilla(ei, ej):
+    """Mismos vetos que la reconciliacion: fecha explicita, ciudad o servicio
+    distintos, o un lado extranjero sin Ecuador y el otro no."""
+    fi, fj = ei.get("fechas") or set(), ej.get("fechas") or set()
+    if fi and fj and not (fi & fj):
+        return True
+    ci, cj = ei.get("ciudad", ""), ej.get("ciudad", "")
+    if ci and cj and ci != cj:
+        return True
+    si, sj = ei.get("servicio", ""), ej.get("servicio", "")
+    if si and sj and si != sj:
+        return True
+    return extranjero_sin_ecuador(ei.get("fundador_titulo", "")) != extranjero_sin_ecuador(ej.get("fundador_titulo", ""))
+
+
+MISMO_HECHO_VERSION = "1"  # subir si cambia el prompt de ia.mismo_hecho_lote
+
+
+def _clave_par(eid_a, eid_b, ea, eb):
+    """Clave de cache de un par. Incluye la version del criterio, el modelo de
+    embeddings y el umbral (revision de Codex): si cambia cualquiera, el par se
+    vuelve a evaluar en vez de quedar omitido para siempre."""
+    a, b = sorted([(eid_a, ea.get("fundador_titulo", "")), (eid_b, eb.get("fundador_titulo", ""))])
+    criterio = "%s|%s|%.2f|%.2f" % (MISMO_HECHO_VERSION, getattr(ia, "EMBED_MODEL", ""), MISMO_HECHO_COS_MIN,
+                                    EMBED_SIM_UMBRAL)
+    return hashlib.md5(("%s|%s|%s|%s|%s" % (criterio, a[0], a[1], b[0], b[1])).encode("utf-8")).hexdigest()[:16]
+
+
+def _mismo_hecho_pendientes_registro():
+    """Trabajo del hilo TRABAJADOR: pares del registro en la franja dudosa ->
+    la IA decide si son el mismo hecho -> se fusionan los que si."""
+    fn = getattr(ia, "mismo_hecho_lote", None) if ia is not None else None
+    if fn is None:
+        return "sin IA"
+    try:
+        with open(MISMO_HECHO_CACHE, encoding="utf-8") as f:
+            cache = json.load(f) or {}
+    except Exception:
+        cache = {}
+    foto = _cargar_registro()
+    ahora = dt.datetime.now(dt.timezone.utc)
+    ids = [eid for eid, e in foto.items()
+           if e.get("embedding") and e.get("embedding_modelo") == getattr(ia, "EMBED_MODEL", None)
+           and isinstance(e.get("ultimo"), dt.datetime)
+           and (ahora - e["ultimo"]).total_seconds() / 3600 <= REGISTRO_MAX_HORAS]
+    candidatos = []
+    for i in range(len(ids)):
+        ei = foto[ids[i]]
+        for j in range(i + 1, len(ids)):
+            ej = foto[ids[j]]
+            if abs((ei["ultimo"] - ej["ultimo"]).total_seconds()) / 3600 > REGISTRO_MAX_HORAS:
+                continue
+            if not _senal_compartida(ei, ej) or _vetado_por_plantilla(ei, ej):
+                continue
+            clave = _clave_par(ids[i], ids[j], ei, ej)
+            if clave in cache:
+                continue
+            c = _cos_sim(ei["embedding"], ej["embedding"])
+            if MISMO_HECHO_COS_MIN <= c < EMBED_SIM_UMBRAL:
+                candidatos.append((c, ids[i], ids[j], clave))
+    if not candidatos:
+        return "sin pares dudosos"
+    candidatos.sort(reverse=True)
+    tanda = candidatos[:MISMO_HECHO_MAX]
+    res = fn([({"titular": foto[a].get("fundador_titulo", ""), "resumen": foto[a].get("fundador_resumen", "")},
+                {"titular": foto[b].get("fundador_titulo", ""), "resumen": foto[b].get("fundador_resumen", "")})
+               for _, a, b, _k in tanda])
+    if res is None:
+        return "IA sin respuesta (%s); %d pares esperan" % (getattr(ia, "last_error", "") or "?", len(candidatos))
+    fusiones = 0
+    with _REGISTRO_LOCK:
+        registro = _cargar_registro()
+        absorbidos = set()
+        for (c, a, b, clave), mismo in zip(tanda, res):
+            if mismo is None:
+                continue
+            cache[clave] = {"mismo": mismo, "cos": round(c, 3), "ts": ahora.isoformat(timespec="seconds"),
+                            "a": foto[a].get("fundador_titulo", "")[:120], "b": foto[b].get("fundador_titulo", "")[:120]}
+            if not mismo or a in absorbidos or b in absorbidos or a not in registro or b not in registro:
+                continue
+            if registro[a].get("fundador_titulo") != foto[a].get("fundador_titulo") or \
+                    registro[b].get("fundador_titulo") != foto[b].get("fundador_titulo"):
+                continue  # cambio mientras la IA pensaba: se vuelve a evaluar en otra pasada
+            absorbidos.add(_fusionar_par_registro(registro, a, b))
+            fusiones += 1
+        for eid in absorbidos:
+            del registro[eid]
+        if fusiones:
+            _guardar_registro(registro)
+    for k in sorted(cache, key=lambda k: cache[k].get("ts", ""))[:-5000]:
+        del cache[k]
+    tmp = MISMO_HECHO_CACHE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False)
+    os.replace(tmp, MISMO_HECHO_CACHE)
+    return "+%d fusiones por mismo hecho (IA), %d pares revisados, %d esperan" % (
+        fusiones, sum(1 for x in res if x is not None), max(0, len(candidatos) - len(tanda)))
+
+
+def _fusionar_par_registro(registro, id_a, id_b):
+    """Fusiona dos entradas del registro: la mas vieja ("creado" mas chico)
+    absorbe a la mas nueva -- asi fuentes[0] (story_key/storyKey, clave de
+    saved.json/notas.json) sigue siendo la misma nota de siempre. Devuelve el
+    id absorbido (el llamador lo borra del registro)."""
+    ei, ej = registro[id_a], registro[id_b]
+    if (ei.get("creado") or now_utc()) <= (ej.get("creado") or now_utc()):
+        vieja, vieja_id, nueva, nueva_id = ei, id_a, ej, id_b
+    else:
+        vieja, vieja_id, nueva, nueva_id = ej, id_b, ei, id_a
+    links_ya = {f_.get("link") for f_ in vieja["fuentes"]}
+    for f_ in nueva["fuentes"]:
+        if f_.get("link") not in links_ya:
+            vieja["fuentes"].append(f_)
+            links_ya.add(f_.get("link"))
+    vieja.setdefault("actualizaciones", []).extend(nueva.get("actualizaciones", []))
+    vieja["tokens"] = vieja.get("tokens", set()) | nueva.get("tokens", set())
+    vieja["nombres"] = vieja.get("nombres", set()) | nueva.get("nombres", set())
+    vieja["numeros"] = vieja.get("numeros", set()) | nueva.get("numeros", set())
+    vieja["fechas"] = vieja.get("fechas", set()) | nueva.get("fechas", set())
+    if not vieja.get("ciudad") and nueva.get("ciudad"):
+        vieja["ciudad"] = nueva["ciudad"]
+    if not vieja.get("servicio") and nueva.get("servicio"):
+        vieja["servicio"] = nueva["servicio"]
+    if nueva.get("ultimo") and (not vieja.get("ultimo") or nueva["ultimo"] > vieja["ultimo"]):
+        vieja["ultimo"] = nueva["ultimo"]
+        vieja["rep_titulo"] = nueva.get("rep_titulo", vieja.get("rep_titulo"))
+        vieja["rep_resumen"] = nueva.get("rep_resumen", vieja.get("rep_resumen"))
+    return nueva_id
 
 
 def _canon_set(nombres):
@@ -2062,8 +2635,10 @@ def _embed_multilingue_pendientes_registro():
     pidiendo un vector aparte como antes."""
     if ia is None or not ia.embed_disponible(ia.EMBED_MODEL_MULTILINGUE):
         return "sin modelo multilingue (%s)" % (getattr(ia, "EMBED_MODEL_MULTILINGUE", "bge-m3") if ia else "?")
-    registro = _cargar_registro()
-    if not registro:
+    # Fase 18 (P0-1): foto sin lock para decidir que calcular; las llamadas a
+    # la IA van afuera, y se aplican despues sobre el registro recargado.
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
 
     def _es_internacional(e):
@@ -2071,7 +2646,6 @@ def _embed_multilingue_pendientes_registro():
         return not is_ecuador(texto)
 
     mismo_modelo = (ia.EMBED_MODEL_MULTILINGUE == ia.EMBED_MODEL)
-    calculados = 0
     if mismo_modelo:
         # Se reusa "embedding"/"embedding_modelo" (el mismo campo que llena
         # _embed_pendientes_registro()) en vez de "embedding_multi" -- pero
@@ -2083,25 +2657,36 @@ def _embed_multilingue_pendientes_registro():
         # cuando las dos funciones SI corren en la misma pasada (caso real de
         # enrich_pass), la que llega primero ya lo dejo listo y esta no
         # vuelve a pedirlo (sin duplicar costo).
-        pendientes = [eid for eid, e in registro.items()
-                      if e.get("rep_titulo") and _es_internacional(e)
-                      and e.get("embedding_modelo") != ia.EMBED_MODEL]
-        for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
-            emb = ia.embed(registro[eid]["rep_titulo"])
-            if emb:
-                registro[eid]["embedding"] = emb
-                registro[eid]["embedding_modelo"] = ia.EMBED_MODEL
-                calculados += 1
+        campo, campo_modelo, modelo_ok = "embedding", "embedding_modelo", ia.EMBED_MODEL
     else:
-        pendientes = [eid for eid, e in registro.items()
-                      if e.get("rep_titulo") and _es_internacional(e)
-                      and e.get("embedding_multi_modelo") != ia.EMBED_MODEL_MULTILINGUE]
-        for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
-            emb = ia.embed(registro[eid]["rep_titulo"], modelo=ia.EMBED_MODEL_MULTILINGUE)
-            if emb:
-                registro[eid]["embedding_multi"] = emb
-                registro[eid]["embedding_multi_modelo"] = ia.EMBED_MODEL_MULTILINGUE
-                calculados += 1
+        campo, campo_modelo, modelo_ok = "embedding_multi", "embedding_multi_modelo", ia.EMBED_MODEL_MULTILINGUE
+    pendientes = [eid for eid, e in foto.items()
+                  if _texto_embedding(e) and _es_internacional(e)
+                  and e.get(campo_modelo) != modelo_ok]
+    nuevos = {}
+    for eid in pendientes[:EMBED_MULTI_MAX_NEW]:
+        texto = _texto_embedding(foto[eid])
+        emb = ia.embed(texto) if mismo_modelo else ia.embed(texto, modelo=ia.EMBED_MODEL_MULTILINGUE)
+        if emb:
+            nuevos[eid] = (texto, emb)
+    with _REGISTRO_LOCK:
+        return _embed_multilingue_aplicar(nuevos, pendientes, campo, campo_modelo, modelo_ok,
+                                          mismo_modelo, _es_internacional)
+
+
+def _embed_multilingue_aplicar(nuevos, pendientes, campo, campo_modelo, modelo_ok, mismo_modelo, _es_internacional):
+    """Parte "bajo lock" de _embed_multilingue_pendientes_registro (Fase 18,
+    P0-1): recarga el registro fresco, aplica los vectores ya calculados y
+    reconcilia. Siempre se llama con _REGISTRO_LOCK tomado."""
+    registro = _cargar_registro()
+    calculados = 0
+    for eid, (texto, emb) in nuevos.items():
+        e = registro.get(eid)
+        if e is None or _texto_embedding(e) != texto:
+            continue
+        e[campo] = emb
+        e[campo_modelo] = modelo_ok
+        calculados += 1
 
     def _vec(e):
         if mismo_modelo:
@@ -2243,23 +2828,38 @@ def _coherencia_pendientes_registro():
     verificacion, no se vuelve a llamar a la IA. Nunca corre en run_fast."""
     if ia is None or os.environ.get("MONITOR_NO_IA") == "1":
         return "desactivado"
-    registro = _cargar_registro()
-    if not registro:
+    # Fase 18 (P0-1): la IA se consulta sobre una FOTO del registro, sin
+    # lock; los resultados se aplican despues sobre el registro recargado y
+    # solo si el conjunto de fuentes de esa entrada no cambio mientras tanto
+    # (los indices de grupo se refieren a ESA lista de fuentes).
+    foto = _cargar_registro()
+    if not foto:
         return "registro vacio"
-    candidatos = [eid for eid, e in registro.items()
+    candidatos = [eid for eid, e in foto.items()
                   if len(e.get("fuentes") or []) >= 3
                   and e.get("coherencia_hash") != _hash_fuentes(e)]
-    candidatos.sort(key=lambda eid: len(registro[eid].get("fuentes") or []), reverse=True)
-    verificadas, divisiones = 0, 0
+    candidatos.sort(key=lambda eid: len(foto[eid].get("fuentes") or []), reverse=True)
+    respuestas = []
     for eid in candidatos[:COHERENCIA_MAX_NEW]:
-        e = registro.get(eid)
-        if e is None:
-            continue  # pudo haberse borrado por una division anterior en esta misma pasada
+        e = foto[eid]
         fuentes = e.get("fuentes") or []
         material = [{"id": str(i), "titulo": f_.get("title", ""), "resumen": (f_.get("summary") or "")[:220]}
                     for i, f_ in enumerate(fuentes)]
-        r = ia.verificar_coherencia(material, forzado=IA_MODEL)
+        respuestas.append((eid, _hash_fuentes(e), ia.verificar_coherencia(material, forzado=IA_MODEL)))
+    with _REGISTRO_LOCK:
+        return _coherencia_aplicar(respuestas, len(candidatos))
+
+
+def _coherencia_aplicar(respuestas, n_candidatos):
+    """Parte "bajo lock" de _coherencia_pendientes_registro (Fase 18, P0-1)."""
+    registro = _cargar_registro()
+    verificadas, divisiones = 0, 0
+    for eid, hash_visto, r in respuestas:
         verificadas += 1
+        e = registro.get(eid)
+        if e is None or _hash_fuentes(e) != hash_visto:
+            continue  # se fusiono/cambio mientras la IA pensaba: se revisa en otra pasada
+        fuentes = e.get("fuentes") or []
         if r is None:
             continue  # no se cachea un fallo transitorio: se reintenta la proxima pasada
         if r.get("un_solo_hecho", True):
@@ -2290,7 +2890,7 @@ def _coherencia_pendientes_registro():
     if verificadas:
         _guardar_registro(registro)
     return "+%d nuevas (coherencia, pendientes: %d), +%d divisiones" % (
-        verificadas, max(0, len(candidatos) - verificadas), divisiones)
+        verificadas, max(0, n_candidatos - verificadas), divisiones)
 
 
 # ------------------------- temas + prominencia -------------------------
@@ -2441,6 +3041,32 @@ def _ciudad_por_mayoria(ciudades):
     return "", discrepancia
 
 
+# Fase 18 (P0-2): horas desde la creacion para que una tarjeta diga "Nueva".
+NUEVA_H = float(os.environ.get("MONITOR_NUEVA_H", "3"))
+
+# Fase 18 (P0-3): senales de que una nota es NACIONAL (no de una ciudad),
+# aunque la publique la seccion Guayaquil de un diario. Solo se mira el
+# TITULAR, por frase o palabra completa.
+NACIONAL_TERMS = ["ecuador", "ecuatorian", "noboa", "gobierno", "asamblea", "iva", "sri",
+                  "cne", "presidente de la republica", "ministerio", "ministro", "ministra",
+                  "a nivel nacional", "todo el pais", "codigo organico", "codigo de la ninez",
+                  "decreto", "registro oficial", "corte constitucional", "fiscalia general",
+                  "elecciones seccionales", "consulta popular", "banco central", "inec"]
+_NACIONAL_RE = [re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in NACIONAL_TERMS]
+# Subconjunto "fuerte": medidas de alcance nacional que siguen siendo
+# nacionales aunque el titular nombre Guayaquil (caso real: "Daniel Noboa
+# reduce el IVA al 8 % durante el feriado por la Independencia de Guayaquil").
+NACIONAL_FUERTE = ["iva", "sri", "decreto", "registro oficial", "codigo organico",
+                   "codigo de la ninez", "consulta popular", "elecciones seccionales",
+                   "a nivel nacional", "todo el pais", "asamblea"]
+_NACIONAL_FUERTE_RE = [re.compile(r"\b" + re.escape(norm(t)) + r"\b") for t in NACIONAL_FUERTE]
+
+
+def es_nacional(titulo, fuerte=False):
+    blob = norm(titulo)
+    return any(p.search(blob) for p in (_NACIONAL_FUERTE_RE if fuerte else _NACIONAL_RE))
+
+
 def build_stories(clusters):
     stories = []
     for c in clusters:
@@ -2449,8 +3075,15 @@ def build_stories(clusters):
         outlets_intl = [o for o in outlets if o in INTL_OUTLETS]
         dates = [a["date"] for a in arts if a["date"]]
         newest = max(dates) if dates else None
-        # representante = la nota mas reciente del grupo (tras el merge el orden no es fiable)
-        rep = max(arts, key=lambda a: a["date"] or dt.datetime.min.replace(tzinfo=dt.timezone.utc))
+        # Fase 18 (P0-2): representante = la nota FUNDADORA (la primera que
+        # creo la historia), ya no la mas nueva. Antes, una historia vieja
+        # "subia" con el titular de la ultima nota que se le pegaba y parecia
+        # nueva; lo nuevo va en 'actualizaciones' con su hora.
+        rep = None
+        if c.get("fundador_titulo"):
+            rep = next((a for a in arts if a["title"] == c["fundador_titulo"]), None)
+        if rep is None:
+            rep = min(arts, key=lambda a: a["date"] or dt.datetime.max.replace(tzinfo=dt.timezone.utc))
         seccion = rep["seccion"]
         blob = " ".join(a["title"] + " " + a["summary"] for a in arts)
         # Fase 14, bug real encontrado verificando en vivo: el fallback final
@@ -2516,6 +3149,27 @@ def build_stories(clusters):
         # ciudad=Guayaquil".
         ciudad = (_area_de(ciudad_mayoritaria) if es_local and ciudad_mayoritaria else "") or \
                  (("" if _es_enumeracion_ciudades(blob_geo) else detect_city(blob_geo)) if es_local else "")
+        # Fase 18 (P0-3): el titular que se muestra manda. Si nombra OTRA
+        # ciudad/provincia (y no Gran Guayaquil), la historia no es de
+        # Guayaquil; si es noticia NACIONAL (IVA, ley, Gobierno...), queda en
+        # Ecuador sin ciudad aunque la haya publicado la seccion Guayaquil de
+        # un diario.
+        rep_texto_geo = rep["title"] + " " + _quitar_dateline(rep.get("summary") or "")
+        rep_ciudades = ciudades_en(rep["title"])
+        rep_gye = [c_ for c_ in rep_ciudades if c_ in GUAYAQUIL_AREA]
+        if es_local and ciudad == "Guayaquil" and not rep_gye:
+            otras = [c_ for c_ in rep_ciudades if c_ not in GUAYAQUIL_AREA]
+            if otras:
+                ciudad = otras[0]
+            elif es_nacional(rep["title"]):
+                ciudad = ""
+        elif es_local and ciudad == "Guayaquil" and es_nacional(rep["title"], fuerte=True):
+            ciudad = ""
+        localidad = ""
+        if ciudad == "Guayaquil":
+            sub = [c_ for c_ in ciudades_en(rep_texto_geo) if c_ in GUAYAQUIL_AREA and c_ != "Guayaquil"]
+            if sub and "Guayaquil" not in ciudades_en(rep["title"]):
+                localidad = LOCALIDAD_NOMBRE.get(sub[0], sub[0])
         temas = themes_for(blob, seccion)
         # Base geografica por palabras clave (jerarquica): la IA la puede corregir
         # despues, con candado (ver _apply en get_ia).
@@ -2524,13 +3178,18 @@ def build_stories(clusters):
         else:
             geo = ["internacional"]
         hours = (now_utc() - newest).total_seconds() / 3600 if newest else None
+        creado = c.get("creado") or (min(dates) if dates else None)
+        horas_creado = (now_utc() - creado).total_seconds() / 3600 if creado else None
         # se descarta de verdad solo mas alla de MAX_AGE_DAYS (columnas, notas
         # rezagadas). Entre FEED_FRESH_H y MAX_AGE_DAYS ya NO se descarta: queda
         # marcada "antigua" y la pestaña "Anteriores" del dashboard la muestra
         # aparte, para no perderla en silencio (ver FEED_FRESH_H arriba).
         if hours is not None and hours > MAX_AGE_DAYS * 24:
             continue
-        antigua = hours is not None and hours > FEED_FRESH_H
+        # Fase 21 (pedido de Fernando: "no cojas otra cosa que lo publicado en
+        # las ultimas 10 horas como nuevo"): sin fecha no se puede confirmar
+        # que sea nueva -> va a Anteriores (antes contaba como reciente).
+        antigua = hours is None or hours > FEED_FRESH_H
 
         # PROMINENCIA: senales separadas (no colapsadas en la logica).
         n_outlets = len(outlets)
@@ -2578,6 +3237,15 @@ def build_stories(clusters):
             "es_local": es_local,
             "ambito": ambito,
             "ciudad": ciudad,
+            # Fase 18 (P0-3): Samborondon/Duran/Daule cuentan como Gran
+            # Guayaquil (ciudad="Guayaquil" para todos los filtros) pero
+            # llevan su nombre aca para el chip de la tarjeta.
+            "localidad": localidad,
+            # Fase 18 (P0-2): "Nueva" solo si la historia se creo hace poco;
+            # si solo se sumo una fuente, la tarjeta dice "Actualizacion".
+            "creado": creado.isoformat() if creado else None,
+            "horas_desde_creacion": round(horas_creado, 1) if horas_creado is not None else None,
+            "es_nueva": bool(horas_creado is not None and horas_creado <= NUEVA_H),
             # Fase 14, Paso 2: True solo si las fuentes fusionadas mencionan
             # ciudades DISTINTAS (ya normalizadas por area metropolitana) --
             # la señal que usa get_geo_evidencia() para elegir que historias
@@ -2628,8 +3296,477 @@ def build_stories(clusters):
                  for u in c.get("actualizaciones", [])),
                 key=lambda u: u["fecha"] or ""),
         })
+    for s in stories:
+        _aplicar_categoria(s)
     stories.sort(key=lambda s: s["score"], reverse=True)
     return stories
+
+
+def _aplicar_categoria(s, entry=None):
+    """Fase 24 (C1/C2): categoria nueva (12) con su razon, y tipo de la
+    afirmacion principal con quien la hace. Reglas siempre (sin IA ni red); si
+    la IA por lotes ya la vio (entry de ia_cache.json), su respuesta, ya
+    recortada por categorias.candado, manda."""
+    if categorias is None:
+        return
+    tit, res = s.get("titular") or "", s.get("resumen") or ""
+    cat, razon = categorias.clasificar_reglas(tit, res, s.get("temas"))
+    tipo, quien = categorias.tipo_reglas(tit, res)
+    fuente_cat = fuente_tipo = "reglas"
+    if entry and entry.get("cat24"):
+        cat, razon, fuente_cat = entry["cat24"], entry.get("razon24") or razon, "ia"
+    if entry and entry.get("tipo24"):
+        tipo, fuente_tipo = entry["tipo24"], "ia"
+        quien = entry.get("quien24") or quien
+    s["categoria"] = cat or ""
+    s["categoria_razon"] = razon if cat else "no nombra nada de ninguna categoria"
+    s["categoria_fuente"] = fuente_cat if cat else ""
+    s["tipo"], s["tipo_quien"], s["tipo_fuente"] = tipo, quien, fuente_tipo
+    if entry is not None:  # Fase 24 (D): lo que dijo la IA de su utilidad; decide _aplicar_utilidad
+        s["_util_ia"] = entry.get("util24")
+        s["importa_aqui"] = entry.get("importa24") or ""
+
+
+# ------------------------- Fase 24 (D): util / basura en Internacional -------------------------
+# Nunca se quita un feed: se filtra NOTA por nota. Orden: lo que marco Fernando
+# con los botones (util_manual.json, contenido suyo) > reglas > IA por lotes.
+# Lo descartado no desaparece: el dashboard lo muestra en "ver descartadas".
+# Tope por medio: un solo medio (Infobae llego a 66 de 153 internacionales)
+# no puede llenar la seccion; lo que pasa el tope tambien va a descartadas.
+UTIL_MANUAL_PATH = os.path.join(HERE, "util_manual.json")
+INTL_TOPE_MEDIO = int(os.environ.get("MONITOR_INTL_TOPE_MEDIO", "8"))
+
+
+_UTIL_LOCK = threading.Lock()  # revision de Codex: dos clics a la vez no pisan marcas
+
+
+def load_util_manual():
+    """Marcas de Fernando. Una forma inesperada (lista, marcas que no son
+    dict) se ignora sin sobrescribir el archivo (revision de Codex)."""
+    try:
+        with open(UTIL_MANUAL_PATH, encoding="utf-8") as f:
+            d = json.load(f)
+    except Exception:
+        return {}
+    if not isinstance(d, dict):
+        return {}
+    return {k: v for k, v in d.items() if isinstance(v, dict)}
+
+
+def save_util_manual(d):
+    tmp = UTIL_MANUAL_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, UTIL_MANUAL_PATH)
+
+
+def _aplicar_utilidad(stories):
+    manual = load_util_manual()
+    for s in stories:
+        m = (manual.get(story_key(s)) or {}).get("util")
+        if m in ("si", "no"):
+            s["util"], s["util_razon"], s["util_fuente"] = m == "si", "lo marco Fernando", "fernando"
+            continue
+        if s.get("ambito") != "internacional":
+            s["util"], s["util_razon"], s["util_fuente"] = True, "", ""
+            continue
+        u, razon = (categorias.util_reglas(s.get("titular"), s.get("resumen"), s.get("categoria"))
+                    if categorias is not None else (None, ""))
+        if u is False:
+            s["util"], s["util_razon"], s["util_fuente"] = False, razon, "reglas"
+        elif s.get("_util_ia") is not None:
+            s["util"] = bool(s["_util_ia"])
+            s["util_razon"] = "la IA la marco %s" % ("util" if s["util"] else "como basura")
+            s["util_fuente"] = "ia"
+        else:
+            s["util"], s["util_razon"], s["util_fuente"] = True, "sin revisar todavia", ""
+    # Tope por medio: entre las internacionales utiles de UN solo medio, las de
+    # menos interes por encima del tope van a descartadas (no si las marco Fernando).
+    por_medio = {}
+    for s in stories:
+        if s.get("ambito") == "internacional" and s.get("util") and s.get("util_fuente") != "fernando"                 and len(s.get("outlets") or []) == 1:
+            por_medio.setdefault(s["outlets"][0], []).append(s)
+    for medio, hs in por_medio.items():
+        hs.sort(key=lambda x: x.get("interes", 0), reverse=True)
+        for s in hs[INTL_TOPE_MEDIO:]:
+            s["util"], s["util_fuente"] = False, "tope"
+            s["util_razon"] = "tope: mas de %d notas de un solo medio (%s)" % (INTL_TOPE_MEDIO, medio)
+    for s in stories:
+        s.pop("_util_ia", None)
+
+
+# ------------------------- evento en curso (Fase 18, P0-2.4) -------------------------
+# Las lluvias de Guayaquil del 29-sep terminaron en ~10-18 tarjetas separadas
+# (cada medio contaba un sector distinto: Av. de las Americas, el norte, la
+# Atarazana, calzada mojada segun la ATM...). Ninguna comparte suficiente
+# vocabulario con las otras para fusionarse -- y no deben fusionarse en el
+# registro (son notas distintas), pero en la vista son UN evento. Esta capa
+# las agrupa SOLO para mostrar: >=3 historias del mismo lugar (Gran
+# Guayaquil cuenta como uno), del mismo tipo de hecho, el mismo dia local ->
+# una historia madre con sub-actualizaciones por sector. No toca el registro
+# ni gasta IA.
+EVENTO_TIPOS = {
+    "lluvias": ("Lluvias", ["lluvia", "lluvias", "inundacion", "inundaciones", "inunda", "anegad",
+                             "aguacero", "acumulacion de agua", "calzada mojada", "marea alta",
+                             "desborde", "desbordamiento"]),
+    "cortes": ("Cortes de servicio", ["corte de agua", "cortes de agua", "corte de luz", "cortes de luz",
+                                      "sin agua", "sin luz", "apagon", "corte electrico"]),
+    "violencia": ("Violencia armada", ["balacera", "ataque armado", "disparos", "tiroteo", "sicariato"]),
+    "protestas": ("Protestas", ["protesta", "planton", "marcha", "paro", "bloqueo de via"]),
+}
+_EVENTO_RE = {k: [re.compile(r"\b" + re.escape(norm(w))) for w in ws] for k, (_, ws) in EVENTO_TIPOS.items()}
+EVENTO_MIN = int(os.environ.get("MONITOR_EVENTO_MIN", "3"))
+_MESES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+_SECTORES_EXTRA = {"Norte": ["norte de guayaquil", "el norte", "del norte"],
+                   "Sur": ["sur de guayaquil", "el sur", "del sur"]}
+
+
+def tipo_evento(titulo):
+    blob = norm(titulo)
+    for k, pats in _EVENTO_RE.items():
+        if any(p.search(blob) for p in pats):
+            return k
+    return ""
+
+
+def _sector_de(texto):
+    blob = norm(texto)
+    if alertas is not None:
+        for nombre, terms in alertas.BARRIOS_GYE.items():
+            if any(re.search(r"\b" + re.escape(norm(t)) + r"\b", blob) for t in terms):
+                return nombre
+    for nombre, terms in _SECTORES_EXTRA.items():
+        if any(t in blob for t in terms):
+            return nombre
+    return ""
+
+
+def _dia_local(iso):
+    d = _iso_a_dt(iso) if isinstance(iso, str) else iso
+    return (d - dt.timedelta(hours=5)).date() if d else None  # Guayaquil = UTC-5, sin horario de verano
+
+
+def agrupar_eventos_en_curso(stories):
+    """Devuelve una lista NUEVA de historias donde cada grupo de >=EVENTO_MIN
+    historias locales (misma ciudad, mismo tipo de hecho, mismo dia local)
+    se reemplaza por una historia madre. Las historias hijas quedan dentro,
+    en 'sub_actualizaciones' (titular, hora, medios, sector, link)."""
+    grupos = {}
+    for i, s in enumerate(stories):
+        if not s.get("es_local") or not s.get("ciudad") or s.get("evento_en_curso"):
+            continue
+        tipo = tipo_evento(s.get("titular", ""))
+        dia = _dia_local(s.get("newest"))
+        if not tipo or not dia:
+            continue
+        grupos.setdefault((s["ciudad"], tipo, dia), []).append(i)
+    usados, madres = set(), []
+    for (ciudad, tipo, dia), idx in grupos.items():
+        if len(idx) < EVENTO_MIN:
+            continue
+        hijas = sorted((stories[i] for i in idx), key=lambda s: s.get("newest") or "")
+        base = dict(max(hijas, key=lambda s: s.get("score", 0)))
+        fuentes, links = [], set()
+        for h in hijas:
+            for f_ in h.get("fuentes", []):
+                if f_.get("link") not in links:
+                    links.add(f_.get("link"))
+                    fuentes.append(f_)
+        fuentes.sort(key=lambda f_: f_.get("date") or "")
+        subs, sectores = [], []
+        for h in hijas:
+            sector = _sector_de(h.get("titular", "") + " " + (h.get("resumen") or ""))
+            if sector and sector not in sectores:
+                sectores.append(sector)
+            subs.append({"titular": h.get("titular", ""), "fecha": h.get("newest"),
+                         "outlets": h.get("outlets", []), "sector": sector,
+                         "link": (h.get("fuentes") or [{}])[0].get("link", "")})
+        outlets = sorted({o for h in hijas for o in h.get("outlets", [])})
+        etiqueta = EVENTO_TIPOS[tipo][0]
+        creados = [h.get("creado") for h in hijas if h.get("creado")]
+        horas_c = [h.get("horas_desde_creacion") for h in hijas if h.get("horas_desde_creacion") is not None]
+        base.update({
+            "titular": "%s en %s — %d %s" % (etiqueta, ciudad, dia.day, _MESES_CORTO[dia.month - 1]),
+            "resumen": "%d notas de %d medios%s." % (
+                len(hijas), len(outlets), (". Sectores: " + ", ".join(sectores)) if sectores else ""),
+            "fuentes": fuentes, "outlets": outlets, "n_outlets": len(outlets),
+            "n_articles": sum(h.get("n_articles", 1) for h in hijas),
+            "newest": max(h.get("newest") or "" for h in hijas) or None,
+            "hours": min((h["hours"] for h in hijas if h.get("hours") is not None), default=None),
+            "antigua": all(h.get("antigua") for h in hijas),
+            "temas": sorted({t for h in hijas for t in h.get("temas", [])}),
+            "score": max(h.get("score", 0) for h in hijas) + 10 * len(hijas),
+            "interes": max(h.get("interes", 0) for h in hijas) + 10 * len(hijas),
+            "actualizaciones": sorted(
+                [u for h in hijas for u in h.get("actualizaciones", [])], key=lambda u: u.get("fecha") or ""),
+            "sub_actualizaciones": subs,
+            "creado": min(creados) if creados else None,
+            "horas_desde_creacion": max(horas_c) if horas_c else None,
+            "es_nueva": any(h.get("es_nueva") for h in hijas) and (max(horas_c) if horas_c else 0) <= NUEVA_H,
+            "localidad": "",
+            "evento_en_curso": {"tipo": tipo, "etiqueta": etiqueta, "lugar": ciudad, "dia": dia.isoformat(),
+                                "n_historias": len(hijas), "sectores": sectores,
+                                "desde": hijas[0].get("newest"), "hasta": hijas[-1].get("newest")},
+        })
+        # Fase 24 (C2): la categoria de la madre sale del tipo de evento, no de la primera hija.
+        cat_evento = {"lluvias": "riesgos_clima", "cortes": "obras_servicios", "violencia": "seguridad",
+                      "protestas": "politica"}.get(tipo)
+        if cat_evento:
+            base.update({"categoria": cat_evento, "categoria_razon": "evento en curso: %s" % etiqueta.lower(),
+                         "categoria_fuente": "reglas", "tipo": "accion", "tipo_quien": "", "tipo_fuente": "reglas"})
+        usados.update(idx)
+        madres.append(base)
+    if not madres:
+        return list(stories)
+    out = [s for i, s in enumerate(stories) if i not in usados] + madres
+    out.sort(key=lambda s: s.get("score", 0), reverse=True)
+    return out
+
+
+def _adjuntar_tweets_eventos(stories, max_tweets=6):
+    """Fase 18 (P1-5.3): los tweets que trajo la busqueda reactiva de X
+    (redes._pasada_eventos, hilo trabajador) se muestran DENTRO de la
+    historia madre, con fecha y hora. Solo LEE x_cache.json (nunca red)."""
+    xa = getattr(redes, "xapi", None) if redes is not None else None
+    if xa is None:
+        return
+    for s in stories:
+        if not s.get("evento_en_curso"):
+            continue
+        link = ((s.get("fuentes") or [{}])[0].get("link") or s.get("titular", ""))[:180]
+        tw = xa.tweets_de_historia(link)
+        if not tw:
+            continue
+        tw = sorted(tw, key=lambda t: xa.fecha_iso(t.get("createdAt", "")) or "", reverse=True)[:max_tweets]
+        s["x_tweets"] = [{"texto": (t.get("text") or "")[:280], "autor": (t.get("author") or {}).get("userName", ""),
+                          "fecha": xa.fecha_iso(t.get("createdAt", "")), "url": t.get("url", "")} for t in tw]
+
+
+# ------------------------- internacionales con marco (Fase 18, P1-9) -------------------------
+# 1303 de 1563 historias eran internacionales, muchas sin relacion con
+# Ecuador ni con la region (conciertos en la CDMX, plantas de interior,
+# vallenato). Dos capas: (1) farandula/espectaculos fuera, deterministico;
+# (2) triaje con IA (perfil rapido, EN LOTE de 20 titulares por llamada) que
+# decide si importa (global / region / ecuador / no) y escribe UNA linea de
+# "por que importa". El hilo rapido solo LEE el cache. Tope INTL_MAX.
+TRIAJE_INTL_PATH = os.path.join(HERE, "triaje_intl_cache.json")
+INTL_MAX = int(os.environ.get("MONITOR_INTL_MAX", "150"))
+TRIAJE_MAX_NEW = int(os.environ.get("MONITOR_TRIAJE_MAX", "60"))
+TRIAJE_LOTE = 20
+_RELEVANCIAS = ("global", "region", "ecuador", "no")
+_FARANDULA_RE = re.compile(
+    r"\b(concierto|conciertos|boletos|boleteria|preventa|gira mundial|festival|reality|farandula|"
+    r"telenovela|cantante|reguetonero|influencer|streamer|paquetes vip|en vivo desde|horoscopo|"
+    r"alfombra roja|premios grammy|premios oscar|serie de netflix|estreno de la pelicula)\b")
+
+
+def es_farandula(titulo):
+    return bool(_FARANDULA_RE.search(norm(titulo or "")))
+
+
+def _cargar_triaje():
+    try:
+        with open(TRIAJE_INTL_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+_PROMPT_TRIAJE = (
+    "Eres editor de un medio de Guayaquil, Ecuador. Para cada titular internacional "
+    "numerado decide su relevancia para un lector ecuatoriano:\n"
+    "- \"global\": afecta al mundo (guerra, economia mundial, diplomacia grande).\n"
+    "- \"region\": importa para America Latina.\n"
+    "- \"ecuador\": tiene efecto directo en Ecuador.\n"
+    "- \"no\": noticia local de otro pais, farandula, deportes, curiosidades, consumo.\n"
+    "Para las que NO son \"no\", escribe \"marco\": UNA linea (max. 25 palabras) que diga POR QUE "
+    "IMPORTA o QUE CONSECUENCIA puede tener -- NO repitas el titular con otras palabras. No inventes "
+    "datos que el titular no dice; si no hay como explicar la consecuencia, usa relevancia \"no\".\n"
+    "Mal (repite): \"Trump pregunto a Xi si quiere comprar armas estadounidenses.\"\n"
+    "Bien: \"Una venta de armas a China cambiaria la tension comercial EE.UU.-China, que mueve "
+    "precios de materias primas que exporta la region.\"\n"
+    "Responde SOLO JSON: {\"items\": [{\"i\": 0, \"relevancia\": \"...\", \"marco\": \"...\"}]}\n\n%s")
+
+
+def get_triaje_intl(stories):
+    """Hilo TRABAJADOR (o corrida unica): clasifica las internacionales que
+    faltan, en lotes. Devuelve texto de estado '+N nuevas'."""
+    if ia is None or os.environ.get("MONITOR_NO_IA") == "1" or not ia.backend_listo():
+        return "desactivado"
+    cache = _cargar_triaje()
+    pend = [s for s in stories if s.get("ambito") == "internacional" and not es_farandula(s.get("titular"))
+            and story_key(s) not in cache]
+    pend.sort(key=lambda s: s.get("interes") or 0, reverse=True)
+    pend = pend[:TRIAJE_MAX_NEW]
+    nuevas = 0
+    for i in range(0, len(pend), TRIAJE_LOTE):
+        lote = pend[i:i + TRIAJE_LOTE]
+        lista = "\n".join("%d. %s" % (j, (s.get("titular") or "")[:160]) for j, s in enumerate(lote))
+        r = ia._generar_json(_PROMPT_TRIAJE % lista, max_tokens=1600)
+        if not r:
+            break  # fallo transitorio / sin presupuesto: se reintenta en otra pasada
+        for it in r.get("items") or []:
+            try:
+                j = int(it.get("i"))
+            except (TypeError, ValueError):
+                continue
+            rel = it.get("relevancia")
+            if not (0 <= j < len(lote)) or rel not in _RELEVANCIAS:
+                continue
+            marco = (it.get("marco") or "").strip()[:220]
+            if rel != "no" and not marco:
+                continue  # candado en codigo: relevante sin marco no se acepta
+            # candado: un "marco" que solo repite el titular no aporta nada
+            tt, tm = tokens(lote[j].get("titular", "")), tokens(marco)
+            if tm and len(tt & tm) / len(tm) >= 0.6:
+                marco = ""
+            cache[story_key(lote[j])] = {"relevancia": rel, "marco": marco if rel != "no" else "",
+                                         "titular": lote[j].get("titular", ""), "ts": now_utc().isoformat()}
+            nuevas += 1
+    if nuevas:
+        if len(cache) > 4000:
+            cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("ts", ""))[-3000:])
+        tmp = TRIAJE_INTL_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
+        os.replace(tmp, TRIAJE_INTL_PATH)
+    return "+%d nuevas (triaje internacional, pendientes: %d)" % (nuevas, max(0, len(pend) - nuevas))
+
+
+def aplicar_triaje_intl(stories, modo_lectura=True):
+    """Filtra y marca las internacionales: farandula fuera, 'no' del triaje
+    fuera, 'marco' pegado, y tope INTL_MAX (primero las ya clasificadas como
+    relevantes, despues las pendientes, por interes). Lo local no se toca."""
+    cache = _cargar_triaje()
+    orden = {"ecuador": 0, "global": 1, "region": 2}
+    intl = []
+    for s in stories:
+        if s.get("ambito") != "internacional":
+            continue
+        if es_farandula(s.get("titular")):
+            continue
+        t = cache.get(story_key(s))
+        if t:
+            if t.get("relevancia") == "no":
+                continue
+            s["relevancia_intl"] = t.get("relevancia")
+            s["marco"] = t.get("marco", "")
+        intl.append(s)
+    intl.sort(key=lambda s: (orden.get(s.get("relevancia_intl"), 3), -(s.get("interes") or 0)))
+    quedan = {id(s) for s in intl[:INTL_MAX]}
+    return [s for s in stories if s.get("ambito") != "internacional" or id(s) in quedan]
+
+
+# ------------------------- contraste rediseñado (Fase 18, P2-11) -------------------------
+CONTRASTE_CLASE_PATH = os.path.join(HERE, "contraste_clase_cache.json")
+CONTRASTE_CLASE_MAX = int(os.environ.get("MONITOR_CONTRASTE_CLASE_MAX", "40"))
+
+
+def _boletines_oficiales():
+    """Items de oficial_cache.json (Asamblea, Registro Oficial, INEC, BCE)
+    -- solo lectura, lo que el trabajador ya bajo."""
+    ruta = getattr(oficial, "OFICIAL_CACHE_PATH", os.path.join(HERE, "oficial_cache.json")) if oficial else \
+        os.path.join(HERE, "oficial_cache.json")
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            c = json.load(f)
+    except Exception:
+        return []
+    return [dict(it, fuente=url) for url, v in c.items() if isinstance(v, dict) for it in (v.get("items") or [])]
+
+
+def _cargar_clases_contraste():
+    try:
+        with open(CONTRASTE_CLASE_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def aplicar_contraste(stories):
+    """Hilo rapido: contraste de cada historia con lo ya calculado. El
+    veredicto viejo (IA, medio contra medio) queda en 'veredicto_ia'; el
+    nuevo pasa a 'veredicto' (estados hallazgo/documento_oficial/
+    corroborado_medios/sin_hallazgo)."""
+    if contraste is None:
+        return
+    bol = _boletines_oficiales()
+    clases = _cargar_clases_contraste()
+    # Fase 24 (E): contraste por afirmacion (lo institucional nunca cuenta como medio).
+    try:
+        from feeds import OUTLETS_INSTITUCIONALES as _inst
+    except Exception:
+        _inst = ()
+    institucionales = set(_inst or ())
+    try:
+        with open(os.path.join(HERE, "comunidad.json"), encoding="utf-8") as f:
+            com_posts = [p for p in (((json.load(f) or {}).get("posts") or {}).values()) if isinstance(p, dict)]
+    except Exception:
+        com_posts = []
+    for s in stories:
+        if hasattr(contraste, "evaluar_afirmacion"):
+            ctx = s.get("contexto") or {}
+            mat = ctx.get("material") if isinstance(ctx.get("material"), dict) else {}
+            antecedentes = []
+            for a in (ctx.get("antecedentes") or [])[:3]:
+                m = mat.get((a.get("fuentes") or [""])[0]) or {}
+                antecedentes.append({"titulo": a.get("texto"), "link": m.get("link", ""), "outlet": "registro de Spike"})
+            try:
+                # "falta la version de CNEL/Interagua/ATM": solo en historias de Guayaquil
+                gye = s.get("ciudad") == "Guayaquil" and not extranjero_sin_ecuador(s.get("titular", ""))
+                s["afirmacion"] = contraste.evaluar_afirmacion(s, bol, institucionales, com_posts, antecedentes, local=gye)
+            except Exception as e:
+                s["afirmacion"] = {"estado": "sin_evidencia", "texto": "error: %s" % e, "citas": []}
+    for s in stories:
+        if s.get("veredicto") and "veredicto_ia" not in s and s["veredicto"].get("estado") in (
+                "coincide", "contradice", "sin_datos", "pendiente"):
+            s["veredicto_ia"] = s["veredicto"]
+        try:
+            s["veredicto"] = contraste.evaluar(s, bol, clase_ia=(clases.get(story_key(s)) or {}).get("clase"))
+        except Exception as e:
+            s["veredicto"] = {"estado": "sin_hallazgo", "clase": "", "texto": "error: %s" % e, "citas": []}
+
+
+_PROMPT_CLASE = (
+    "Clasifica cada titular de Ecuador segun QUE AFIRMA:\n"
+    "- \"acto_oficial\": una ley, decreto, contrato, cifra oficial, corte programado u obra publica.\n"
+    "- \"declaracion\": algo que DIJO una persona o institucion.\n"
+    "- \"hecho\": un suceso (crimen, accidente, clima, protesta).\n"
+    "Responde SOLO JSON: {\"items\": [{\"i\": 0, \"clase\": \"...\"}]}\n\n%s")
+
+
+def get_clase_contraste(stories):
+    """Trabajador (Fase 18, P2-11): clasificacion de la afirmacion con Gemini
+    (perfil rapido, lotes de 20) para las historias LOCALES; cachea por
+    story_key. contraste.evaluar usa esto si existe, si no sus reglas."""
+    if contraste is None or ia is None or os.environ.get("MONITOR_NO_IA") == "1" or not ia.backend_listo():
+        return "desactivado"
+    cache = _cargar_clases_contraste()
+    pend = [s for s in sorted(stories, key=_prioridad_cupo_ia)
+            if s.get("es_local") and story_key(s) not in cache][:CONTRASTE_CLASE_MAX]
+    nuevas = 0
+    for i in range(0, len(pend), 20):
+        lote = pend[i:i + 20]
+        r = ia._generar_json(_PROMPT_CLASE % "\n".join("%d. %s" % (j, (s.get("titular") or "")[:160])
+                                                        for j, s in enumerate(lote)), max_tokens=600)
+        if not r:
+            break
+        for it in r.get("items") or []:
+            try:
+                j = int(it.get("i"))
+            except (TypeError, ValueError):
+                continue
+            if 0 <= j < len(lote) and it.get("clase") in contraste.CLASES:
+                cache[story_key(lote[j])] = {"clase": it["clase"], "ts": now_utc().isoformat()}
+                nuevas += 1
+    if nuevas:
+        if len(cache) > 4000:
+            cache = dict(sorted(cache.items(), key=lambda kv: kv[1].get("ts", ""))[-3000:])
+        tmp = CONTRASTE_CLASE_PATH + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False)
+        os.replace(tmp, CONTRASTE_CLASE_PATH)
+    return "+%d nuevas (clase de contraste, pendientes: %d)" % (nuevas, max(0, len(pend) - nuevas))
 
 
 # ------------------------- demanda (Google Trends) -------------------------
@@ -2767,10 +3904,86 @@ def get_demand(themes, modo_lectura=False):
     return vals, tend, estado, fuente
 
 
+# ------------------------- estadisticas honestas (Fase 18, P2-12) -------------------------
+# Cada numero con su fuente, su ALCANCE GEOGRAFICO real y su antiguedad.
+# Caso real: una nota LOCAL salia con "demanda 100" sacada de Wikipedia en
+# espanol (lectores de todo el mundo, no de Guayaquil), de hace 25 h; y GDELT
+# llevaba 6 dias sin responder. Dato > DATO_VIEJO_H: marcado viejo;
+# > DATO_NO_GRAFICAR_H: no se grafica ni se usa.
+DATO_VIEJO_H = float(os.environ.get("MONITOR_DATO_VIEJO_H", "6"))
+DATO_NO_GRAFICAR_H = float(os.environ.get("MONITOR_DATO_NO_GRAFICAR_H", "48"))
+
+
+def _meta_de(cache, clave_ts, fuente, alcance):
+    ts = cache.get(clave_ts) or {}
+    if not ts and cache.get("ts"):
+        ts = {"_": cache["ts"]}
+    edades = {k: (time.time() - v) / 3600 for k, v in ts.items()}
+    frescos = {k: e for k, e in edades.items() if e <= DATO_NO_GRAFICAR_H}
+    edad_h = round(min(edades.values()), 1) if edades else None          # el tema mas nuevo
+    edad_max = round(max(frescos.values()), 1) if frescos else None      # el mas viejo que SI se grafica
+    return {"fuente": fuente, "alcance": alcance, "edad_h": edad_h, "edad_max_h": edad_max,
+            "temas_descartados_48h": sorted(k for k in edades if k not in frescos and k != "_"),
+            "viejo": bool(edad_max is not None and edad_max > DATO_VIEJO_H),
+            "no_graficar": not frescos}
+
+
+def _solo_frescos(datos, ruta_cache, clave_ts):
+    """Quita de 'datos' ({tema: ...}) los temas con dato de mas de
+    DATO_NO_GRAFICAR_H horas (Fase 18, P2-12)."""
+    try:
+        with open(ruta_cache, encoding="utf-8") as f:
+            ts = json.load(f).get(clave_ts) or {}
+    except Exception:
+        return datos
+    if not ts:
+        return datos
+    lim = time.time() - DATO_NO_GRAFICAR_H * 3600
+    return {t: v for t, v in (datos or {}).items() if ts.get(t, 0) >= lim}
+
+
+def meta_datos():
+    """Fuente/alcance/antiguedad de la demanda (Trends o Wikipedia) y de
+    GDELT, leidos de sus caches (nunca red)."""
+    def _leer(ruta):
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    tc, gc = _leer(TREND_CACHE), _leer(GDELT_CACHE)
+    fuente = tc.get("fuente") or ""
+    if "Trends" in fuente:
+        alcance = "búsquedas en Ecuador (Google Trends, geo %s) — no específico de Guayaquil" % (tc.get("geo") or TREND_GEO)
+    elif "Wiki" in fuente:
+        alcance = "lectores de Wikipedia en español de todo el mundo — no Guayaquil ni solo Ecuador"
+    else:
+        alcance = "sin fuente de demanda"
+    return {"demanda": _meta_de(tc, "vals_ts", fuente or "sin datos", alcance),
+            "gdelt": _meta_de(gc, "g_ts", "GDELT", "prensa mundial (GDELT) — no mide Ecuador en particular")}
+
+
+def _demanda_historia(s, demand, meta):
+    if meta.get("no_graficar") and meta.get("fuente") != "muestra":
+        s["demanda"], s["demanda_nota"] = None, "dato de demanda demasiado viejo"
+        return
+    if s.get("es_local") and "Trends" not in (meta.get("fuente") or "") and meta.get("fuente") != "muestra":
+        s["demanda"], s["demanda_nota"] = None, "sin dato local"
+        return
+    ds = [demand[t] for t in s.get("temas", []) if t in demand]
+    s["demanda"] = max(ds) if ds else None
+    s.pop("demanda_nota", None)
+
+
+def aplicar_demanda(stories, demand, meta):
+    for s in stories:
+        _demanda_historia(s, demand, meta)
+
+
 # ------------------------- agente de IA local (Ollama) -------------------------
 
 IA_CACHE = os.path.join(HERE, "ia_cache.json")
-IA_MAX_NEW = int(os.environ.get("MONITOR_IA_MAX", "25"))  # analisis nuevos por corrida (resto usa cache)
+IA_MAX_NEW = int(os.environ.get("MONITOR_IA_MAX", "80"))  # analisis nuevos por corrida (resto usa cache)
 IA_MODEL = os.environ.get("MONITOR_IA_MODEL", "")
 IA_TEMA_MIN = float(os.environ.get("MONITOR_IA_TEMA_MIN", "0.6"))  # umbral de confianza para temas
 # Interpretacion editorial (ia.interpretar, llamada APARTE de analizar -- ver
@@ -2779,7 +3992,7 @@ IA_TEMA_MIN = float(os.environ.get("MONITOR_IA_TEMA_MIN", "0.6"))  # umbral de c
 # llenaba de verdad). Acotada aparte de IA_MAX_NEW porque cada intento puede
 # hacer HASTA DOS llamadas a Ollama (interpretar() reintenta si el primer
 # intento sigue literal).
-IA_INTERP_MAX = int(os.environ.get("MONITOR_IA_INTERP_MAX", "12"))
+IA_INTERP_MAX = int(os.environ.get("MONITOR_IA_INTERP_MAX", "80"))
 IA_INTERP_VERSION = 2
 
 
@@ -2813,6 +4026,40 @@ def _huella_contenido(s):
     return hashlib.sha1(rep.encode("utf-8", "ignore")).hexdigest()[:12]
 
 
+# Fase 24 (A1): cache por CONTENIDO. _huella_contenido() incluye la cantidad
+# de medios (a proposito, Fase 9: un representante nuevo puede cambiar el
+# hecho), pero eso hacia repetir el analisis cada vez que un medio mas
+# levantaba la misma nota. Esta huella mira SOLO el texto normalizado: si no
+# cambio, no se vuelve a pagar (ni a gastar cupo gratis) por lo mismo.
+def _huella_texto(s):
+    t = norm((s.get("titular") or "") + " " + (s.get("resumen") or ""))
+    return hashlib.sha1(" ".join(t.split()).encode("utf-8", "ignore")).hexdigest()[:12]
+
+
+IA_LOTE = int(os.environ.get("MONITOR_IA_LOTE", "25"))  # historias por llamada de triaje (Fase 24, A1)
+MOSTRADAS_POR_SECCION = int(os.environ.get("MONITOR_IA_MOSTRADAS", "12"))
+
+
+def _claves_mostradas(stories):
+    """Fase 24 (A1, prioridad): las historias que el dashboard de verdad pone
+    delante de Fernando -- todo Guayaquil reciente, el top de cada seccion
+    (Ecuador e internacional) y lo internacional que cubren 2+ medios. Solo
+    estas reciben lectura editorial/contexto/veredicto de fondo; lo que el
+    abre a mano se pide aparte (bajo demanda)."""
+    recientes = [s for s in stories if not s.get("antigua")]
+    claves = {story_key(s) for s in recientes if s.get("ciudad") == "Guayaquil"}
+    por_seccion = {}
+    for s in sorted(recientes, key=lambda s: -(s.get("interes") or 0)):
+        grupo = (s.get("seccion") or "general", "intl" if s.get("internacional") else "local")
+        if len(por_seccion.setdefault(grupo, [])) < MOSTRADAS_POR_SECCION:
+            por_seccion[grupo].append(story_key(s))
+    for ks in por_seccion.values():
+        claves.update(ks)
+    claves.update(story_key(s) for s in recientes if s.get("internacional") and len(s.get("outlets") or []) >= 2
+                  and (s.get("interes") or 0) > 0)
+    return claves
+
+
 # Fase 9 (Problema B2): "solo 623 de 2480 historias tienen lectura IA" -- con
 # cupo fijo por pasada (IA_MAX_NEW/IA_INTERP_MAX/CONTEXTO_MAX_NEW/
 # VEREDICTO_MAX_NEW), el orden de "interes" a secas dejaba competir notas
@@ -2825,9 +4072,33 @@ def _huella_contenido(s):
 # internacional de 1 solo medio queda al final del cupo, aunque su interes
 # calculado fuera alto.
 def _prioridad_cupo_ia(s):
-    es_local = 0 if s.get("es_local") else 1
-    ruido_intl = 1 if (not s.get("es_local") and len(s.get("fuentes") or []) <= 1) else 0
-    return (es_local, ruido_intl)
+    # Fase 18 (P2-10): Guayaquil -> resto de Ecuador -> internacional
+    # (con el ruido de 1 solo medio al final).
+    if s.get("ciudad") == "Guayaquil":
+        return (0, 0)
+    if s.get("es_local"):
+        return (1, 0)
+    return (2, 1 if len(s.get("fuentes") or []) <= 1 else 0)
+
+
+# Fase 18 (P2-10): cobertura. IA en 87/1563 y contexto en 34/1563 historias.
+# El perfil PROFUNDO cuesta ~10x el rapido (precios de ia.py), asi que se
+# reserva para las TOP_PROFUNDO locales mas importantes; el resto de lo local
+# (Guayaquil primero, despues Ecuador) se cubre con el perfil RAPIDO. Lo
+# internacional solo recibe lectura si sobra cupo.
+TOP_PROFUNDO = int(os.environ.get("MONITOR_TOP_PROFUNDO", "10"))
+
+
+def _claves_top_profundo(stories):
+    locales = sorted([s for s in stories if s.get("es_local")], key=lambda s: -(s.get("interes") or 0))
+    return {story_key(s) for s in locales[:TOP_PROFUNDO]}
+
+
+def _perfil_para(s, top_keys):
+    if ia is None:
+        return None
+    return (getattr(ia, "PERFIL_PROFUNDO", "profundo") if story_key(s) in top_keys
+            else getattr(ia, "PERFIL_RAPIDO", "rapido"))
 
 def get_ia(stories, modo_lectura=False):
     """Usa Ollama para revisar/corregir el etiquetado por palabras clave (temas y
@@ -2948,6 +4219,7 @@ def get_ia(stories, modo_lectura=False):
         # Ahora se lee de "interp" (la clave que si llena la seccion de
         # abajo, ver el loop nuevo) -- nunca la "interpretacion" vieja.
         s["ia"] = r.get("interp") or ""
+        _aplicar_categoria(s, r)  # Fase 24 (C1/C2)
 
     if modo_lectura:
         n, desactualizadas = 0, 0
@@ -2967,38 +4239,83 @@ def get_ia(stories, modo_lectura=False):
         return "cache (%d/%d%s)" % (n, len(stories), extra)
 
     if not ia.disponible(IA_MODEL):
-        return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")
+        return "error: %s" % (getattr(ia, "last_error", None) or "la IA (Gemini) no responde")
 
     orden_cupo = sorted(stories, key=_prioridad_cupo_ia)  # ver comentario en _prioridad_cupo_ia (Problema B2)
+    top_keys = _claves_top_profundo(stories)
+    mostradas = _claves_mostradas(stories)  # Fase 24 (A1): la lectura editorial solo para lo que se ve
 
-    new, new_interp, err = 0, 0, None
+    # Fase 24 (A1): 1) cache por CONTENIDO: si solo se sumo un medio pero el
+    # titular y el resumen son los mismos, no se vuelve a pedir nada; 2) los
+    # que si hacen falta van en LOTES de IA_LOTE por llamada (antes, una
+    # llamada por historia).
+    pendientes = []
+    lote_fn = getattr(ia, "analizar_lote", None)
     for s in orden_cupo:  # local primero, ruido internacional de 1 medio al final del cupo
         f0 = (s.get("fuentes") or [{}])[0]
         key = (f0.get("link") or s["titular"])[:180]
         entry = cache.get(key)
         huella = _huella_contenido(s)
+        if entry is not None and entry.get("_huella") and entry["_huella"] != huella \
+                and entry.get("_texto") == _huella_texto(s):
+            entry["_huella"] = huella  # mismo texto, solo cambio la cantidad de medios
         # Fase 9 (Problema B1): una entrada vieja cuya huella ya no coincide
-        # con el titular/resumen/cantidad de medios actual compite de nuevo
-        # por el cupo de la pasada -- no se descarta a ciegas (ya tiene un
-        # analisis, aunque viejo), pero tampoco se sigue mostrando como si
-        # describiera la nota de hoy sin al menos intentar refrescarla.
+        # con el titular/resumen actual compite de nuevo por el cupo.
         desactualizada = entry is not None and entry.get("_huella") and entry["_huella"] != huella
-        if entry is None or desactualizada:
-            if new >= IA_MAX_NEW:
-                if entry is not None:
-                    _apply(s, entry)
-                    s["ia_desactualizada"] = True
-                continue
-            r = ia.analizar(s["titular"], s.get("resumen", ""), temas_kw=s.get("temas"), forzado=IA_MODEL)
+        # Fase 24 (C1/C2): lo clasificado antes de la categoria nueva vuelve a la cola (en lotes, gratis).
+        sin_cat24 = entry is not None and "util24" not in entry and lote_fn is not None
+        if (entry is None or desactualizada or sin_cat24) and len(pendientes) < IA_MAX_NEW:
+            pendientes.append((s, key))
+    new, new_interp, err = 0, 0, None
+    lote_fn = getattr(ia, "analizar_lote", None)
+    for i in range(0, len(pendientes), IA_LOTE if lote_fn else 1):
+        tanda = pendientes[i:i + (IA_LOTE if lote_fn else 1)]
+        if lote_fn:
+            rs = lote_fn([{"titular": s["titular"], "resumen": s.get("resumen", ""), "temas_kw": s.get("temas")}
+                          for s, _ in tanda])
+        else:
+            rs = [ia.analizar(tanda[0][0]["titular"], tanda[0][0].get("resumen", ""), temas_kw=tanda[0][0].get("temas"),
+                              forzado=IA_MODEL)]
+            rs = None if rs[0] is None and getattr(ia, "last_error", None) else rs
+        if rs is None:
+            err = getattr(ia, "last_error", None) or "sin respuesta"
+            break  # la tarea espera a la proxima pasada (nunca pasa a la clave pagada)
+        faltan = [k for k, r in enumerate(rs) if not r]
+        if lote_fn and faltan and len(faltan) < len(tanda):
+            # Revision de Codex: un lote truncado dejaba huecos que se volvian a
+            # pedir enteros en cada pasada. Se reintentan UNA vez solo los que faltan.
+            rs2 = lote_fn([{"titular": tanda[k][0]["titular"], "resumen": tanda[k][0].get("resumen", ""),
+                            "temas_kw": tanda[k][0].get("temas")} for k in faltan]) or []
+            for k, r in zip(faltan, rs2):
+                rs[k] = r
+        for (s, key), r in zip(tanda, rs):
             if r:
-                entry = cache[key] = r; new += 1
-            elif getattr(ia, "last_error", None):
-                err = ia.last_error; break
-            else:
-                continue
-        entry["_huella"] = huella  # se acaba de (re)calcular con el contenido de HOY -- ya no esta desactualizada
+                r["_huella"] = _huella_contenido(s)
+                r["_texto"] = _huella_texto(s)
+                r.setdefault("cat24", None)  # ya paso por la clasificacion nueva aunque la IA no la diera
+                r.setdefault("util24", None)
+                viejo = cache.get(key) or {}
+                for k in ("interp", "interp_v"):  # la lectura editorial se conserva si el texto no cambio
+                    if k in viejo and viejo.get("_texto") == r["_texto"]:
+                        r[k] = viejo[k]
+                cache[key] = r
+                new += 1
+
+    for s in orden_cupo:
+        f0 = (s.get("fuentes") or [{}])[0]
+        key = (f0.get("link") or s["titular"])[:180]
+        entry = cache.get(key)
+        if entry is None:
+            continue
+        if entry.get("_huella") and entry["_huella"] != _huella_contenido(s):
+            _apply(s, entry)
+            s["ia_desactualizada"] = True
+            continue
+        entry.setdefault("_texto", _huella_texto(s))
         s["ia_desactualizada"] = False
         _apply(s, entry)
+        if key not in mostradas:
+            continue  # Fase 24 (A1): sin lectura editorial para lo que no se muestra
         # Interpretacion editorial: separada de temas/geo a proposito (ver
         # IA_INTERP_MAX arriba). "interp_v" distingue el resultado de ESTE
         # prompt/formato del que pudiera haber quedado de una version vieja
@@ -3013,7 +4330,11 @@ def get_ia(stories, modo_lectura=False):
         if entry.get("interp_v") != IA_INTERP_VERSION:
             if new_interp >= IA_INTERP_MAX:
                 continue
-            texto = ia.interpretar(s["titular"], s.get("resumen", ""))
+            perfil = _perfil_para(s, top_keys)
+            if perfil == getattr(ia, "PERFIL_PROFUNDO", "profundo"):
+                texto = ia.interpretar(s["titular"], s.get("resumen", ""))
+            else:
+                texto = ia.interpretar(s["titular"], s.get("resumen", ""), perfil=perfil)
             if texto is not None:  # None = fallo de Ollama; "" = literal tras 2 intentos (valido, se cachea igual)
                 entry["interp"] = texto
                 entry["interp_v"] = IA_INTERP_VERSION
@@ -3128,7 +4449,7 @@ def apariciones_previas(nombre, excluir_link=""):
 # desacoplando el "principal para GDELT" de la verificacion Wikipedia.
 
 CONTEXTO_CACHE = os.path.join(HERE, "contexto_cache.json")
-CONTEXTO_MAX_NEW = int(os.environ.get("MONITOR_CONTEXTO_MAX", "8"))  # tope de calculos NUEVOS por pasada (pacing)
+CONTEXTO_MAX_NEW = int(os.environ.get("MONITOR_CONTEXTO_MAX", "100"))  # tope de calculos NUEVOS por pasada (pacing)
 # Fase 11 (v2): antes se auto-calculaba contexto para hasta CONTEXTO_MAX_NEW
 # historias de CUALQUIER ambito (ordenadas local-primero por
 # _prioridad_cupo_ia). Ahora el pedido es explicito: automatico SOLO para las
@@ -3350,7 +4671,7 @@ def _material_contexto(s, registro, verificadas, candidatos, comenciones, titula
     return material
 
 
-def _construir_contexto(s, registro=None):
+def _construir_contexto(s, registro=None, perfil=None):
     """Arma el contexto de 4 bloques de UNA historia (Fase 11 v2). Nunca
     inventa: si no hay NADA de material real (ni entidad verificada, ni
     co-mencion, ni antecedente del registro, ni SERCOP, ni otro medio
@@ -3452,7 +4773,7 @@ def _construir_contexto(s, registro=None):
                 "antecedentes": [], "actores": [], "que_es_nuevo": [], "que_falta_saber": [],
                 "limitaciones": "modulo contexto.py no disponible", "descartadas": 0}
 
-    bloques = contexto.construir(titular, resumen, material, forzado=IA_MODEL)
+    bloques = contexto.construir(titular, resumen, material, forzado=IA_MODEL, perfil=perfil)
     if bloques is None:
         return None  # fallo real de la IA -- get_contexto() no cachea esto, reintenta despues
 
@@ -3506,17 +4827,26 @@ def get_contexto(stories, modo_lectura=False):
         extra = ", %d desactualizados" % desactualizadas if desactualizadas else ""
         return "cache (%d/%d%s)" % (n, len(stories), extra)
 
-    if ia is None or wiki is None or os.environ.get("MONITOR_NO_CONTEXTO") == "1":
+    # Fase 18: tambien respeta MONITOR_NO_IA (antes lo ignoraba y gastaba
+    # Gemini aunque la IA estuviera apagada -- encontrado en la corrida e2e).
+    if ia is None or wiki is None or os.environ.get("MONITOR_NO_CONTEXTO") == "1" \
+            or os.environ.get("MONITOR_NO_IA") == "1":
         return "desactivado"
     if not ia.disponible(IA_MODEL):
-        return "error: %s" % (getattr(ia, "last_error", None) or "Ollama no responde")
+        return "error: %s" % (getattr(ia, "last_error", None) or "la IA (Gemini) no responde")
 
     # Fase 11 (v2), pedido explicito del Paso 2: automatico SOLO para las
     # CONTEXTO_TOP historias LOCALES mejor rankeadas por corrida (antes era
     # cualquier ambito, con local solo como prioridad de orden). El resto se
     # calcula bajo demanda con GET /api/contexto?id= (ver _do_GET_contexto).
-    objetivo = sorted([s for s in stories if s.get("es_local")],
-                       key=lambda s: -(s.get("interes") or 0))[:CONTEXTO_TOP]
+    # Fase 18 (P2-10): TODO lo local, Guayaquil primero; las CONTEXTO_TOP
+    # mas importantes con el perfil profundo, el resto con el rapido.
+    # Fase 24 (A1): solo lo que se muestra (lo que Fernando abre se pide bajo demanda).
+    mostradas = _claves_mostradas(stories)
+    objetivo = sorted([s for s in stories if s.get("es_local") and story_key(s) in mostradas],
+                       key=lambda s: (0 if s.get("ciudad") == "Guayaquil" else 1, -(s.get("interes") or 0)))
+    top_ctx = {story_key(s) for s in sorted([s for s in stories if s.get("es_local")],
+                                             key=lambda s: -(s.get("interes") or 0))[:CONTEXTO_TOP]}
     registro = _cargar_registro() if objetivo else {}
     new = 0
     for s in objetivo:
@@ -3541,7 +4871,11 @@ def get_contexto(stories, modo_lectura=False):
                 s["contexto"] = entry
                 s["contexto_desactualizado"] = True
             continue
-        nuevo = _construir_contexto(s, registro)
+        perfil = _perfil_para(s, top_ctx)
+        if perfil == getattr(ia, "PERFIL_PROFUNDO", "profundo"):
+            nuevo = _construir_contexto(s, registro)  # el de siempre (profundo por defecto)
+        else:
+            nuevo = _construir_contexto(s, registro, perfil=perfil)
         new += 1  # el intento gasta cupo de esta pasada aunque la IA falle
         if nuevo is None:
             if entry is not None:
@@ -3556,7 +4890,7 @@ def get_contexto(stories, modo_lectura=False):
             json.dump(cache, f, ensure_ascii=False)
     except Exception:
         pass
-    return "ok (+%d nuevas, top %d locales)" % (new, len(objetivo))
+    return "ok (+%d nuevas, %d locales)" % (new, len(objetivo))
 
 
 # ------------------------- contraste con documentacion oficial (SERCOP) -------------------------
@@ -3762,7 +5096,11 @@ def get_factcheck(stories, modo_lectura=False):
 
 VEREDICTO_CACHE = os.path.join(HERE, "veredicto_cache.json")
 GEO_EVIDENCIA_CACHE = os.path.join(HERE, "geo_evidencia_cache.json")
-VEREDICTO_MAX_NEW = int(os.environ.get("MONITOR_VEREDICTO_MAX", "8"))  # historias nuevas por pasada del trabajador
+# Fase 18 (P2-11): el veredicto viejo con IA ("coincide" = medio contra
+# medio) queda APAGADO por defecto -- lo reemplaza contraste.py (documento
+# oficial / cifras entre medios / declaraciones previas, sin gastar IA).
+# MONITOR_VEREDICTO_MAX=8 lo vuelve a encender.
+VEREDICTO_MAX_NEW = int(os.environ.get("MONITOR_VEREDICTO_MAX", "0"))  # historias nuevas por pasada del trabajador
 
 GEO_EVIDENCIA_MAX_NEW = int(os.environ.get("MONITOR_GEO_EVIDENCIA_MAX", "8"))  # historias nuevas por pasada
 
@@ -3915,6 +5253,7 @@ def get_veredicto(stories, modo_lectura=False):
         return "desactivado"
 
     new = 0
+    mostradas = _claves_mostradas(stories)  # Fase 24 (A1): el veredicto de fondo solo para lo que se muestra
     for s in sorted(stories, key=_prioridad_cupo_ia):  # local primero (Problema B2)
         f0 = (s.get("fuentes") or [{}])[0]
         key = (f0.get("link") or s["titular"])[:180]
@@ -3923,6 +5262,10 @@ def get_veredicto(stories, modo_lectura=False):
         desactualizado = entry is not None and entry.get("_huella") and entry["_huella"] != huella
         if entry is not None and not desactualizado:
             s["veredicto"] = entry
+            continue
+        if key not in mostradas:
+            if entry is not None:
+                s["veredicto"] = entry
             continue
         if new >= VEREDICTO_MAX_NEW:
             if entry is not None:
@@ -4288,6 +5631,31 @@ def _post_es_foraneo(p):
     texto = p.texto or ""
     return is_foreign(texto) and not is_ecuador(texto)
 
+# Fase 18 (P1-7): en el Pulso LOCAL un post cuenta solo con senal POSITIVA
+# de aqui (menciona Ecuador, una ciudad, un barrio de Guayaquil o una entidad
+# de la historia). Antes alcanzaba con "no nombra otro pais"
+# (_post_es_foraneo) -- y medido el 2026-09-30, los 20 temas mostraban posts
+# de Espana, Chile, Venezuela y Eslovaquia etiquetados como "guayaquil".
+SOCIAL_LOCAL_H = float(os.environ.get("MONITOR_SOCIAL_LOCAL_H", os.environ.get("MONITOR_VENTANA_H", "10")))  # Fase 21: 48 -> 10 h
+
+
+def _post_senal_local(p, entidades=()):
+    texto = p.texto or ""
+    if is_ecuador(texto) or ciudades_en(texto):
+        return True
+    blob = norm(texto)
+    if alertas is not None and any(geo_hit(t, blob) for ts in alertas.BARRIOS_GYE.values() for t in ts):
+        return True
+    return any(len(n) >= 3 and geo_hit(n, blob) for n in entidades)
+
+
+def _filtrar_pulso_local(posts, entidades=()):
+    """Posts que sirven para un Pulso local: con senal de aqui y de las
+    ultimas SOCIAL_LOCAL_H horas (con hora real, ver social._iso_completo)."""
+    return [p for p in posts if _post_senal_local(p, entidades)
+            and social._es_reciente(p.fecha, horas=SOCIAL_LOCAL_H)]
+
+
 def _dias_desde(fecha):
     """Antiguedad de 'fecha' (YYYY-MM-DD) en dias. Sin fecha valida se trata
     como MUY vieja (9999): no se puede confirmar que sea reciente, asi que no
@@ -4433,7 +5801,7 @@ def get_social(themes, modo_lectura=False, tema_ambito=None):
             if perr:
                 errs.extend(perr)
             if ambito in ("ecuador", "guayaquil"):
-                posts = [p for p in posts if not _post_es_foraneo(p)]
+                posts = _filtrar_pulso_local(posts)
             if not posts:
                 # igual se registra el tema (con 0 posts): asi el panel puede
                 # mostrar "sin conversacion captada" en vez de no decir nada,
@@ -4538,7 +5906,7 @@ def get_social(themes, modo_lectura=False, tema_ambito=None):
     if con_osint:
         return merged_s, "ok (%d/%d temas esta pasada, OSINT en %d, %d acumulados)" % (
             len(out), len(term_of), con_osint, len(merged_s))
-    return merged_s, "ok (%d/%d temas esta pasada, %d acumulados, sin OSINT: Ollama sin modelo)" % (
+    return merged_s, "ok (%d/%d temas esta pasada, %d acumulados, sin lectura OSINT)" % (
         len(out), len(term_of), len(merged_s))
 
 
@@ -4614,17 +5982,81 @@ def _historias_top_social(stories, max_hist):
 # (2 pronosticos del clima + "Fenomeno de El Niño") -- gastar presupuesto de
 # X/TikTok ahi es desperdiciarlo en ruido de baja prioridad periodistica.
 def _es_boletin_plantilla(s):
+    """Fase 18 (P1-5.5): solo pronosticos del clima y portadas son
+    "plantilla". Antes tambien sacaba de X toda historia con un servicio
+    mencionado (cortes de agua/luz) y todo lo de El Nino -- justo lo
+    comunitario: inundaciones, cortes y afectaciones SON la noticia local."""
     texto = s.get("titular", "") + " " + s.get("resumen", "")
     blob = norm(texto)
-    if _es_pronostico_clima(blob):
+    if _es_pronostico_clima(blob) or re.search(r"\b(pronostico|tendra lluvias|clima hoy)\b", blob):
         return True
-    if servicio_mencionado(texto):
-        return True
-    if "fenomeno de el nino" in blob or "fenomeno del nino" in blob:
-        return True
-    if fecha_mencionada(texto) and kw_hit("feriado", blob):
+    if _es_portada_o_noticiero(norm(s.get("titular", ""))):
         return True
     return False
+
+
+# Fase 18 (P1-5.1): palabras REALES (con tilde) para buscar alertas en X --
+# nunca la clave interna ("corte_luz"), que es lo que se mandaba antes.
+TERMINOS_X_POR_TIPO = {
+    "inundacion": ["inundación", "inundado", "anegado", "anegada", "calles inundadas"],
+    "lluvias": ["inundación", "anegado", "anegada", "lluvia", "aguacero", "acumulación de agua"],
+    "corte_luz": ["corte de luz", "sin luz", "apagón"],
+    "corte_agua": ["corte de agua", "sin agua"],
+    "cortes": ["corte de agua", "sin agua", "corte de luz", "sin luz", "apagón"],
+    "incendio": ["incendio"],
+    "balacera": ["balacera", "disparos", "tiroteo"],
+    "violencia": ["balacera", "disparos", "ataque armado", "sicariato"],
+    "accidente": ["choque", "accidente de tránsito", "volcamiento"],
+    "protesta": ["protesta", "plantón", "bloqueo de vía"],
+    "protestas": ["protesta", "plantón", "bloqueo de vía"],
+    "sismo": ["sismo", "temblor"],
+}
+_TIPOS_ALERTA_X = ["inundacion", "corte_luz", "corte_agua", "incendio", "balacera", "accidente", "protesta", "sismo"]
+
+
+def terminos_alerta_x():
+    vistos, out = set(), []
+    for tipo in _TIPOS_ALERTA_X:
+        for t in TERMINOS_X_POR_TIPO[tipo]:
+            if t not in vistos:
+                vistos.add(t)
+                out.append(t)
+    return out
+
+
+def terminos_evento_x(tipo):
+    return list(TERMINOS_X_POR_TIPO.get(tipo) or terminos_alerta_x())
+
+
+def consulta_x_historia(s):
+    """Fase 18 (P1-5.4): consulta de X para UNA historia solo con entidades
+    reales -- nombres propios, siglas o barrios. Antes tomaba como "nombre
+    propio" la primera palabra del titular (siempre va con mayuscula en
+    espanol): salian consultas como "hasta Guayaquil", "ataque Guayaquil" o
+    "fuerte Guayaquil". Sin una entidad buena devuelve None (no se gasta)."""
+    titular = s.get("titular", "") or ""
+    resumen = s.get("resumen", "") or ""
+    nombres = set(_nombres_propios(titular)) - EVENTO_GENERICO - LUGARES_COMUNES
+    palabras = titular.split()
+    if palabras:
+        primera = norm(palabras[0])
+        resto = " ".join(palabras[1:]) + " " + resumen
+        # la primera palabra cuenta solo si tambien aparece con mayuscula en
+        # otro lado (o es una sigla/lugar conocido)
+        if primera in nombres and not re.search(r"\b" + re.escape(palabras[0].strip(":,.")) + r"\b", resto) \
+                and primera not in {norm(x) for x in _siglas(titular)} and not ciudades_en(palabras[0]):
+            nombres.discard(primera)
+    partes = sorted(nombres, key=len, reverse=True)[:3]
+    if alertas is not None:
+        sector = alertas.detectar_lugar(titular + " " + resumen)
+        if sector and not sector.startswith("Guayaquil") and norm(sector) not in partes:
+            partes.append(sector)
+    if not partes:
+        return None
+    lugar = s.get("ciudad") or ("Ecuador" if s.get("es_local") else "")
+    if lugar and norm(lugar) not in {norm(p) for p in partes}:
+        partes.append(lugar)
+    return " ".join(partes)
 
 def _historias_top_redes(stories, max_hist):
     """Mismo orden que _historias_top_social (Guayaquil primero), pero
@@ -4676,7 +6108,8 @@ def get_social_historias(stories, modo_lectura=False):
             errs.append(type(e).__name__)
             continue
         n_total = len(posts)
-        pertenecen = [p for p in posts if _post_pertenece_historia(p, nombres, ciudad)]
+        pertenecen = [p for p in posts if _post_pertenece_historia(p, nombres, ciudad)
+                      and social._es_reciente(p.fecha, horas=SOCIAL_LOCAL_H)]
         n_descartados = n_total - len(pertenecen)
         if not pertenecen:
             out[key] = {"titular": s.get("titular", ""), "n_posts": 0, "n_descartados": n_descartados,
@@ -5042,7 +6475,7 @@ def construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
         {"fuente": "Busqueda (Trends/Wikipedia)", "ok": _fuente_ok(estado), "detalle": estado},
         {"fuente": "GDELT (cobertura/tono)", "ok": _fuente_ok(gestado), "detalle": gestado},
         {"fuente": "SERCOP (contratos)", "ok": _fuente_ok(sstatus), "detalle": sstatus},
-        {"fuente": "IA (Ollama)", "ok": _fuente_ok(iastatus), "detalle": iastatus},
+        {"fuente": "IA (Gemini)", "ok": _fuente_ok(iastatus), "detalle": iastatus},
         {"fuente": "Contexto (Wikipedia+GDELT)", "ok": _fuente_ok(cstatus), "detalle": cstatus},
         {"fuente": "FactCheck", "ok": _fuente_ok(fcstatus), "detalle": fcstatus},
         {"fuente": "Escucha social", "ok": _fuente_ok(social_status), "detalle": social_status},
@@ -5078,6 +6511,24 @@ def estado_embeddings_dashboard():
     base = ia.estado_embeddings()
     return "%s -- %s historias con embedding" % (base, _embeddings_cobertura())
 
+def calcular_comunidad(stories, alertas_activas=None, social_data=None, social_hist_data=None):
+    """Fase 20 (v2): Comunidad Guayaquil = lo que dice la GENTE (no la prensa;
+    la prensa solo marca si un problema ya esta cubierto). Sin red ni IA: suma
+    las publicaciones de personas que el pipeline ya junto (alertas, Pulso,
+    Debate) al registro comunidad.json y arma los temas. La red nueva
+    (Bluesky/YouTube/X) la hace el trabajador y redes.py. En modo muestra NO
+    guarda nada."""
+    vacio = {"temas": [], "categorias": [], "barrios": [], "total_publicaciones": 0}
+    if comunidad is None:
+        return dict(vacio, estado="comunidad.py no disponible")
+    try:
+        return comunidad.actualizar(stories, alertas=alertas_activas, social=social_data,
+                                    social_historias=social_hist_data,
+                                    persistir=os.environ.get("MONITOR_SAMPLE") != "1")
+    except Exception as e:
+        return dict(vacio, estado="error: %s" % e)
+
+
 def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado="",
                   gdelt_data=None, gestado="", sstatus="", iastatus="",
                   social_data=None, social_status="", cstatus="", fcstatus="", vstatus="", dstatus="",
@@ -5085,8 +6536,36 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
     hist = append_history(stories, demand)
     estado_movil = avisar_movil(stories, demand)
     alertas_activas, alertas_estado = procesar_alertas(stories)
+    funcionarios_data = _funcionarios_dashboard(stories)  # Fase 24: tambien lo usan las notificaciones
+    notificaciones_data = _notificaciones(stories, alertas_activas, funcionarios_data)
+    comunidad_data = calcular_comunidad(stories, alertas_activas, social_data, social_hist_data)
+    comunidad_lectura = {}
+    mapa_data = {}
+    if comunidad is not None:
+        try:  # Fase 22c: la ultima lectura de la IA (solo se LEE aca, nunca se pide)
+            comunidad_lectura = comunidad.cargar_lectura() or {}
+            if comunidad_lectura:
+                comunidad_lectura["desactualizada"] = (
+                    comunidad_lectura.get("firma") != comunidad._firma_lectura(comunidad_data.get("temas") or []))
+        except Exception:
+            comunidad_lectura = {}
+    if mapa is not None:
+        try:  # Fase 22c: puntos del mapa de Guayaquil (sin red ni IA)
+            mapa_data = mapa.puntos(stories, alertas_activas, comunidad_data)
+        except Exception as e:
+            mapa_data = {"puntos": [], "estado": "error: %s" % e}
+    else:
+        # Sin esto el dashboard decia "Sin datos del mapa todavia" para siempre,
+        # sin pista de que el problema es que falta el archivo.
+        mapa_data = {"puntos": [], "estado": "falta el archivo mapa.py junto al programa"}
     salud_fuentes = construir_salud_fuentes(report, estado, gestado, sstatus, iastatus,
                                              social_status, cstatus, fcstatus)
+    # Fase 23: series para Estadisticas y Pulso social por red (solo lectura).
+    latencia_reg = _cargar_latencia()
+    emergencias_data = (redes.emergencias_dashboard() if redes else {"activo": False, "tweets": [], "red": []})
+    series_data = _series_estadisticas(latencia_reg, persistir=os.environ.get("MONITOR_SAMPLE") != "1")
+    pulso_data = _pulso_por_red(social_data, social_hist_data, comunidad_data, emergencias_data, stories,
+                                alertas_activas)
     payload = {
         "generado": now_utc().isoformat(),
         "total_historias": len(stories),
@@ -5094,11 +6573,13 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
                           for (o, s, n, st) in report],
         "historias": stories,
         "historial": hist,
-        "tendencias": tend or {},
+        "tendencias": _solo_frescos(tend or {}, TREND_CACHE, "vals_ts"),
         "fuente_interes": fuente,
         "estado_interes": estado,
-        "gdelt": gdelt_data or {},
+        "gdelt": _solo_frescos(gdelt_data or {}, GDELT_CACHE, "g_ts"),
         "estado_gdelt": gestado,
+        # Fase 18 (P2-12): fuente, alcance geografico real y antiguedad.
+        "datos_meta": meta_datos(),
         "estado_sercop": sstatus,
         "estado_ia": iastatus,
         "estado_contexto": cstatus,
@@ -5123,6 +6604,8 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         # Fase 9 (Problema D): X via Apify -- gasto real (nunca el token),
         # honesto sobre si esta activo o no (mismo criterio que estado_gdelt).
         "estado_redes": (redes.estado_dashboard() if redes else {"activo": False, "estado": "redes.py no disponible"}),
+        # Fase 21: EmergenciasEc y su red (panel "Al momento" en Comunidad).
+        "emergencias": emergencias_data,
         "feed_fresh_h": FEED_FRESH_H,
         "max_age_dias": MAX_AGE_DAYS,
         "estado_movil": estado_movil,
@@ -5131,7 +6614,7 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         # publicado_segun_el_feed) -- ver calcular_latencia_por_feed(). Vacio
         # hasta que se acumulen datos reales (no antes de la primera vez que
         # esto corre en modo serve por un rato).
-        "latencia_feeds": calcular_latencia_por_feed(),
+        "latencia_feeds": calcular_latencia_por_feed(latencia_reg),
         # Fase 3: que hay disponible ahora mismo en la base de contraste
         # oficial (Constitucion + boletines institucionales) -- honesto, sin
         # inventar: si algo todavia no se construyo/consulto, sale en 0.
@@ -5145,6 +6628,24 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
         "alertas": alertas_activas,
         "alertas_estado": alertas_estado,
         "alertas_metricas": alertas.metricas_adelanto() if alertas else {"n": 0, "promedio_min": None, "casos": []},
+        # Fase 18 (P0-4): senales de la Fase 15, que nunca se habian conectado.
+        # El hilo rapido solo LEE senales_estado.json (lo escribe senales_loop).
+        **senales_para_dashboard(),
+        # Fase 20: temas comunitarios de Guayaquil (problemas de barrio,
+        # eventos, historias humanas) acumulados por barrio en comunidad.json.
+        "comunidad": comunidad_data,
+        "comunidad_lectura": comunidad_lectura,
+        "mapa": mapa_data,
+        # Fase 23: Estadisticas (calendario, actividad por hora, alertas por dia)
+        # y Pulso social por red. Sin datos -> sin bloque (nunca ceros de relleno).
+        "series": series_data,
+        "pulso": pulso_data,
+        # Fase 24 (A4): cupo por proveedor gratuito y quien respondio.
+        "ia_gratis": _estado_ia_gratis(),
+        # Fase 24 (B3b/B2): funcionarios seguidos (tuits, adelanto) y canales de YouTube.
+        "funcionarios": funcionarios_data,
+        "notificaciones": notificaciones_data,
+        "youtube_canales": _youtube_canales_dashboard(),
     }
     # BUG REAL encontrado en el Fase 0 (2026-09-23): el CLAUDE.md documentaba
     # "data.json se escribe atomico (_escribir_atomico)" como ya hecho, pero
@@ -5164,13 +6665,142 @@ def write_outputs(stories, report, demand=None, tend=None, fuente="?", estado=""
             f.write(contenido)
         os.replace(tmp, ruta)
 
-    _escribir_atomico(os.path.join(HERE, "data.json"),
-                       json.dumps(payload, ensure_ascii=False, indent=2))
-
+    # Fase 22b: la version del DISEÑO (hash de la plantilla) viaja en
+    # data.json; si la pagina abierta tiene otra, se recarga sola (ver poll()
+    # en dashboard_template.html). dashboard.html se escribe ANTES que
+    # data.json, asi al recargar ya encuentra la pagina nueva.
     tpl = open(os.path.join(HERE, "dashboard_template.html"), encoding="utf-8").read()
+    payload["ui_version"] = _ui_version(tpl)
     blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     html_out = tpl.replace("/*__DATA__*/null", blob)
     _escribir_atomico(os.path.join(HERE, "dashboard.html"), html_out)
+    _escribir_atomico(os.path.join(HERE, "data.json"),
+                       json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def _notificaciones(stories, alertas_activas, funcionarios_data):
+    """Fase 24 (F1): lo importante -> campana, ntfy y Windows (ver notificaciones.py)."""
+    if os.environ.get("MONITOR_SAMPLE") == "1":
+        return {"historial": [], "estado": "apagado en modo muestra"}
+    try:
+        import notificaciones
+        return notificaciones.procesar(stories, alertas_activas, funcionarios_data,
+                                       enviar=os.environ.get("MONITOR_NO_NOTIFICAR") != "1")
+    except Exception as e:
+        return {"historial": [], "estado": "error: %s" % e}
+
+
+def _funcionarios_dashboard(stories):
+    try:
+        import funcionarios
+        primicias = funcionarios.colgar_en_historias(stories)
+        return funcionarios.dashboard(primicias)
+    except Exception as e:
+        return {"tuits": [], "estado": "error: %s" % e}
+
+
+def _youtube_canales_dashboard():
+    try:
+        import youtube_canales
+        return youtube_canales.estado_dashboard()
+    except Exception as e:
+        return {"estado": "error: %s" % e}
+
+
+def _estado_ia_gratis():
+    try:
+        import ia_router
+        return ia_router.estado_dashboard()
+    except Exception as e:
+        return {"filas": [], "estado": "error: %s" % e}
+
+
+def _series_estadisticas(latencia_reg=None, persistir=True):
+    """Fase 23 (B1): calendario del mes, actividad por hora y alertas por dia."""
+    if estadisticas is None:
+        return {"estado": "falta estadisticas.py junto al programa"}
+    try:
+        out = estadisticas.calendario_y_horas(latencia_reg if latencia_reg is not None else _cargar_latencia(),
+                                              persistir=persistir)
+        if alertas is not None:
+            out["alertas"] = estadisticas.alertas_por_dia(alertas.ALERTAS_PATH, ventana_h=alertas.ALERTA_MAX_EDAD_H)
+        return out
+    except Exception as e:
+        return {"estado": "error: %s" % e}
+
+
+def _pulso_por_red(social_data, social_hist_data, comunidad_data, emergencias_data, stories, alertas_activas):
+    """Fase 23 (B3): publicaciones de todas las fuentes, ordenadas por red."""
+    if pulso is None:
+        return {"redes": [], "estado": "falta pulso.py junto al programa"}
+    try:
+        return pulso.armar(social_data or {}, social_hist_data or {}, (comunidad_data or {}).get("recientes") or [],
+                           emergencias_data or {}, stories or [], alertas_activas or [])
+    except Exception as e:
+        return {"redes": [], "estado": "error: %s" % e}
+
+
+def _ui_version(tpl):
+    """Huella corta de la plantilla: cambia cada vez que cambia el diseño."""
+    import hashlib
+    return hashlib.md5(tpl.encode("utf-8")).hexdigest()[:12]
+
+
+def _pedido_interactivo():
+    """Fase 22c: marca el pedido del navegador como consulta del usuario
+    (ia.interactivo), asi puede usar la reserva de presupuesto de IA que el
+    trabajo de fondo no toca."""
+    import contextlib
+    if ia is not None and hasattr(ia, "interactivo"):
+        return ia.interactivo()
+    return contextlib.nullcontext()
+
+
+def regenerar_dashboard_desde_data():
+    """Fase 22b (bug real: "al abrirlo me sigue apareciendo la vieja
+    interfaz"): al arrancar, serve() muestra el dashboard.html de la corrida
+    ANTERIOR para no hacer esperar (Fase 17) -- pero ese archivo se armo con
+    la plantilla VIEJA, y el refresco automatico solo trae datos nuevos,
+    nunca el diseño. Aca se re-arma dashboard.html con la plantilla ACTUAL y
+    el ultimo data.json, sin red ni IA (milisegundos). Nunca rompe el
+    arranque: ante cualquier error, deja todo como estaba."""
+    ruta_data = os.path.join(HERE, "data.json")
+    ruta_tpl = os.path.join(HERE, "dashboard_template.html")
+    if not (os.path.exists(ruta_data) and os.path.exists(ruta_tpl)):
+        return False
+    try:
+        with open(ruta_data, encoding="utf-8") as f:
+            payload = json.load(f)
+        tpl = open(ruta_tpl, encoding="utf-8").read()
+        payload["ui_version"] = _ui_version(tpl)
+        if mapa is not None and not (payload.get("mapa") or {}).get("estado"):
+            # Fase 22c (bug real: "Sin datos del mapa todavia" al abrir): el
+            # data.json de la corrida anterior es de antes del mapa. Se arma con
+            # lo que ya trae (sin red ni IA) para no esperar a la primera pasada.
+            try:
+                payload["mapa"] = mapa.puntos(payload.get("historias") or [],
+                                              payload.get("alertas") or [],
+                                              payload.get("comunidad") or {})
+            except Exception:
+                pass
+        # Fase 23: un data.json de antes de esta fase no trae las series de
+        # Estadisticas ni el Pulso por red; se arman aca (sin red ni IA).
+        if "series" not in payload:
+            payload["series"] = _series_estadisticas(persistir=False)
+        if "pulso" not in payload:
+            payload["pulso"] = _pulso_por_red(payload.get("social"), payload.get("social_historias"),
+                                              payload.get("comunidad"), payload.get("emergencias"),
+                                              payload.get("historias"), payload.get("alertas"))
+        blob = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
+        destino = os.path.join(HERE, "dashboard.html")
+        tmp = destino + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(tpl.replace("/*__DATA__*/null", blob))
+        os.replace(tmp, destino)
+        return True
+    except Exception as e:
+        print("No pude re-armar dashboard.html con la plantilla nueva: %s" % e)
+        return False
 
 
 def avisar_movil(stories, demand):
@@ -5255,7 +6885,18 @@ def run_once(verbose=True):
         clusters = cluster(articles)
         stories = build_stories(clusters)
     else:
+        migrar_registro_si_hace_falta(verbose=verbose)
         stories = agrupar_con_memoria(articles)
+        # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
+        # una historia madre en vez de ~10 tarjetas sueltas.
+        stories = agrupar_eventos_en_curso(stories)
+        _adjuntar_tweets_eventos(stories)
+        try:
+            print("Triaje internacional: %s" % get_triaje_intl(stories)) if verbose else get_triaje_intl(stories)
+        except Exception as e:
+            print("Error en triaje internacional: %s" % e)
+        # Fase 18 (P1-9): internacionales con marco (farandula fuera, triaje, tope)
+        stories = aplicar_triaje_intl(stories)
     t0 = _fase("cluster", t0)
 
     # DEMANDA (Google Trends) por tema, y se cuelga en cada historia.
@@ -5287,9 +6928,9 @@ def run_once(verbose=True):
         gdelt_data, gstatus = get_gdelt(themes_present)
     t0 = _fase("get_gdelt", t0)
 
+    _meta_dem = {"fuente": "muestra"} if os.environ.get("MONITOR_SAMPLE") == "1" else meta_datos()["demanda"]
     for s in stories:
-        ds = [demand[t] for t in s.get("temas", []) if t in demand]
-        s["demanda"] = max(ds) if ds else None
+        _demanda_historia(s, demand, _meta_dem)  # Fase 18 (P2-12): sin Wikipedia como demanda local
         # BRECHA: mucha demanda + poca cobertura = interes desatendido
         s["brecha"] = bool(s["demanda"] is not None and s["demanda"] >= 50 and s["n_outlets"] <= 1)
         # INTERES: lo que mas se habla (medios) + lo que mas se busca (demanda) + recencia.
@@ -5312,6 +6953,7 @@ def run_once(verbose=True):
         iastatus = "muestra"
     else:
         iastatus = get_ia(stories)
+        _aplicar_utilidad(stories)  # Fase 24 (D)
     t0 = _fase("get_ia", t0)
 
     # CONTEXTO REAL por entidad (Parte B): Wikipedia + co-menciones GDELT
@@ -5441,7 +7083,19 @@ def run_once(verbose=True):
         social_data, social_status = get_social(themes_present, tema_ambito=tema_ambito_map(stories))
         social_hist_data, social_hist_status = get_social_historias(stories)
     t0 = _fase("get_social", t0)
+    if os.environ.get("MONITOR_SAMPLE") != "1":
+        # Fase 18 (P0-4): la corrida unica tambien deja senales_estado.json
+        # listo (en modo serve lo hace senales_loop cada 15 min).
+        try:
+            if verbose:
+                print("Senales: %s" % correr_senales(stories, demand if "Trends" in (fuente or "") else {}))
+            else:
+                correr_senales(stories, demand if "Trends" in (fuente or "") else {})
+        except Exception as e:
+            print("Error en senales: %s" % e)
+        t0 = _fase("senales", t0)
 
+    aplicar_contraste(stories)  # Fase 18 (P2-11): sin red ni IA, lee lo ya calculado
     write_outputs(stories, report, demand, tend, fuente, dstatus, gdelt_data, gstatus,
                   sstatus, iastatus, social_data, social_status, cstatus, fcstatus, vstatus,
                   dstatus=declstatus, social_hist_data=social_hist_data, social_hist_status=social_hist_status)
@@ -5454,7 +7108,7 @@ def run_once(verbose=True):
         print("Verificaciones (FactCheck): %s" % fcstatus)
         print("Declaraciones (Fase 5): %s" % declstatus)
         print("Veredicto de contraste: %s" % vstatus)
-        print("Agente IA (Ollama): %s" % iastatus)
+        print("Agente IA (Gemini): %s" % iastatus)
         print("Contexto por entidad (Wikipedia+GDELT): %s" % cstatus)
         print("Escucha social (Bluesky/Reddit/YouTube): %s" % social_status)
         tam_reg = _tam_registro_mb()
@@ -5513,6 +7167,12 @@ def run_fast(verbose=False):
         # aviso directo de "estoy en agrupar_con_memoria ahora mismo".
         _log_arranque("cluster: agrupando %d articulos contra el registro persistente..." % len(articles))
         stories = agrupar_con_memoria(articles)
+        # Fase 18 (P0-2.4): eventos en curso (ej. lluvias en Guayaquil) ->
+        # una historia madre en vez de ~10 tarjetas sueltas.
+        stories = agrupar_eventos_en_curso(stories)
+        _adjuntar_tweets_eventos(stories)
+        # Fase 18 (P1-9): internacionales con marco (farandula fuera, triaje, tope)
+        stories = aplicar_triaje_intl(stories)
     t0 = _fase("cluster", t0)
 
     themes_present = sorted({t for s in stories for t in s.get("temas", [])})
@@ -5525,9 +7185,9 @@ def run_fast(verbose=False):
     gdelt_data, gstatus = get_gdelt(themes_present, modo_lectura=True)
     t0 = _fase("get_gdelt", t0)
 
+    _meta_dem = {"fuente": "muestra"} if os.environ.get("MONITOR_SAMPLE") == "1" else meta_datos()["demanda"]
     for s in stories:
-        ds = [demand[t] for t in s.get("temas", []) if t in demand]
-        s["demanda"] = max(ds) if ds else None
+        _demanda_historia(s, demand, _meta_dem)  # Fase 18 (P2-12): sin Wikipedia como demanda local
         s["brecha"] = bool(s["demanda"] is not None and s["demanda"] >= 50 and s["n_outlets"] <= 1)
         bono_impacto = _bono_impacto(s)
         s["alto_impacto"] = bono_impacto > 0
@@ -5538,6 +7198,7 @@ def run_fast(verbose=False):
     t0 = _fase("interes", t0)
 
     iastatus = get_ia(stories, modo_lectura=True)
+    _aplicar_utilidad(stories)  # Fase 24 (D)
     t0 = _fase("get_ia", t0)
     # Fase 14, Paso 2: aplica (si hay algo en cache) la correccion de ciudad
     # por evidencia ANTES de que el resto de run_fast use s["ciudad"] (temas/
@@ -5569,6 +7230,7 @@ def run_fast(verbose=False):
         print("Error revisando avisos de casos: %s" % e)
     t0 = _fase("revisar_casos_avisos", t0)
 
+    aplicar_contraste(stories)  # Fase 18 (P2-11): sin red ni IA, lee lo ya calculado
     write_outputs(stories, report, demand, tend, fuente, dstatus, gdelt_data, gstatus,
                   sstatus, iastatus, social_data, social_status, cstatus, fcstatus, vstatus,
                   dstatus=declstatus, social_hist_data=social_hist_data, social_hist_status=social_hist_status)
@@ -5599,6 +7261,79 @@ def run_fast(verbose=False):
     return stories
 
 
+# ------------------------- senales (Fase 15, conectadas en Fase 18 P0-4) -------------------------
+SENALES_MIN = float(os.environ.get("MONITOR_SENALES_MIN", "15"))
+SENALES_IA_MAX = int(os.environ.get("MONITOR_SENALES_IA_MAX", "5"))
+
+
+def senales_para_dashboard():
+    """Lo que va a data.json: senales activas + estado honesto."""
+    if senales is None:
+        return {"senales": [], "estado_senales": "senales.py no disponible"}
+    act = senales.activas()
+    ult = senales.ultima_vuelta()
+    return {"senales": act,
+            "estado_senales": ("%d activas (ultima vuelta %s)" % (len(act), ult)) if ult
+                              else "esperando la primera vuelta del motor de senales"}
+
+
+def _ia_desenlace(material):
+    """Para senales.detectar_sin_resolver: ¿el material muestra un desenlace?
+    Pide una cita LITERAL (senales la valida en codigo)."""
+    prompt = ("Estas son notas de prensa sobre UNA historia de Ecuador:\n%s\n\n"
+              "¿Alguna de ellas muestra que el hecho ya se resolvio (sentencia, captura, "
+              "reapertura, acuerdo, desmentido, cierre)? Responde SOLO JSON: "
+              '{"hubo_desenlace": true|false, "cita": "frase copiada LITERAL del material o null"}'
+              % material[:2500])
+    return ia._generar_json(prompt, max_tokens=200) if ia else None
+
+
+def _ia_texto_rapido(prompt):
+    return ia._generar(prompt, max_tokens=160) if ia else None
+
+
+def correr_senales(stories=None, demand=None):
+    """Una vuelta del motor de senales con TODO lo que ya esta calculado.
+    Nunca llama a feeds/redes; la IA (perfil rapido) queda acotada a
+    SENALES_IA_MAX llamadas por vuelta. Devuelve el texto de estado."""
+    if senales is None:
+        return "senales.py no disponible"
+    if stories is None:
+        stories = _cargar_ultimas_historias() or []
+    if demand is None:
+        themes = sorted({t for s in stories for t in s.get("temas", [])})
+        try:
+            vals, _t, _e, fuente = get_demand(themes, modo_lectura=True)
+            # Fase 18 (P2-12): Wikipedia mide hispanohablantes del mundo, no
+            # Guayaquil/Ecuador -- no sirve como "la gente lo busca" para una
+            # historia local. Solo cuenta Google Trends (geo EC).
+            demand = vals if "Trends" in (fuente or "") else {}
+        except Exception:
+            demand = {}
+    reg = _cargar_registro()
+    entries, by_link = [], {}
+    for eid, e in reg.items():
+        d_ = {"eid": eid, "ciudad": e.get("ciudad", ""), "rep_titulo": e.get("fundador_titulo") or e.get("rep_titulo", ""),
+              "ultimo": e["ultimo"].isoformat() if e.get("ultimo") else None,
+              "fuentes": [dict(f_, date=f_["date"].isoformat() if f_.get("date") else None) for f_ in e.get("fuentes", [])]}
+        entries.append(d_)
+        for f_ in d_["fuentes"]:
+            if f_.get("link"):
+                by_link[f_["link"]] = d_
+    try:
+        with open(ENTITIES_PATH, encoding="utf-8") as f:
+            entities = json.load(f)
+    except Exception:
+        entities = {}
+    usar_ia = bool(ia and os.environ.get("MONITOR_NO_IA") != "1" and ia.backend_listo())
+    r = senales.ciclo_senales(stories, demand=demand, registro_entries=entries, entities=entities,
+                              saved=load_saved(), registro_by_link=by_link,
+                              ia_desenlace=_ia_desenlace if usar_ia else None,
+                              ia_texto=_ia_texto_rapido if usar_ia else None,
+                              max_ia=SENALES_IA_MAX if usar_ia else 0)
+    return r["estado"]
+
+
 def _cargar_ultimas_historias():
     """Lee las historias que el hilo rapido ya publico (data.json): es el
     punto de entrega entre hilos (nunca se comparten objetos de Python). None
@@ -5613,6 +7348,81 @@ def _cargar_ultimas_historias():
 
 
 _RE_NUEVAS = re.compile(r"\+(\d+) nuevas")
+
+COMUNIDAD_LOOP_SEG = 60  # cada cuanto el hilo revisa si a alguna fuente le toca
+
+
+def comunidad_ciclo():
+    """Fase 20b: una vuelta del hilo de Comunidad Guayaquil. Cada fuente decide
+    sola si le toca (X cada MONITOR_COMUNIDAD_X_MIN, Bluesky cada
+    MONITOR_COMUNIDAD_BSKY_MIN, YouTube cada MONITOR_COMUNIDAD_YT_H, Facebook
+    cada MONITOR_FB_MIN, WhatsApp cuando aparece un chat nuevo en
+    whatsapp_import/). Devuelve un texto con lo que hizo."""
+    if comunidad is None or os.environ.get("MONITOR_NO_SOCIAL") == "1":
+        return "apagado"
+    partes = []
+    if redes is not None:
+        try:  # Fase 21: EmergenciasEc primero (lo mas rapido de la calle)
+            r = redes.pasada_emergencias()
+            if r != "todavia no toca":
+                partes.append("EmergenciasEc: %s" % r)
+        except Exception as e:
+            partes.append("EmergenciasEc: error %s" % e)
+        try:  # Fase 24 (B3b): funcionarios, debajo de EmergenciasEc y encima de Comunidad
+            r = redes.pasada_funcionarios()
+            if r != "todavia no toca":
+                partes.append("funcionarios: %s" % r)
+            import funcionarios as _fun
+            _fun.buscar_prensa()
+        except Exception as e:
+            partes.append("funcionarios: error %s" % e)
+        try:
+            r = redes.pasada_comunidad()
+            if r != "todavia no toca":
+                partes.append("X: %s" % r)
+        except Exception as e:
+            partes.append("X: error %s" % e)
+        try:  # Fase 23: cuentas comunitarias (la capa de X con menos prioridad)
+            r = redes.pasada_comunitarias()
+            if r not in ("todavia no toca", "sin cuentas comunitarias aprobadas"):
+                partes.append("comunitarias: %s" % r)
+        except Exception as e:
+            partes.append("comunitarias: error %s" % e)
+    try:
+        r = comunidad.recolectar()
+        if not r.startswith("sin consulta"):
+            partes.append(r)
+    except Exception as e:
+        partes.append("recolectar: error %s" % e)
+    try:  # Fase 24 (B2): comentarios en los canales de YouTube de medios de Guayaquil
+        import youtube_canales
+        posts, r = youtube_canales.pasada()
+        if posts:
+            comunidad._sumar_y_guardar(posts)
+        if r != "todavia no toca":
+            partes.append(r)
+    except Exception as e:
+        partes.append("youtube canales: error %s" % e)
+    try:  # Fase 24 (B4): coordenadas de lugares y calles que el mapa encontro en las notas
+        import lugares
+        r = lugares.resolver_pendientes()
+        if r != "lugares: nada pendiente":
+            partes.append(r)
+    except Exception as e:
+        partes.append("lugares: error %s" % e)
+    # Fase 22c: lectura de la comunidad con IA, sobre lo que el hilo rapido
+    # ya publico en data.json (el punto de entrega es el disco, como siempre).
+    if ia is not None and os.environ.get("MONITOR_NO_IA") != "1":
+        try:
+            with open(os.path.join(HERE, "data.json"), encoding="utf-8") as f:
+                com = (json.load(f) or {}).get("comunidad") or {}
+            r = comunidad.actualizar_lectura(com)
+            if r not in ("lectura: sin cambios", "lectura: todavia no toca"):
+                partes.append(r)
+        except Exception as e:
+            partes.append("lectura: error %s" % e)
+    return "; ".join(partes)
+
 
 def enrich_pass():
     """UNA pasada del hilo TRABAJADOR (Parte C): toma las historias que el
@@ -5660,6 +7470,14 @@ def enrich_pass():
             embedmultistatus = _embed_multilingue_pendientes_registro()
         except Exception as e:
             embedmultistatus = "error: %s" % e
+    # Fase 24 (C3): pares en la franja dudosa del coseno -> decide la IA gratuita.
+    if os.environ.get("MONITOR_NO_IA") != "1":
+        with _medir_etapa("mismo_hecho_pendientes_registro"):
+            try:
+                mismostatus = _mismo_hecho_pendientes_registro()
+            except Exception as e:
+                mismostatus = "error: %s" % e
+            _log_arranque("mismo hecho: %s" % mismostatus)
     # Fase 14 (Paso 2, "evitar mezclas"): verificacion de coherencia sobre el
     # registro en disco -- mismo criterio que las dos de arriba (nunca en
     # run_fast, opera sobre historias_registro.json, no sobre 'stories').
@@ -5673,6 +7491,10 @@ def enrich_pass():
     # aca (trabajador) y nunca en run_fast. vincular_con_prensa (barato, sin
     # red) sigue viviendo en write_outputs/procesar_alertas, con 'stories'
     # ya en memoria.
+    # Fase 20b: la voz de la gente para Comunidad Guayaquil ya NO va aca: el
+    # trabajador puede tardar mas de 10 min en dar una vuelta y Fernando pidio
+    # X cada 10 min y comentarios cada hora. Vive en comunidad_ciclo(), con
+    # hilo propio (comunidad_loop, en serve).
     with _medir_etapa("alertas_recolectar_senales"):
         if alertas is not None:
             try:
@@ -5689,16 +7511,30 @@ def enrich_pass():
     with _medir_etapa("redes_pasada"):
         if redes is not None:
             try:
-                top_redes = _historias_top_redes(stories, 6)
+                top_redes = _historias_top_redes(stories, 12)
                 historias_redes = []
                 for s in top_redes:
-                    query, _nom, _ciudad = _social_query_historia(s)
+                    query = consulta_x_historia(s)
+                    if not query:
+                        continue  # Fase 18 (P1-5.4): sin entidad buena no se gasta
                     f0 = (s.get("fuentes") or [{}])[0]
                     historias_redes.append({"titular": s.get("titular", ""), "query": query,
                                              "link": (f0.get("link") or s.get("titular", ""))[:180]})
-                terminos_alerta = list(alertas.TIPO_KEYWORDS.keys()) if alertas else []
+                historias_redes = historias_redes[:6]
+                # Fase 18 (P1-5.3): eventos en curso de Gran Guayaquil de las
+                # ultimas 6 h -> busqueda reactiva, primero que todo.
+                eventos_redes = []
+                for s in stories:
+                    ev = s.get("evento_en_curso")
+                    if not ev or ev.get("lugar") != "Guayaquil" or (s.get("hours") or 99) > 6:
+                        continue
+                    f0 = (s.get("fuentes") or [{}])[0]
+                    eventos_redes.append({"titular": s.get("titular", ""), "evento": ev,
+                                          "terminos": terminos_evento_x(ev.get("tipo")),
+                                          "link": (f0.get("link") or s.get("titular", ""))[:180]})
                 barrios_redes = list(alertas.BARRIOS_GYE.keys()) if alertas else []
-                redesstatus = redes.pasada(historias_redes, terminos_alerta, barrios_redes)
+                redesstatus = redes.pasada(historias_redes, terminos_alerta_x(), barrios_redes,
+                                           eventos=eventos_redes[:3])
             except Exception as e:
                 redesstatus = "error: %s" % e
         else:
@@ -5715,6 +7551,11 @@ def enrich_pass():
                 pass
     with _medir_etapa("get_ia"):
         iastatus = get_ia(stories)             # bounded por IA_MAX_NEW, cachea por link
+    with _medir_etapa("get_triaje_intl"):
+        try:
+            triajestatus = get_triaje_intl(stories)  # Fase 18 (P1-9): lotes de 20, TRIAJE_MAX_NEW por pasada
+        except Exception as e:
+            triajestatus = "error: %s" % e
     # Fase 14, Paso 2: clasificacion con evidencia para notas ambiguas --
     # solo llama a la IA para historias con s["ciudad_discrepancia"]=True,
     # acotado a GEO_EVIDENCIA_MAX_NEW por pasada, cachea por story_key.
@@ -5731,6 +7572,11 @@ def enrich_pass():
     # tres ya calculados como material para el veredicto (Problema 4).
     with _medir_etapa("get_veredicto"):
         vstatus = get_veredicto(stories)       # bounded por VEREDICTO_MAX_NEW, cachea por link
+    with _medir_etapa("get_clase_contraste"):
+        try:
+            clasestatus = get_clase_contraste(stories)  # Fase 18 (P2-11)
+        except Exception as e:
+            clasestatus = "error: %s" % e
     # get_declaraciones despues de veredicto: no depende de el, pero sigue el
     # mismo orden de "lo barato primero" (extraccion con el modelo rapido) y
     # deja la llamada cara (comparar_declaraciones, modelo pesado) al final de
@@ -5746,7 +7592,7 @@ def enrich_pass():
             get_social_historias(stories)
         except Exception as e:
             print("Error en get_social_historias: %s" % e)
-    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus):
+    for st in (iastatus, gestatus, cstatus, fcstatus, vstatus, dstatus, triajestatus, clasestatus):
         m = _RE_NUEVAS.search(st or "")
         if m and int(m.group(1)) > 0:
             return True
@@ -6176,6 +8022,7 @@ def serve(port=8000, minutes=None):
         el resultado en su proxima pasada (a lo sumo MONITOR_FEED_MIN despues).
     Sirve el dashboard en http://localhost:PORT (se refresca solo, consulta
     data.json cada minuto)."""
+    _instalar_diagnostico_cierre()
     feed_min = minutes if minutes else float(os.environ.get("MONITOR_FEED_MIN", "1"))
     worker_pausa = int(os.environ.get("MONITOR_WORKER_PAUSA", "20"))
 
@@ -6192,6 +8039,32 @@ def serve(port=8000, minutes=None):
                 run_fast(verbose=True)
             except Exception as e:
                 print("Error en feed rapido: %s" % e)
+
+    def senales_loop():
+        # Fase 18 (P0-4): hilo propio del motor de senales (Fase 15), cada
+        # MONITOR_SENALES_MIN minutos. Espera 1 min al arrancar para que el
+        # hilo rapido ya haya publicado data.json.
+        espera = 60
+        while not stop.wait(espera):
+            espera = SENALES_MIN * 60
+            try:
+                with _medir_etapa("senales"):
+                    print("[%s] Senales: %s" % (now_utc().strftime("%H:%M:%S"), correr_senales()))
+            except Exception as e:
+                print("Error en senales: %s" % e)
+
+    def comunidad_loop():
+        # Fase 20b: hilo propio de Comunidad Guayaquil (ver comunidad_ciclo).
+        espera = 30
+        while not stop.wait(espera):
+            espera = COMUNIDAD_LOOP_SEG
+            try:
+                with _medir_etapa("comunidad_ciclo"):
+                    hecho = comunidad_ciclo()
+                if hecho:
+                    print("[%s] Comunidad: %s" % (now_utc().strftime("%H:%M:%S"), hecho))
+            except Exception as e:
+                print("Error en comunidad: %s" % e)
 
     def worker_loop():
         if oficial:
@@ -6306,7 +8179,8 @@ def serve(port=8000, minutes=None):
                 if not (self._es_esta_pc() or self._tiene_clave()):
                     self.send_error(401)
                     return
-                return self._do_GET_api(ruta_api, query_api)
+                with _pedido_interactivo():
+                    return self._do_GET_api(ruta_api, query_api)
             if self._es_esta_pc():
                 return super().do_GET()  # esta PC: todo igual que siempre
             ruta, _, query = self.path.partition("?")
@@ -6414,6 +8288,25 @@ def serve(port=8000, minutes=None):
             local automatico de esta pasada."""
             if ruta == "/api/contexto":
                 return self._do_GET_contexto(query)
+            if ruta == "/api/evaluacion":
+                # Fase 24 (Parte 0): la pagina revisar_evaluacion.html lee el CSV de evaluacion.
+                try:
+                    import evaluar_fase24 as ev
+                    filas = ev.cargar_csv()
+                    self._responder_json({"ok": True, "filas": filas, "categorias": ev.CATEGORIAS,
+                                          "revisadas": sum(1 for f in filas if (f.get("revisado_por_fernando") or "").strip())})
+                except Exception as e:
+                    self._responder_json({"ok": False, "error": str(e)})
+                return
+            if ruta == "/api/comunidad/cuentas":
+                # Fase 23: panel "Cuentas sugeridas / seguidas" + Facebook (sin red).
+                if cuentas is None:
+                    self._responder_json({"ok": False, "error": "falta cuentas.py junto al programa"}); return
+                try:
+                    self._responder_json(dict(cuentas.panel(), ok=True))
+                except Exception as e:
+                    self._responder_json({"ok": False, "error": str(e)})
+                return
             if casos is None:
                 self.send_error(404, "Asistente de casos no disponible (falta casos.py)")
                 return
@@ -6465,7 +8358,7 @@ def serve(port=8000, minutes=None):
             except Exception:
                 pass  # el navegador ya se fue: no pasa nada, no hay a quien avisarle
 
-        def _responder_asistente_stream(self, mensaje, historial):
+        def _responder_asistente_stream(self, mensaje, historial, perfil=None):
             """Streaming del Asistente (Bloque 2, Parte F): mismo protocolo
             NDJSON que _responder_stream, mas un tipo de linea nuevo
             {"progreso": "..."} mientras el ciclo de herramientas consulta
@@ -6490,7 +8383,8 @@ def serve(port=8000, minutes=None):
                 self.wfile.flush()
 
             try:
-                respuesta = agente.responder_stream(mensaje, historial, on_delta, on_progreso=on_progreso)
+                respuesta = agente.responder_stream(mensaje, historial, on_delta, on_progreso=on_progreso,
+                                                    perfil=perfil)
             except Exception:
                 respuesta = None
             final = {"done": True, "ok": respuesta is not None}
@@ -6574,6 +8468,72 @@ def serve(port=8000, minutes=None):
                 self.wfile.flush()
             except Exception:
                 pass
+
+        def _do_post_cuentas(self):
+            """Fase 23: Fernando aprueba/descarta cuentas comunitarias de X y
+            pega URLs de Facebook. Nada se agrega solo: cada cambio sale de un
+            clic suyo en el panel de Comunidad."""
+            try:
+                body = self._leer_json()
+            except Exception:
+                self.send_response(400); self.end_headers(); return
+            if cuentas is None:
+                self._responder_json({"ok": False, "error": "falta cuentas.py junto al programa"}); return
+            accion = str(body.get("accion") or "")
+            try:
+                if self.path == "/api/comunidad/facebook":
+                    tipo, url = str(body.get("tipo") or ""), str(body.get("url") or "")
+                    if accion == "agregar":
+                        ok, msg = cuentas.fb_agregar(tipo, url)
+                    elif accion == "quitar":
+                        ok, msg = cuentas.fb_quitar(tipo, url)
+                    else:
+                        ok, msg = False, "accion invalida"
+                else:
+                    u = str(body.get("usuario") or "")
+                    if accion == "agregar":
+                        # 'verificada' solo si Spike ya la vio publicar (dato real, no lo que diga el navegador).
+                        vista = any(c["usuario"].lower() == u.lstrip("@").lower() and c.get("verificada")
+                                    for c in cuentas.candidatas(incluir_descartadas=True, top=10 ** 6))
+                        ok, msg = cuentas.agregar(u, body.get("nombre") or "", verificada=vista)
+                    elif accion == "descartar":
+                        ok, msg = cuentas.descartar(u)
+                    elif accion == "quitar":
+                        ok, msg = cuentas.quitar(u)
+                    elif accion in ("pausar", "activar"):
+                        ok, msg = cuentas.activar(u, accion == "activar")
+                    else:
+                        ok, msg = False, "accion invalida"
+            except Exception as e:
+                ok, msg = False, "error: %s" % e
+            self._responder_json({"ok": ok, "mensaje": msg, "panel": cuentas.panel() if ok else None})
+
+        def _do_post_whatsapp(self):
+            """Fase 20b: importar un chat de WhatsApp exportado (.txt/.zip) a
+            Comunidad Guayaquil. Base64 dentro de JSON, mismo criterio que la
+            subida de documentos de casos. Los nombres de los participantes
+            se anonimizan en whatsapp.py; el archivo original NO se guarda."""
+            try:
+                body = self._leer_json()
+            except Exception:
+                self.send_response(400); self.end_headers(); return
+            nombre = os.path.basename(str(body.get("nombre") or "").strip())[:200]
+            b64 = body.get("contenido_b64") or ""
+            if comunidad is None:
+                self._responder_json({"ok": False, "error": "comunidad.py no disponible"}); return
+            if not nombre or not b64 or not nombre.lower().endswith((".txt", ".zip")):
+                self._responder_json({"ok": False, "error": "subi el .txt o .zip que genera 'Exportar chat'"}); return
+            try:
+                crudo = base64.b64decode(b64, validate=False)
+            except Exception:
+                self._responder_json({"ok": False, "error": "el archivo no se pudo decodificar"}); return
+            if len(crudo) > 20 * 1024 * 1024:
+                self._responder_json({"ok": False, "error": "el archivo supera el limite de 20MB"}); return
+            try:
+                r = comunidad.importar_whatsapp(nombre, crudo)
+            except Exception as e:
+                self._responder_json({"ok": False, "error": "no se pudo leer el chat: %s" % e}); return
+            self._responder_json(dict(r, ok=True))
 
         def _do_post_caso_doc(self, caso_id):
             """Fase 7, Paso C: subida de un documento. Sin multipart (el
@@ -6734,7 +8694,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 self._responder_caso_chat_stream(caso_id, mensaje, historial)
 
@@ -6746,7 +8706,9 @@ def serve(port=8000, minutes=None):
             if not (self._es_esta_pc() or self._tiene_clave()):
                 self.send_error(401)
                 return
-            self._do_POST()
+            # Fase 22c: lo que pide el usuario usa la reserva de presupuesto de IA.
+            with _pedido_interactivo():
+                self._do_POST()
 
         def _do_POST(self):
             """Endpoints propios del servidor. Todo lo demas (dashboard.html,
@@ -6765,6 +8727,21 @@ def serve(port=8000, minutes=None):
                 el servidor corre con hilos (ThreadingMixIn, ver mas abajo):
                 sin eso, una consulta de chat en curso congelaria el resto del
                 dashboard (poll de data.json, cambiar de seccion, etc.)."""
+            if self.path == "/api/comunidad/whatsapp":
+                self._do_post_whatsapp()
+                return
+            if self.path == "/api/evaluacion":
+                try:
+                    body = self._leer_json()
+                    import evaluar_fase24 as ev
+                    ok, msg = ev.guardar_revision(body.get("id"), body.get("cambios") or {})
+                except Exception as e:
+                    ok, msg = False, str(e)
+                self._responder_json({"ok": ok, "mensaje": msg})
+                return
+            if self.path in ("/api/comunidad/cuentas", "/api/comunidad/facebook"):
+                self._do_post_cuentas()
+                return
             if self.path == "/api/guardar":
                 try:
                     body = self._leer_json()
@@ -6789,6 +8766,37 @@ def serve(port=8000, minutes=None):
                 else:
                     self.send_response(400); self.end_headers(); return
                 self._responder_json({"ok": True, "guardadas": items})
+            elif self.path == "/api/notificaciones":
+                # Fase 24 (F1): cambiar la definicion de "importante" desde la campana.
+                try:
+                    body = self._leer_json()
+                except Exception:
+                    self.send_response(400); self.end_headers(); return
+                try:
+                    import notificaciones
+                    conf = notificaciones.guardar_config(body if isinstance(body, dict) else {})
+                    self._responder_json({"ok": True, "config": conf})
+                except Exception as e:
+                    self._responder_json({"ok": False, "error": str(e)})
+            elif self.path == "/api/util":
+                # Fase 24 (D): botones Util/Basura de Fernando; "" borra la marca.
+                try:
+                    body = self._leer_json()
+                except Exception:
+                    self.send_response(400); self.end_headers(); return
+                key = str(body.get("id") or "")[:180]
+                util = str(body.get("util") or "")
+                if not key or util not in ("si", "no", ""):
+                    self.send_response(400); self.end_headers(); return
+                with _UTIL_LOCK:
+                    marcas = load_util_manual()
+                    if util:
+                        marcas[key] = {"util": util, "titular": str(body.get("titular") or "")[:300],
+                                       "ts": now_utc().isoformat()}
+                    else:
+                        marcas.pop(key, None)
+                    save_util_manual(marcas)
+                self._responder_json({"ok": True, "util": util})
             elif self.path == "/api/nota":
                 try:
                     body = self._leer_json()
@@ -6823,7 +8831,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 # Capa de aterrizaje (grounding) ANTES de dejar que el chat
                 # responda -- ver bug real de "Alias Fito" en Decisiones ya
@@ -6845,9 +8853,13 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia or not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
-                self._responder_asistente_stream(mensaje, historial)
+                # Fase 23: selector de modelo del Asistente ("rapido" = Gemini Flash,
+                # "profundo" = Gemini Pro, el de siempre). Cualquier otro valor: el de siempre.
+                perfil = {"rapido": getattr(ia, "PERFIL_RAPIDO", None),
+                          "profundo": getattr(ia, "PERFIL_PROFUNDO", None)}.get(str(body.get("modelo") or ""))
+                self._responder_asistente_stream(mensaje, historial, perfil=perfil)
             elif self.path == "/api/buscar":
                 # Fase 4: buscador EN VIVO -- a diferencia de todo lo demas,
                 # esto SI dispara llamadas de red nuevas en el momento
@@ -6883,7 +8895,7 @@ def serve(port=8000, minutes=None):
                     self.send_response(400); self.end_headers(); return
                 if not ia or not ia.disponible(IA_MODEL):
                     self._responder_json({"ok": False,
-                        "error": getattr(ia, "last_error", None) or "Ollama no responde"})
+                        "error": getattr(ia, "last_error", None) or "la IA (Gemini) no responde"})
                     return
                 self._responder_buscar_leer_stream(query, ambitos)
             elif self.path == "/api/casos" or self.path.startswith("/api/casos/"):
@@ -6939,6 +8951,9 @@ def serve(port=8000, minutes=None):
     # Si dashboard.html no existe todavia (primerisima corrida en esta
     # carpeta, o alguien lo borro a mano), no hay nada real que mostrar --
     # ahi si hace falta el esqueleto mientras se genera el primero.
+    # Fase 22b: lo que se muestra al instante ya sale con el diseño actual.
+    if regenerar_dashboard_desde_data():
+        _log_arranque("serve: dashboard.html re-armado con la plantilla actual")
     hay_dashboard_previo = os.path.exists(os.path.join(HERE, "dashboard.html"))
 
     def _arrancar_backend():
@@ -6946,6 +8961,12 @@ def serve(port=8000, minutes=None):
         # ACA, en un hilo aparte cuando hay ventana nativa, para no bloquear
         # su aparicion (el puerto/servidor YA estan arriba, ver mas arriba).
         try:
+            # Fase 18 (P0-2/P0-3): una sola vez por instalacion, rehace el
+            # registro con las reglas nuevas (mezclas viejas separadas).
+            try:
+                migrar_registro_si_hace_falta(verbose=True)
+            except Exception as ex:
+                _log_arranque("registro: migracion fase18 fallo (%s) -- se sigue con el registro tal cual" % ex)
             _log_arranque("_arrancar_backend: primera pasada del feed (rapida, no espera a la IA)...")
             _t_backend0 = time.time()
             run_fast(verbose=True)
@@ -6955,6 +8976,8 @@ def serve(port=8000, minutes=None):
 
             threading.Thread(target=fast_loop, daemon=True).start()
             threading.Thread(target=worker_loop, daemon=True).start()
+            threading.Thread(target=senales_loop, daemon=True).start()
+            threading.Thread(target=comunidad_loop, daemon=True).start()
 
             print("\n" + "=" * 56)
             if port != puerto_pedido:
@@ -6993,6 +9016,7 @@ def serve(port=8000, minutes=None):
 
     def al_cerrar_ventana():
         # El cierre de la ventana debe detener los bucles y el servidor para que no quede un proceso oculto.
+        _log_arranque("ventana cerrada (evento closed de la ventana nativa)")
         stop.set()
         srv.shutdown()
 
@@ -7050,6 +9074,7 @@ def serve(port=8000, minutes=None):
     threading.Thread(target=_arrancar_backend, daemon=True).start()
     try:
         webview.start()
+        _log_arranque("webview.start() termino (la ventana ya no existe)")
     except Exception as e:
         print("La ventana de escritorio fallo (%s). Se abrira el dashboard en el navegador." % e)
         _fallback_navegador()
@@ -7107,6 +9132,10 @@ def main():
         port = int(args[1]) if len(args) > 1 else 8000
         minutes = float(args[2]) if len(args) > 2 else None  # None: usa MONITOR_FEED_MIN (def. 1)
         serve(port, minutes)
+    elif args[0] == "probar_sitemaps":
+        probar_sitemaps()
+    elif args[0] == "reconstruir_registro":
+        reconstruir_registro(verbose=True)
     elif args[0] == "once":
         # La corrida unica bloqueante (el default de antes de esta fase)
         # queda accesible a mano con "once" -- la siguen necesitando

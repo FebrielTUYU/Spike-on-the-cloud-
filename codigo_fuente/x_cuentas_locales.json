@@ -1,0 +1,94 @@
+{
+  "_nota": "Fase 18 (P1-5.2). Cuentas de X que informan en tiempo real sobre Guayaquil. EDITABLE: Fernando confirma/corrige los usuarios. 'verificada': false = el nombre de usuario NO se comprobo en vivo (desde el entorno donde se armo esta lista no habia acceso a X/Apify). Un usuario que no existe no cuesta nada (from: devuelve 0 tweets). 'oficial': true = sus tweets cuentan como fuente oficial en Alertas (sube directo a 'confirmado oficial'). 'activa': false para apagar una sin borrarla. Fase 23: 'tipo' = 'oficial' (sus tweets confirman alertas), 'comunitaria' (paginas o personas de barrio que juntan quejas de la gente; entran a Comunidad como voz de la gente y NUNCA cuentan como oficiales; se agregan desde el panel de Comunidad, siempre aprobadas por Fernando) o 'local' (se lee pero no es oficial). 'descartadas': sugerencias que Fernando rechazo en el panel (no se vuelven a sugerir).",
+  "cuentas": [
+    {
+      "usuario": "ECU911_",
+      "nombre": "ECU 911",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "ATMGuayaquil",
+      "nombre": "ATM Guayaquil (transito)",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "BCBGuayaquil",
+      "nombre": "Benemerito Cuerpo de Bomberos de Guayaquil",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "alcaldiagye",
+      "nombre": "Municipio de Guayaquil",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "Interagua_Ec",
+      "nombre": "Interagua",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "EmapagEP",
+      "nombre": "EMAPAG EP",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "CNEL_EP",
+      "nombre": "CNEL EP",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "PrefecturaGuayas",
+      "nombre": "Prefectura del Guayas",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "Riesgos_Ec",
+      "nombre": "Secretaria Nacional de Gestion de Riesgos",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "inamhi",
+      "nombre": "INAMHI",
+      "oficial": true,
+      "verificada": false,
+      "activa": true,
+      "tipo": "oficial"
+    },
+    {
+      "usuario": "EmergenciasEc",
+      "nombre": "Emergencias Ecuador (ya visto en vivo por Fernando, Fase 9)",
+      "oficial": false,
+      "verificada": true,
+      "activa": true,
+      "tipo": "local"
+    }
+  ],
+  "descartadas": []
+}

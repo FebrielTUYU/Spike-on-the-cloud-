@@ -4768,3 +4768,365 @@ recompilado con el cambio.
 3. No se revisó visualmente en un navegador real (esta sesión no tiene esa herramienta) -- toda la
    verificación fue con `jsdom` contra datos reales (ver arriba), que confirma comportamiento y
    ausencia de errores mas no la apariencia visual de los dos toggles nuevos.
+
+## Fases 20 a 22c (2026-09-30) — resumen reconstruido desde el código y las pruebas
+
+Estas fases se hicieron sin actualizar este archivo. Lo de abajo sale de leer el código
+(`comunidad.py`, `facebook.py`, `whatsapp.py`, `mapa.py`, `redes.py`, `xapi.py`, `monitor.py`,
+`ia.py`, `dashboard_template.html`) y de correr `test_fase20_comunidad.py`,
+`test_fase20b_comunidad_fuentes.py` y `test_fase21_ventana_emergencias.py` el 2026-09-30 (39
+pruebas, todas OK). **No existe ningún `test_fase22*`**: las Fases 22/22b/22c no tienen pruebas
+automáticas.
+
+### Fase 20 — Comunidad Guayaquil (lo que dice la GENTE, no la prensa)
+- Qué hace: sección "Comunidad Guayaquil". Un tema = (sector, categoría de problema), armado SOLO
+  con publicaciones de personas que nombran Guayaquil o un sector y un problema reconocible (22
+  categorías por palabras clave, sin IA). La prensa solo marca "ya cubierto / sin cobertura".
+  Sube por personas distintas, días distintos, recencia y falta de cobertura.
+- Archivos: `comunidad.py` (`normalizar_post`, `es_persona`, `armar_temas`, `actualizar`),
+  `monitor.calcular_comunidad()` en `write_outputs` (hilo rápido, sin red), `herramientas.py`
+  (herramienta del Asistente), registro propio `comunidad.json` (60 días, no es caché).
+- `es_persona()` descarta medios/instituciones por nombre y por patrón del handle
+  (`_HANDLE_MEDIO`: "noticia", "alerta", "emergencia", "info", "ecuador", "^ec"...). Esto es lo que
+  la Fase 23 tuvo que abrir para las cuentas comunitarias.
+- Pendiente: los conteos son de lo CAPTADO (muestra), no de la ciudad.
+
+### Fase 20b — frecuencias y fuentes nuevas (X, Bluesky, YouTube, Facebook, WhatsApp)
+- Qué hace: hilo propio `comunidad_loop` → `monitor.comunidad_ciclo()` cada 60 s; cada fuente
+  decide si le toca: X de quejas cada 10 min (`redes.pasada_comunidad`, tope `COMUNIDAD_PARTE_X`
+  = 60 % del presupuesto diario de X), Bluesky cada 10 min, YouTube cada 1 h, Facebook cada
+  `MONITOR_FB_MIN` (60), WhatsApp cuando aparece un chat en `whatsapp_import/` o se sube desde el
+  dashboard (`POST /api/comunidad/whatsapp`).
+- Archivos: `redes.py` (candado `_LOCK`, `pasada_comunidad`), `facebook.py`, `whatsapp.py`,
+  `facebook_fuentes.json` (páginas/grupos, editable), `comunidad.recolectar()`.
+- Facebook: presupuesto propio (`MONITOR_FB_TOPE_MES_USD`, def. $3) que NO descuenta del de X.
+- **Sin verificar en vivo**: Facebook nunca corrió — `facebook_fuentes.json` tiene las listas
+  vacías; los nombres de actores de Apify, sus campos y el precio salen de la documentación, no de
+  una corrida real. WhatsApp: `whatsapp_import/` vacío a la fecha, sin grupos importados.
+- Dato real del 2026-09-30: en la ventana de 10 h, Comunidad tenía 28 publicaciones (X 27,
+  YouTube 1) → 9 temas. Bluesky no aportó nada en esa ventana.
+
+### Fase 21 — ventana de 10 h y EmergenciasEc
+- Qué hace: nada de más de `MONITOR_VENTANA_H` (10 h) entra como nuevo (X con `since:` + filtro
+  por `createdAt`; Comunidad, alertas y social local también). @EmergenciasEc se consulta cada 10
+  min con una sola búsqueda `(from:X OR to:X OR @X)`; se aprende su red (quién le responde o a
+  quién menciona, 14 días) y las 8 cuentas más activas se leen cada 30 min. Panel "Al momento" en
+  Comunidad y tarjeta en Resumen.
+- Archivos: `redes.py` (`pasada_emergencias`, `_aprender_red`, `red_emergencias`,
+  `emergencias_dashboard`), `xapi.py` (`VENTANA_H`, `_dentro_de`), `alertas.py`
+  (`ALERTA_MAX_EDAD_H`), `social.py`, `comunidad.py`.
+- Verificado con datos reales (no solo pruebas): `redes_cache.json` del 2026-09-30 tenía 200
+  tweets en `emergencias_feed` (9 de la cuenta, 108 respuestas/menciones, 83 de su red) y 77
+  cuentas en `red_emergencias` — el actor sí respeta `from:/to:` en la práctica.
+- Pendiente: la capa de cuentas de `x_cuentas_locales.json` excluye EmergenciasEc para no pagar
+  dos veces; si se cambia `MONITOR_EMERG_CUENTA`, revisar esa exclusión.
+
+### Fase 22 — interfaz tipo Power BI (verde + negro de Spike)
+- Qué hace: barra superior oscura, menú lateral oscuro con TODAS las secciones (en el celular pasa
+  a tira horizontal deslizable), página nueva "Resumen" (grilla de tarjetas `tile`/`kpi`), barra
+  "Pregunta" que manda al Asistente. Las reglas CSS nuevas van al final del `<style>` y pisan las
+  viejas; la lógica de cada sección no cambió.
+- Archivos: `dashboard_template.html` (bloque CSS "Fase 22", `renderResumen`, `tile`, `tileBars`).
+- Pendiente: solo Resumen se rediseñó de verdad; Estadísticas, Noticias, Pulso social y Asistente
+  seguían con el armado viejo (por eso la Fase 23).
+
+### Fase 22b — recarga por versión de plantilla
+- Qué hace: `data.json` lleva `ui_version` (md5 corto de `dashboard_template.html`); si la página
+  abierta tiene otra versión, `poll()` hace `location.reload()`. Al arrancar, `serve()` re-arma
+  `dashboard.html` con la plantilla ACTUAL y el último `data.json`
+  (`regenerar_dashboard_desde_data`, sin red ni IA).
+- Archivos: `monitor.py` (`_ui_version`, `regenerar_dashboard_desde_data`), `poll()` en la plantilla.
+
+### Fase 22c — mapa de Guayaquil, lectura de la comunidad con IA y reserva de IA interactiva
+- Mapa: `mapa.py` pone noticias/alertas/quejas en el centro APROXIMADO del sector detectado
+  (`comunidad.detectar_barrio`, coordenadas fijas en `COORDS`); lo que no se ubica se cuenta
+  aparte. Leaflet se carga desde cdnjs (necesita internet). Dato real: 26 puntos, 30 noticias de
+  Guayaquil sin sector.
+- Lectura IA: `comunidad.actualizar_lectura()` (hilo de Comunidad, cada 30 min si cambian los
+  temas) — el código arma el material con ids T1..Tn y descarta en código lo que no cita temas
+  reales o nombra zonas inexistentes. **Sin verificar en vivo**: `comunidad_lectura.json` no existe
+  a la fecha y `data.json["comunidad_lectura"]` está vacío; causa probable: el tope diario de
+  Gemini ($1.00) estaba agotado ese día.
+- Reserva interactiva: `ia.interactivo()` / `RESERVA_INTERACTIVA_USD` (def. $0.30) — el
+  trabajador de fondo solo gasta `tope - reserva`; los pedidos del navegador usan la reserva.
+- Sin pruebas automáticas (ver arriba).
+
+## Fase 23 (2026-09-30) — más voces de la comunidad + rediseño por sección
+
+Pedido en `PROMPT_fase23.md`, con 4 imágenes de referencia en `referencias_fase23\` (se tomó la
+estructura, no colores ni datos). Capturas del resultado en `referencias_fase23\capturas\`.
+Codex revisó las dos partes (`codex exec`); lo que se aplicó de cada revisión está anotado abajo.
+
+### Parte A — cuentas comunitarias
+- `cuentas.py` (nuevo, sin red ni IA): `candidatas()` sugiere cuentas SOLO con datos que Spike ya
+  guardó — autores de X en `comunidad.json`, autores/retuits/menciones en quejas de Guayaquil de
+  `x_cache.json` y del feed de EmergenciasEc (`redes_cache.json`), y `redes.red_emergencias()`.
+  Rankea por quejas de Guayaquil DISTINTAS (la misma queja por dos vías cuenta una vez). Descarta
+  instituciones/políticos (`xapi.clasificar_autor` con la bio real de `profile_bio`, patrón
+  institucional por nombre), medios (`social.es_cuenta_medio` quitando antes palabras genéricas como
+  "noticias"/"informa", que usan las páginas de barrio; bio de medio formal) y cuentas con 50.000
+  seguidores o más. `verificada` = se la vio publicar en tweets reales; "solo mencionada" no.
+  Handles solo ASCII (revisión de Codex).
+- Tipo `"comunitaria"` en `x_cuentas_locales.json` (a las viejas se les agregó `tipo` explícito;
+  `cuentas.tipo_cuenta()` lo deduce si falta). `cuentas.es_oficial()`: solo `tipo=="oficial"`
+  confirma alertas; una comunitaria con `oficial:true` puesto a mano igual NO.
+- `comunidad.es_persona(..., comunitaria=True)` y `normalizar_post(..., comunitaria=True)`: pasan
+  el filtro de handle y el de formato de noticia ("#ATENCION | ..."), pero igual tienen que ser de
+  Guayaquil y nombrar un problema. Quedan marcadas `via: "comunitaria"`.
+- Panel en Comunidad ("Voces de la comunidad"): sugeridas (Agregar/Descartar), seguidas
+  (Pausar/Activar/Quitar), URLs de Facebook (páginas/grupos, validadas y normalizadas a
+  `https://www.facebook.com/...`). API: `GET /api/comunidad/cuentas`, `POST /api/comunidad/cuentas`,
+  `POST /api/comunidad/facebook` (`monitor._do_post_cuentas`). Nada se agrega solo.
+- Presupuesto: capa propia `redes.pasada_comunitarias()` en `comunidad_ciclo` (después de
+  EmergenciasEc y de las quejas de X). Una consulta `from:A OR from:B` por tanda
+  (`xapi.tandas_cuentas`, hasta 380 caracteres). Tope diario propio (`MONITOR_COMUNITARIAS_PARTE`,
+  25 % del presupuesto de X del día) y techo de cobro enviado a Apify acotado a lo que la capa puede
+  gastar (revisión de Codex, severidad alta). `ritmo_comunitarias()`: cada 30 min; x2 si X ya usó
+  70 % de hoy; x4 si queda menos de 25 % del tope del mes; en pausa con menos de 10 % —
+  EmergenciasEc y Alertas no cambian. Consumo medido en `redes_cache.json["comunitarias_uso"]` y
+  mostrado en Estadísticas (gasto de X) y en el panel. La capa 1b de `pasada()` (cuentas oficiales,
+  cada hora) ya no incluye comunitarias.
+- Pruebas: `test_fase23_cuentas.py` (24): descubrimiento con datos con la forma real, sin usuarios
+  inventados, filtros de medios/instituciones/políticos, tipo comunitaria, nunca oficial en
+  Alertas, entrada a Comunidad, tandas, medición, bajada de frecuencia, tope y techo de cobro,
+  Facebook (URLs válidas y engañosas), panel.
+
+### Parte B — rediseño
+- Regla común: sin dato no hay bloque; cada gráfico con su línea de lectura. Estadísticas lista al
+  final "No se muestra (sin dato suficiente)" con el motivo.
+- Datos nuevos en `data.json` (hilo rápido, sin red ni IA): `series` (`estadisticas.py`:
+  calendario de notas vistas por día a partir de `latencia_cache.json`, acumulado en
+  `calendario_noticias.json` porque ese caché guarda solo 7 días; día sin registro = "sin
+  registro", nunca 0; actividad por hora = promedio de días completos; alertas por día y alertas
+  activas ayer a esta hora, reconstruidas con las fechas de las señales — revisión de Codex: antes
+  comparaba activas con detectadas), `pulso` (`pulso.py`: publicaciones de todas las fuentes por
+  red, con sector de Guayaquil detectado igual que Comunidad/mapa y sus coordenadas), y en
+  `comunidad`: `por_dia`, `hoy`, `ayer_misma_hora`, `recientes`. `regenerar_dashboard_desde_data`
+  los arma también al arrancar si el `data.json` es viejo.
+- B1 Estadísticas: 4 KPI con variación contra ayer a la misma hora y barrita; cobertura por
+  categoría (líneas, una foto por hora, 72 h); calendario del mes (clic filtra Noticias, solo días
+  que el tablero todavía tiene); interés de búsqueda vs cobertura con la brecha marcada y la
+  antigüedad del dato si es vieja; donas Ecuador/Mundo y Guayaquil/resto; actividad por hora; gasto
+  de X (incluye comunitarias) y de IA, demora por medio y adelanto de alertas como tablas. Paleta de
+  datos validada para daltonismo (5 tonos; etiquetas directas por el contraste bajo de 3 tonos),
+  también usada para las categorías en todo Spike (`CATCOLOR`).
+- B2 Noticias: lista compacta a la izquierda + historia elegida a la derecha (medios, imagen,
+  resumen, lectura IA, contexto, contraste, pulso social de esa historia, enlaces). Filtros por red
+  con conversación y por medio, más los de siempre. Celular: filtros plegados, la historia se abre
+  encima con "Volver a la lista". El contexto bajo demanda solo se pide si Fernando hace clic; con
+  el tope diario de IA agotado se dice eso en vez de "analizando…".
+- B3 Pulso social: alertas importantes arriba (con "ver todas"), riel de redes (solo las que tienen
+  datos) y por red: Conversación, Participación (solo si la red trae interacciones), Dónde (mini
+  mapa esquemático + tabla) y Publicaciones. Se sacaron "Debate real" y "Por red social" de las
+  Fases 18/19 (su contenido está ahora en las publicaciones por red y en la historia de Noticias).
+  Enlaces de terceros solo si son http(s) (`urlSegura`, revisión de Codex).
+- B4: un solo sistema visual (tarjeta blanca, título chico en mayúsculas, radio 10 px, misma
+  separación), por CSS al final del `<style>`; sin cambiar la lógica de las secciones.
+- B5 Asistente: saludo, 4 accesos, 3 sugerencias armadas con datos actuales (tema de Comunidad,
+  alerta, brecha o historia top), caja abajo con Adjuntar (va a Documentos), Historial y selector
+  de modelo (`modelo` en `POST /api/asistente` → `agente.responder_stream(perfil=...)`: Flash =
+  perfil rápido, Pro = profundo, el de siempre). Riel derecho: Chat, Casos, Buscar, Documentos,
+  Historial. El chat agrega solo los mensajes nuevos (no pierde la selección de texto) y baja solo
+  si el usuario ya estaba abajo (revisión de Codex). Si el servidor contesta un error, se muestra
+  el motivo real.
+- Bug real encontrado: el panel "Prueba X" leía `DATA.estado_x`, campo que `data.json` nunca tuvo
+  (el real es `estado_redes`): decía "sin datos" siempre. Corregido.
+
+### Verificación hecha
+- Pruebas: 437; fallan solo las ya conocidas (15 de `test_fase9_xapi`, 3 de embeddings con el tope
+  de Gemini agotado ese día) y `test_fase18_agrupamiento`, que no carga porque falta
+  `pruebas/fase18_casos_reales.json` (previo a esta fase). Ningún fallo nuevo.
+- Página armada con el `data.json` real en una copia aparte y recorrida en un navegador real:
+  todas las secciones, filtros, riel, calendario, vistas del Asistente, sin errores de JS. Ancho de
+  celular (375 px): sin desborde horizontal.
+- API del panel probada contra una copia aislada de Spike (sin token de Apify ni clave de Gemini):
+  sugerir, agregar, descartar, pausar, URL inválida rechazada. `.exe` recompilado y abierto (ver
+  la tabla final de la sesión).
+
+### Pendientes reales de la Fase 23
+1. Reserva atómica de presupuesto entre hilos (Codex, media): el trabajador y el hilo de Comunidad
+   pueden ver el mismo saldo de X a la vez; el sobregasto posible queda acotado a una consulta por
+   el techo de cobro por consulta. No se implementó una reserva compartida.
+2. Ninguna cuenta comunitaria se agregó todavía (decide Fernando): el consumo por día queda "sin
+   medir" hasta que siga alguna.
+3. Facebook sigue sin verificar en vivo (actores y precio de la documentación de Apify).
+4. El calendario solo tiene días desde el 24-sep (el registro de latencia guarda 7 días); se
+   completa hacia adelante.
+5. "Tema que más creció" dio "Ninguno" el 30-sep porque el tablero se achicó (ventana de 10 h de la
+   Fase 21); es real, no un error.
+6. Las capturas de celular se tomaron en el navegador integrado (Chrome sin ventana no baja de ~500
+   px de ancho).
+
+## Fase 24 (2026-09-30, en curso) — IA gratuita, recolección más amplia y precisión
+
+Pedido completo en el chat de la sesión (partes 0, A-F). Se trabaja por partes, cada una cerrada
+con números de antes y después sobre datos reales.
+
+### Línea base confirmada (data.json real, 2026-09-30 22:55 UTC)
+582 historias. IA 152/582, contexto 103/582, embeddings 734/2660; `veredicto_ia`: 313 pendiente,
+241 sin_datos, 28 coincide (el pedido decía "todas pendiente": ya no es así). Gemini: $1.00 el
+29 y el 30-sep (tope diario). General 239, sin temas 133. Internacional 153 (Infobae aparece en 66).
+Contraste: corroborado_medios 288, sin_hallazgo 285, documento_oficial 8, hallazgo 1. Mapa: 26
+puntos, 34 notas de Guayaquil sin sector. Comunidad: 37 publicaciones en 10 h (X 36, YouTube 1).
+43 feeds. Casos del pedido confirmados: el par del poste separado y con temas Empleo/Salud y
+Empleo/Petróleo; Corte Suprema en dos idiomas separada; Ronaldo, Progen y New Jerson en Internacional.
+
+### Parte 0 — medición (hecha)
+- `ia.py`: cada llamada anota su **módulo** (`with ia.modulo("..."):` explícito, si no se deduce
+  de la función pública de ia.py por la que entró o del archivo/función que llamó:
+  `_MODULO_POR_FUNCION_IA`, `_MODULO_POR_ARCHIVO`, `_MODULO_POR_FUNCION_MONITOR`), los **tokens**
+  de entrada y salida y si fue interactiva. Totales por día y módulo en `ia_gasto.json["modulos"]`
+  (31 días; el historial de 300 no alcanzaba para un día). `ia.gasto_por_modulo()` va en
+  `estado_ia_nube["por_modulo"]` y el panel de IA de Estadísticas lo muestra (`iaPorModuloHTML`).
+  Candado para leer-sumar-guardar y un fallo al anotar nunca anula una respuesta ya pagada
+  (revisión de Codex). Las llamadas de antes de la Fase 24 no tienen módulo: se cuenta desde el
+  `.exe` recompilado el 2026-09-30 18:06.
+- `pruebas/evaluacion_fase24.csv`: 120 historias reales (60 locales, 32 de Guayaquil; 60
+  internacionales) con todos los casos del pedido. Etiquetas **prellenadas por Claude** con la
+  taxonomía propuesta para la Parte C2 (politica, economia, empleo, seguridad, justicia,
+  obras_servicios, movilidad, riesgos_clima, salud, educacion, sociedad_cultura,
+  entretenimiento_deporte), ámbito, tipo, ciudad, útil sí/no y grupo; las dudosas dicen REVISAR y
+  los grupos dudosos terminan en "?" (no se miden). Al lado, lo que Spike dice hoy.
+- `evaluar_fase24.py`: exactitud por campo y pares mal unidos/separados; sin
+  `revisado_por_fernando` en todas las filas no reporta (con `--borrador` calcula marcado como
+  borrador). Borrador de la línea base: categoría 25 % (taxonomía vieja), ámbito 93 %, ciudad 88 %,
+  tipo y utilidad sin dato (Spike todavía no los calcula), 5 de 5 pares que deberían unirse
+  separados.
+- `LEEME.md`: pasos para crear `GROQ_API_KEY`, `CEREBRAS_API_KEY` y `GEMINI_FREE_KEY`.
+- Revisión del CSV sin Excel (Fernando no tiene Office): `revisar_evaluacion.html` (menú lateral →
+  Herramientas → "Revisar evaluación"), servida por Spike; `GET/POST /api/evaluacion` →
+  `evaluar_fase24.guardar_revision()` (solo campos editables, valores cerrados validados, escritura
+  atómica; agrega la columna `comentario_fernando`).
+- Pruebas: `test_fase24_parte0.py` (15).
+
+### Parte A — IA de fondo por proveedores gratuitos (hecha; medición de 2 h en curso)
+- `ia_router.py` (nuevo): titular y respaldo por tarea con Gemini gratis (`GEMINI_FREE_KEY`, proyecto
+  sin facturación), Groq y Cerebras (compatibles con OpenAI). Rutas: triaje flash-lite → groq 20b;
+  clasificación cerebras 120b → gemma 26b; contexto groq 120b → gemini flash; verificación cerebras →
+  groq 120b; embeddings `gemini-embedding-001` gratis (mismo modelo que la pagada: vectores
+  compatibles). Cupos medidos de las cabeceras y reservados por minuto y por día; 429 → pausa por
+  retry-after o 6 h si es cuota diaria; 401/403 → 1 h; 5xx/red → 60 s. Estado en
+  `ia_router_estado.json`. **Si un proveedor se agota la tarea espera: nunca cae en la pagada.**
+- `ia.py`: `_por_router(mod)` desvía al enrutador todo lo de fondo; nunca lo interactivo ni lo
+  privado (`MODULOS_PRIVADOS` = casos, chat: un llamador privado manda aunque pase por `embed`).
+  `MONITOR_IA_FONDO_GRATIS=0` lo apaga. En pruebas (`unittest` cargado) el enrutador está apagado
+  salvo `MONITOR_IA_ROUTER_PRUEBAS=1` (bug real: pruebas viejas gastaron cupo real).
+- `monitor.get_ia`: lotes de 25 (`ia.analizar_lote`) con caché por contenido y prioridad a lo que se
+  muestra (`_claves_mostradas`, 12 por sección); interpretación, veredicto y contexto solo para lo
+  mostrado. `EMBED_MAX_NEW` 40 → 120. Panel `#estadoIaGratis` (cupo por proveedor).
+- Primera corrida real (exe del 30-sep 19:03): $0 de IA pagada de fondo; 2 h después la foto salió
+  inválida porque Spike.exe se cerró a las 19:11 (ver abajo). Medición repetida desde las 22:48.
+- Pruebas: `test_fase24_parteA.py`.
+
+### Parte B — recolección local (hecha salvo la medición ×5)
+- B1 X: `comunidad.consultas_x()` arma 6 consultas sin exigir "Guayaquil" (dirigidas a instituciones de
+  la ciudad, cuatro tandas de barrios no ruidosos, y la vieja), todas con `-filter:retweets`.
+  `redes.pasada_comunidad` rota entre ellas; rendimiento por consulta = quejas útiles por cada $0,01
+  (con el costo estimado si Apify reporta $0); con menos de 1 tras 6 corridas se apaga 7 días.
+  Queja dirigida a una institución solo de Guayaquil (`INSTITUCIONES_SOLO_GYE`) cuenta como de
+  Guayaquil salvo que nombre otra ciudad. Panel: rendimiento por consulta y proyección del mes.
+- B2 YouTube: `youtube_canales.py` lee comentarios de los videos recientes de 4 canales verificados
+  (El Universo, Ecuavisa, RTS, Diario Extra; `youtube_canales.json` editable) cada 20 min, con
+  presupuesto propio de unidades reservado bajo candado. Búsquedas por barrio (8/día, 100 unidades):
+  implementadas, pero **YouTube responde 429 "Search Queries per day"**: ese límite aparte lo gastan
+  las búsquedas por tema del Pulso social. Ante ese 429 no se insiste hasta el día siguiente.
+  Rendimiento medido: 33 videos, 19 comentarios, 0 útiles (los comentarios de canales de medios casi
+  nunca son quejas de barrio).
+- B3: 8 búsquedas de Google News + feeds institucionales (CNEL EP, Bomberos, Secretaría de Riesgos,
+  INAMHI; Municipio, Prefectura, ECU 911 y Presidencia marcados) en `feeds.OUTLETS_INSTITUCIONALES`;
+  Metro Ecuador. 56 feeds. Telegram sigue apagado (sin canales reales).
+- B3b `funcionarios.py`: `funcionarios.json` (@JohnReimberg, @MinInteriorEc, editable). Una consulta
+  `from:` cada 5 min por encima de Comunidad, con tope propio (15 % del presupuesto diario de X)
+  descontado con el costo ESTIMADO cuando Apify reporta $0 (revisión de Codex: si no, 288 consultas
+  al día nunca tocaban el tope). Tipo por reglas (acción/anuncio/dato/declaración), registro en
+  `declaraciones.json`, aviso ntfy, búsqueda en Google News para medir el adelanto frente a la prensa,
+  `h["dijo_funcionario"]` en la historia relacionada. Primicia = sin historia Y con un hecho (acción,
+  dato o anuncio); un saludo u opinión no lo es (revisión de Codex). Panel en Comunidad y "Lo que dijo
+  el funcionario" en el detalle de Noticias. **Costo real sin verificar**: Apify reporta $0.
+- B4 `lugares.py`: lugares con nombre (31, `lugares_gye.json` editable) y calles ("calle Rumichaca",
+  "av. 9 de Octubre", leídas palabra por palabra) con coordenadas de OpenStreetMap vía Nominatim
+  (1 pedido/s, User-Agent propio, caché `nominatim_cache.json`, caja de Guayaquil, una calle tiene
+  que volver como vía: la búsqueda libre de "Avenida 9 de Octubre" devolvía una iglesia). Sin red en
+  el hilo rápido: lo que falta queda pendiente y lo resuelve el hilo de Comunidad. El mapa muestra
+  noticias de 72 h con selector 10/24/72 y dice de dónde salió cada punto (sector, zona amplia,
+  lugar, calle). Medido con datos reales: 10 h de 15 a 19 noticias en el mapa, 72 h de 66 a 75; el
+  resto habla de la ciudad entera (se cuenta aparte).
+- B5: Bluesky y Mastodon fuera del Pulso y de Comunidad (`MONITOR_PULSO_BLUESKY`,
+  `MONITOR_PULSO_MASTODON`, `MONITOR_COMUNIDAD_BLUESKY` = 1 para volver a prenderlos).
+- Pruebas: `test_fase24_parteB.py` (27). Ajustadas 3 viejas que asumían Bluesky/Mastodon encendidos
+  y la ventana de X de 1 h.
+
+### Parte C — precisión (hecha; precisión real pendiente del CSV)
+- `categorias.py` (nuevo): 12 categorías con razón en una línea (reglas sin IA) y tipo de afirmación
+  (acción/anuncio/declaración/dato) con quién la hace. `monitor._aplicar_categoria` las pone en cada
+  historia (`categoria`, `categoria_razon`, `tipo`, `tipo_quien`) al final de `build_stories`; la IA
+  por lotes (`ia.analizar_lote`, misma llamada, gratis) manda cuando ya la vio, recortada por
+  `categorias.candado` (solo valores válidos; "quién" tiene que estar en el texto como palabras
+  completas). Las entradas viejas de `ia_cache.json` sin `util24` vuelven solas a la cola.
+- Medido sobre el CSV (BORRADOR, Fernando revisó 6 de 120 filas): categoría 25 % antes → reglas 61 %
+  → IA 85 %; tipo: reglas 65 %, IA 79 %. Sin categoría: 9,5 % con reglas solas (meta: menos de 10 %).
+- C3: los embeddings pendientes se calculan primero para lo de las últimas 72 h con más medios (antes,
+  lo más viejo primero: la Corte Suprema de EE.UU., 8 medios, seguía sin vector). En la franja de
+  coseno 0,70–0,80 con entidad, cifra o 2 palabras en común decide la IA gratuita
+  (`ia.mismo_hecho_lote`, `monitor._mismo_hecho_pendientes_registro`, 20 pares por pasada, caché
+  `mismo_hecho_cache.json` con versión/modelo/umbral en la clave). Nunca se pregunta por pares con
+  fecha, ciudad o servicio distintos. Prueba a mano: 14 de 16 pares bien; en seco sobre el registro
+  real, 10 de 20 pares unidos y todos los de plantilla separados. `_fusionar_par_registro` sacó la
+  fusión a una función (corrige además que una entrada absorbida seguía comparándose).
+- Interfaz: las pestañas de Noticias salen de las 12 categorías; el detalle muestra categoría, razón,
+  tipo y quién.
+- Pruebas: `test_fase24_parteC.py` (12).
+
+### Parte D — Internacional (hecha)
+- 13 feeds recortados en la Fase 20 reactivados (probados en vivo); Corriere (sin publicar desde 2025)
+  y Der Spiegel (7,5 días sin publicar) siguen apagados. 69 feeds, 29 internacionales.
+- Filtro útil/basura nota por nota (`monitor._aplicar_utilidad`, hilo rápido): marca de Fernando
+  (`util_manual.json`, botones Útil/Basura, `POST /api/util` con candado) > reglas
+  (`categorias.util_reglas`: titular roto, farándula, explicativos, deporte) > IA (`util24`).
+  "Por qué importa aquí" (`importa_aqui`, IA, 20 palabras). Tope de 8 notas por medio de un solo
+  medio (`MONITOR_INTL_TOPE_MEDIO`; caso Infobae). Lo descartado se ve con "Ver descartadas".
+- Pruebas: `test_fase24_parteD.py` (6).
+
+### Parte E — contraste por afirmación (hecha)
+- `contraste.evaluar_afirmacion` → `h["afirmacion"]`: respaldada / contradicha / parcial /
+  versión única / sin evidencia, siempre con citas (E1, E2... con su tipo: medio, repite, institución,
+  documento, comunidad, registro, declaración). Circularidad corregida: una institución nunca cuenta
+  como medio; un medio que dice "según X" o copia el boletín (mitad de palabras en común) "repite";
+  "expreso.ec" y "Expreso" son el mismo medio. En historias de Guayaquil dice qué parte aludida falta
+  (CNEL, Interagua/EMAPAG, ATM). Comunidad cuenta solo con 3 palabras específicas en común (sin
+  lugares ni fechas: con 2 traía quejas de robos para la nota del poste).
+- Caso de aceptación: "el poste retrasó las obras, según el Municipio" → versión única del Municipio,
+  falta la de CNEL; "retiro del poste" → respaldada por Extra y Expreso, el Municipio no cuenta.
+- Sobre los datos reales: respaldada 322, versión única 28, sin evidencia 291, contradicha 2.
+- Pruebas: `test_fase24_parteE.py` (10).
+
+### Parte F (F1 hecha; F2, F3 y F4 pendientes)
+- F1: `notificaciones.py` reemplaza a "Última hora" (sacada del menú). Reglas editables de
+  "importante" (`notificaciones.json`, desde la campana "Avisos" del dashboard, `POST
+  /api/notificaciones`): alto impacto en Guayaquil, historia con N medios, categorías de Guayaquil,
+  alerta corroborada, primicia de funcionario. Historial en `notificaciones_estado.json`; la primera
+  vez solo toma la foto; tope por hora; ntfy respeta el silencio 23–7; notificación nativa de Windows
+  con PowerShell (WinRT, sin ventana; probada: se muestra). Pruebas: `test_fase24_parteF.py` (7).
+- Pendiente: F2 (Oportunidades con la interfaz de la Fase 23), F3 (sacar "Buscar" e "Investigar en
+  vivo" por sección), F4 (Brave, Bing RSS, búsqueda en sitios).
+
+### Spike.exe se cerraba sin dejar rastro (diagnóstico abierto)
+- 30-sep 23:27: con el registro nuevo, `arranque.log` anotó "ventana cerrada" y una salida normal de
+  Python, sin ningún evento de Windows: esa vez la ventana se cerró a mano. La memoria va de 270 a
+  370 MB, con picos de 684 MB mientras trabaja el hilo de fondo (no crece sin parar).
+- Windows registró "Application Hang" de Spike.exe el 30-sep a las 14:59 y 19:00 (la ventana dejó de
+  responder y se cerró), y a las 19:11 el proceso desapareció sin ningún evento.
+- Medido: una pasada completa del feed deja al hilo de la ventana sin poder correr como máximo 0,9 s
+  (sonda en el hilo principal mientras corre `run_fast`): no alcanza los 5 s que Windows necesita
+  para marcar "no responde". La causa sigue sin identificar.
+- Agregado (`monitor._instalar_diagnostico_cierre`, solo en modo ventana): errores de Python sin
+  capturar de cualquier hilo y la salida del proceso van a `arranque.log`; una caída nativa va a
+  `fallos.log` (faulthandler); el cierre de la ventana queda anotado; cada 5 min un "latido" con la
+  memoria del proceso. La próxima vez se va a saber si se cerró la ventana, si se cayó o si creció
+  la memoria.
+
+### Depende de Fernando antes de seguir
+1. Revisar y corregir el CSV (menú lateral → "Revisar evaluación") y marcar cada fila revisada.
+2. Mirar en la consola de Apify cuánto cobra de verdad una corrida (Apify le dice $0 a Spike).
+3. Si quiere búsquedas de YouTube por barrio: un segundo proyecto de Google con otra clave, o bajar
+   las búsquedas por tema del Pulso social.

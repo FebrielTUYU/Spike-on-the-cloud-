@@ -33,6 +33,7 @@ credito mensual, no confirmado del todo).
 """
 import datetime as dt
 import json
+import threading
 import os
 import unicodedata
 import urllib.error
@@ -52,7 +53,10 @@ TIMEOUT_CORRIDA = 130  # una corrida real del actor midio ~25s; se deja margen g
 APIFY_BASE = "https://api.apify.com/v2"
 
 CONFIG_PATH = os.path.join(HERE, "x_config.json")
-CACHE_PATH = os.path.join(HERE, "x_cache.json")  # cache OPERATIVO (ids vistos, tweets por historia) -- el gasto vive en redes.py
+CACHE_PATH = os.path.join(HERE, "x_cache.json")
+# Fase 18 (P1-5.2): cuentas que informan en tiempo real (ATM, ECU 911,
+# Bomberos, Municipio...). Archivo EDITABLE por Fernando (no es un secreto).
+CUENTAS_PATH = os.path.join(HERE, "x_cuentas_locales.json")  # cache OPERATIVO (ids vistos, tweets por historia) -- el gasto vive en redes.py
 
 last_error = None
 
@@ -113,6 +117,9 @@ def _guardar_cache(cache):
     os.replace(tmp, CACHE_PATH)
 
 
+_LOCK = threading.RLock()  # Fase 20b: comunidad_loop + trabajador comparten x_cache
+
+
 def _ids_vistos(clave):
     return set(_cargar_cache().get("vistos", {}).get(clave, []))
 
@@ -120,22 +127,26 @@ def _ids_vistos(clave):
 def _marcar_vistos(clave, ids):
     if not ids:
         return
-    cache = _cargar_cache()
-    vistos = cache.setdefault("vistos", {})
-    actuales = set(vistos.get(clave, [])) | set(ids)
-    vistos[clave] = list(actuales)[-500:]  # tope: no crecer sin limite
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        vistos = cache.setdefault("vistos", {})
+        actuales = set(vistos.get(clave, [])) | set(ids)
+        vistos[clave] = list(actuales)[-500:]  # tope: no crecer sin limite
+        _guardar_cache(cache)
 
 
 def guardar_tweets_historia(link, tweets):
-    cache = _cargar_cache()
-    hs = cache.setdefault("historias", {})
-    hs[link] = {"tweets": tweets, "ts": dt.datetime.now(dt.timezone.utc).isoformat()}
-    _guardar_cache(cache)
+    with _LOCK:
+        cache = _cargar_cache()
+        hs = cache.setdefault("historias", {})
+        hs[link] = {"tweets": tweets, "ts": dt.datetime.now(dt.timezone.utc).isoformat()}
+        _guardar_cache(cache)
 
 
 def tweets_de_historia(link):
-    return _cargar_cache().get("historias", {}).get(link, {}).get("tweets", [])
+    # Fase 21: los guardados de antes pueden ser viejos; al leer, solo VENTANA_H.
+    ts = _cargar_cache().get("historias", {}).get(link, {}).get("tweets", [])
+    return [t for t in ts if _dentro_de(t, VENTANA_H)]
 
 
 # ------------------------- llamada real a Apify (unico punto que golpea la red) -------------------------
@@ -240,11 +251,21 @@ def _buscar(search_terms, max_items=20, query_type="Latest", lang="es", actor=AC
 
 # ------------------------- capa 1: historias -------------------------
 
+# Fase 21: nada de mas de VENTANA_H horas entra como nuevo (pedido de Fernando).
+VENTANA_H = float(os.environ.get("MONITOR_VENTANA_H", "10"))
+
+
 def buscar_historia(query, max_items=25, simular=False, tope_seguridad_usd=0.30):
     """Tweets de una historia puntual, lang:es, ordenado por 'Latest'.
     'query' ya viene armado por el llamador con las entidades de la
-    historia (nombres/siglas/lugar), NUNCA con el nombre de una categoria."""
-    return _buscar([query], max_items=max_items, simular=simular, tope_seguridad_usd=tope_seguridad_usd)
+    historia (nombres/siglas/lugar), NUNCA con el nombre de una categoria.
+    Fase 21: con 'since:' de VENTANA_H y filtro por createdAt al recibir
+    (antes traia tweets de dias atras)."""
+    items, costo = _buscar(["%s %s" % (query, _since(VENTANA_H))], max_items=max_items, simular=simular,
+                           tope_seguridad_usd=tope_seguridad_usd)
+    if isinstance(items, list):
+        items = [t for t in items if _dentro_de(t, VENTANA_H)]
+    return items, costo
 
 
 # ------------------------- capa 2: debate (respuestas a un tweet) -------------------------
@@ -353,6 +374,112 @@ def tweet_pertenece(tweet, entidades):
     if any(w in loc for w in ("ecuador", "guayaquil", "quito", "cuenca", " ec", "gye")):
         return True
     return _menciona_entidad(tweet.get("text", ""), entidades)
+
+
+# ------------------------- Fase 18 (P1-5): consultas que encuentran lo que pasa AHORA -------------------------
+# Diagnostico real (Fase 18): las alertas buscaban "corte_luz Guayaquil" y
+# "corte_agua Guayaquil" (la CLAVE interna, con guion bajo -- no matchea nada
+# en X), "inundacion" sin tilde, y 8 terminos repartidos en 10 tweets por
+# hora (~1 por termino). Ahora: UNA consulta con OR, palabras reales con
+# tilde, y 'since:' de las ultimas horas. Por si el actor no respeta 'since:',
+# se vuelve a filtrar por createdAt al recibir.
+
+def _since(horas, ahora=None):
+    ahora = ahora or dt.datetime.now(dt.timezone.utc)
+    return (ahora - dt.timedelta(hours=horas)).strftime("since:%Y-%m-%d_%H:%M:%S_UTC")
+
+
+def _termino(t):
+    t = (t or "").strip()
+    return '"%s"' % t if " " in t else t
+
+
+def _or(terminos):
+    ts = [_termino(t) for t in terminos if t and t.strip()]
+    if not ts:
+        return ""
+    return ts[0] if len(ts) == 1 else "(%s)" % " OR ".join(ts)
+
+
+def consulta_alertas(terminos, lugar="Guayaquil", horas=2, ahora=None):
+    return " ".join(x for x in (_or(terminos), _termino(lugar), _since(horas, ahora)) if x)
+
+
+def cuentas_locales():
+    """Lista de cuentas de x_cuentas_locales.json ([] si no existe)."""
+    try:
+        with open(CUENTAS_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return []
+    return [c for c in (data.get("cuentas") or []) if c.get("usuario") and c.get("activa", True)]
+
+
+def consulta_cuentas(cuentas, horas=2, ahora=None):
+    usuarios = ["from:%s" % c["usuario"].lstrip("@") for c in cuentas if c.get("usuario")]
+    if not usuarios:
+        return ""
+    bloque = usuarios[0] if len(usuarios) == 1 else "(%s)" % " OR ".join(usuarios)
+    return "%s %s" % (bloque, _since(horas, ahora))
+
+
+# Fase 23: la busqueda de X acepta consultas de largo limitado (~512
+# caracteres). Muchas cuentas en un solo "from:A OR from:B ..." se parten en
+# tandas; cada tanda es UNA corrida (se paga por tweet devuelto, no por cuenta).
+TANDA_MAX_CHARS = int(os.environ.get("MONITOR_X_TANDA_CHARS", "380"))
+
+
+def tandas_cuentas(cuentas, max_chars=TANDA_MAX_CHARS):
+    """[[cuenta, ...], ...] tal que cada consulta_cuentas() de una tanda entra en max_chars."""
+    out, actual, largo = [], [], 0
+    for c in cuentas:
+        u = (c.get("usuario") or "").lstrip("@")
+        if not u:
+            continue
+        extra = len("from:%s OR " % u)
+        if actual and largo + extra > max_chars:
+            out.append(actual)
+            actual, largo = [], 0
+        actual.append(c)
+        largo += extra
+    if actual:
+        out.append(actual)
+    return out
+
+
+def consulta_evento(evento, terminos, horas=2, ahora=None):
+    """Busqueda REACTIVA para un evento en curso (historia madre): palabras
+    del tipo de hecho + sectores de las notas. Sin sectores, la ciudad."""
+    sectores = [x for x in (evento.get("sectores") or []) if x and x not in ("Norte", "Sur")]
+    lugar = _or(sectores) if sectores else _termino(evento.get("lugar") or "Guayaquil")
+    return " ".join(x for x in (_or(terminos), lugar, _since(horas, ahora)) if x)
+
+
+def _dentro_de(tweet, horas):
+    f = fecha_iso(tweet.get("createdAt", ""))
+    if not f:
+        return False
+    d = dt.datetime.fromisoformat(f)
+    return (dt.datetime.now(dt.timezone.utc) - d).total_seconds() <= horas * 3600
+
+
+def buscar_consulta(consulta, clave_vistos, horas=2, max_items=15, simular=False, tope_seguridad_usd=0.30):
+    """Una consulta ya armada. Devuelve (tweets NUEVOS de las ultimas 'horas',
+    costo). Dedup por id (clave_vistos)."""
+    items, costo = _buscar([consulta], max_items=max_items, query_type="Latest",
+                            simular=simular, tope_seguridad_usd=tope_seguridad_usd)
+    if simular or items is None:
+        return items, costo
+    recientes = [t for t in items if _dentro_de(t, horas)]
+    vistos = _ids_vistos(clave_vistos)
+    nuevos = [t for t in recientes if str(t.get("id", "")) not in vistos]
+    _marcar_vistos(clave_vistos, [str(t.get("id", "")) for t in items])
+    return nuevos, costo
+
+
+def buscar_alertas(terminos, lugar="Guayaquil", horas=2, max_items=15, simular=False, tope_seguridad_usd=0.30):
+    return buscar_consulta(consulta_alertas(terminos, lugar, horas), "alertas_gye", horas=horas,
+                           max_items=max_items, simular=simular, tope_seguridad_usd=tope_seguridad_usd)
 
 
 # ------------------------- backend "oficial" (stub) -------------------------

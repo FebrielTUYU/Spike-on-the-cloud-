@@ -1,0 +1,21 @@
+{
+  "_ayuda": "Funcionarios cuyos tuits Spike lee cada pocos minutos (via Apify). 'usuario' sin @. 'activa': false para pausar. No agregues usuarios sin comprobar que existen.",
+  "funcionarios": [
+    {
+      "usuario": "JohnReimberg",
+      "nombre": "John Reimberg",
+      "cargo": "Ministro del Interior",
+      "area": "seguridad",
+      "activa": true,
+      "verificado": false
+    },
+    {
+      "usuario": "MinInteriorEc",
+      "nombre": "Ministerio del Interior",
+      "cargo": "Ministerio del Interior",
+      "area": "seguridad",
+      "activa": true,
+      "verificado": false
+    }
+  ]
+}

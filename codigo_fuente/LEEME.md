@@ -203,3 +203,40 @@ un enlace "Desde el celular". Tocar cualquier aviso también lo abre.
 dashboard, nunca los otros archivos. No compartas `movil.json` ni el tema de ntfy:
 quien tenga el tema puede leer tus avisos. Para que el Monitor vuelva a ser solo
 local: `"acceso_red": false`.
+
+
+## Fase 24: claves de IA gratuita (para que el trabajo de fondo no gaste)
+
+Spike va a repartir el trabajo de fondo entre varios servicios de IA **gratuitos**. La clave
+de Gemini que ya tenés (la pagada) queda solo para lo que vos pedís: el chat, el Asistente y
+los documentos de tus casos. Hacen falta tres claves nuevas. Cada una va en una línea del
+archivo `.env` (el que está junto a `Spike.exe`), con este formato exacto:
+
+```
+GROQ_API_KEY=pega-aqui-la-clave
+CEREBRAS_API_KEY=pega-aqui-la-clave
+GEMINI_FREE_KEY=pega-aqui-la-clave
+```
+
+No borres la línea `GEMINI_API_KEY` que ya está: esa es la pagada y se sigue usando.
+
+**1. Groq** (ya tenés cuenta): entrá a https://console.groq.com, menú **API Keys** →
+**Create API Key**, ponele de nombre "Spike" y copiá la clave (empieza con `gsk_`; se ve una
+sola vez).
+
+**2. Cerebras**: entrá a https://cloud.cerebras.ai, creá la cuenta gratis (no pide tarjeta),
+menú **API Keys** → **Generate API Key**, copiala.
+
+**3. Gemini gratis (proyecto aparte, sin facturación)**: entrá a https://aistudio.google.com
+con tu cuenta de Google → **Get API key** → **Create API key** → elegí **Create API key in new
+project** (un proyecto NUEVO). No le actives facturación a ese proyecto: así nunca cobra, y
+cuando se acaba el cupo del día, simplemente para hasta el día siguiente. Copiá la clave.
+Importante: tiene que ser un proyecto distinto del de tu clave pagada; si la creás en el
+mismo, comparten cupo y cobro.
+
+**Privacidad:** los planes gratuitos pueden usar lo que se les manda para entrenar sus
+modelos. Por eso Spike solo les manda noticias públicas. Tus casos, documentos y notas van
+únicamente por la clave pagada (o no van).
+
+Después de pegar las claves, cerrá y volvé a abrir Spike. En Estadísticas → "IA en la nube"
+vas a ver cuánto cupo le queda a cada servicio.

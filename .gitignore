@@ -1,2 +1,7 @@
 ﻿codigo_fuente/.env
 codigo_fuente/x_config.json
+
+desktop.ini
+*.bak-*
+codigo_fuente/fallos.log
+*.tmp

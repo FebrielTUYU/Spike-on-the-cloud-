@@ -27,7 +27,7 @@ def _story(titular, ciudad="Guayaquil", es_local=True, link="https://x/1", resum
 def _post(fuente, texto, autor="alguien", tipo="persona", comentarios_n=0, comentarios=None):
     return social.SocialPost(fuente=fuente, texto=texto, autor=autor, url="https://x/%s" % autor,
                               likes=1, reposts=0, comentarios_n=comentarios_n,
-                              comentarios=comentarios or [], tipo=tipo, fecha=m.now_utc().strftime("%Y-%m-%d"))
+                              comentarios=comentarios or [], tipo=tipo, fecha=m.now_utc().isoformat())  # Fase 21: hora real (ventana de 10 h)
 
 
 class TestSocialHistorias(unittest.TestCase):

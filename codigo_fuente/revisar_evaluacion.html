@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spike — Revisar evaluación</title>
+<link rel="icon" href="logo.png">
+<style>
+  :root{ --bg:#edf1ef; --card:#fff; --ink:#16181d; --muted:#5b6472; --line:#dbe2de; --chip:#e9f0ec;
+         --spike:#1f8a5f; --spike-dk:#0f5c3e; --chrome:#0d1813; --aviso:#8a5a00; --aviso-bg:#fff3d6; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0e1411; --card:#17201c; --ink:#e7eee9; --muted:#93a59b; --line:#26332d; --chip:#1e2924;
+           --spike:#35b884; --spike-dk:#7fd6a8; --aviso:#ffd88a; --aviso-bg:#3a2c0c; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+  .appbar{height:48px;background:var(--chrome);color:#e4eee8;display:flex;align-items:center;gap:10px;padding:0 14px;
+          border-bottom:3px solid var(--spike);position:sticky;top:0;z-index:5;}
+  .appbar b{font-size:17px} .appbar a{color:#8ea599;margin-left:auto;font-size:13px}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 16px 80px;}
+  h1{font-size:20px;margin:6px 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+  .barra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--card);border:1px solid var(--line);
+         border-radius:10px;padding:10px 12px;margin:0 0 14px;position:sticky;top:56px;z-index:4;}
+  .barra .prog{flex:1;min-width:160px}
+  .kbar{height:8px;background:var(--chip);border-radius:4px;overflow:hidden;margin-top:4px}
+  .kbar span{display:block;height:100%;background:var(--spike)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{font:inherit;font-size:13px;font-weight:600;border:0;background:var(--card);color:var(--muted);padding:6px 10px;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--spike);color:#fff}
+  input[type=search]{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:180px}
+  .ayuda{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13.5px}
+  .ayuda summary{cursor:pointer;font-weight:700}
+  .ayuda dt{font-weight:700;margin-top:6px} .ayuda dd{margin:0 0 0 12px;color:var(--muted)}
+  .fila{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 10px}
+  .fila.ok{border-left-color:var(--spike)}
+  .fila .t{font-weight:700;font-size:15px;margin:0 0 2px}
+  .fila .t a{color:inherit}
+  .fila .m{color:var(--muted);font-size:12.5px;margin:0 0 8px}
+  .nota{font-size:12.5px;color:var(--aviso);background:var(--aviso-bg);border-radius:6px;padding:3px 8px;display:inline-block;margin:0 0 8px}
+  .campos{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+  .campos label{display:flex;flex-direction:column;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);gap:3px}
+  .campos select,.campos input{font:inherit;font-size:13.5px;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--bg);
+    border:1px solid var(--line);border-radius:6px;padding:5px 6px;min-width:0;width:100%}
+  .spike{font-size:12px;color:var(--muted);margin-top:8px}
+  .pie{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .pie input[type=text]{flex:1;min-width:160px;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+  .btn{font:inherit;font-size:13px;font-weight:700;border:0;border-radius:8px;padding:7px 14px;cursor:pointer;background:var(--spike);color:#fff}
+  .btn.sec{background:var(--chip);color:var(--ink);border:1px solid var(--line)}
+  .estado{font-size:12px;color:var(--muted)}
+  .vacio{color:var(--muted);text-align:center;padding:40px}
+  @media (max-width:800px){ .campos{grid-template-columns:repeat(2,minmax(0,1fr))} .barra{top:48px} }
+</style>
+</head>
+<body>
+<div class="appbar"><b>Spike</b><span>Revisar evaluación (Fase 24)</span><a href="dashboard.html">Volver al dashboard</a></div>
+<div class="wrap">
+  <h1>Revisar las 120 historias de la evaluación</h1>
+  <p class="sub">Estas etiquetas son la vara con la que se mide si Spike mejora. Claude las prellenó; vos decidís. Cada cambio se guarda solo. Cuando una historia esté bien, tocá <b>"Está bien"</b> (queda marcada en verde). Hasta que las 120 estén revisadas, Spike no reporta precisión.</p>
+  <details class="ayuda"><summary>Qué significa cada columna</summary>
+    <dl>
+      <dt>Categoría</dt><dd>De qué trata. Es la lista nueva propuesta (Obras y servicios, Movilidad, Riesgos y clima, Economía y Empleo separados…). Si una categoría te sobra o te falta, escribilo en el comentario.</dd>
+      <dt>Ámbito</dt><dd>Guayaquil (incluye Samborondón y Durán), resto de Ecuador, o mundo. Un caso ecuatoriano contado por un medio extranjero es de Ecuador.</dd>
+      <dt>Tipo</dt><dd><b>acción</b>: algo que ya pasó y se puede verificar. <b>anuncio</b>: algo que se hará. <b>declaración</b>: la versión u opinión de alguien ("según el Municipio…"). <b>dato</b>: una cifra con fuente.</dd>
+      <dt>Ciudad</dt><dd>Dónde pasó. Para el mundo, el país.</dd>
+      <dt>Útil</dt><dd>¿Aporta un hecho, dato o decisión de interés público? Deportes, farándula y relleno van en "no".</dd>
+      <dt>Grupo</dt><dd>Dos filas con el mismo grupo (G1, G2…) son el MISMO hecho y Spike debería unirlas. Un "?" al final significa duda: se ignora hasta que lo quites o lo borres.</dd>
+    </dl>
+  </details>
+  <div class="barra">
+    <div class="prog"><span id="progTxt">Cargando…</span><div class="kbar"><span id="progBar" style="width:0"></span></div></div>
+    <div class="seg" id="filtro">
+      <button data-f="pend" class="on">Pendientes</button><button data-f="revisar">Con "REVISAR"</button><button data-f="todas">Todas</button>
+    </div>
+    <input type="search" id="q" placeholder="Buscar titular…">
+  </div>
+  <div id="lista"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const urlOk=u=>/^https?:\/\//i.test(String(u||""))?u:"";
+const ETQ={politica:"Política",economia:"Economía",empleo:"Empleo",seguridad:"Seguridad",justicia:"Justicia",
+  obras_servicios:"Obras y servicios públicos",movilidad:"Movilidad y tránsito",riesgos_clima:"Riesgos y clima",
+  salud:"Salud",educacion:"Educación",sociedad_cultura:"Sociedad y cultura",entretenimiento_deporte:"Entretenimiento y deporte"};
+let FILAS=[], CATS=[], filtro="pend";
+function opciones(vals, actual, etq){ return vals.map(v=>`<option value="${esc(v)}"${v===actual?" selected":""}>${esc(etq?(etq[v]||v||"(vacío)"):(v||"(vacío)"))}</option>`).join(""); }
+function filaHTML(f){
+  const ok=(f.revisado_por_fernando||"").trim()==="si";
+  const link=urlOk(f.link);
+  return `<div class="fila${ok?" ok":""}" data-id="${esc(f.id)}">
+    <p class="t">${f.id}. ${link?`<a href="${esc(link)}" target="_blank" rel="noopener">${esc(f.titular)}</a>`:esc(f.titular)}</p>
+    <p class="m">${esc(f.medios)}</p>
+    ${f.nota_claude?`<span class="nota">${esc(f.nota_claude)}</span>`:""}
+    <div class="campos">
+      <label>Categoría<select data-c="categoria_esperada">${opciones([""].concat(CATS), f.categoria_esperada, ETQ)}</select></label>
+      <label>Ámbito<select data-c="ambito_esperado">${opciones(["guayaquil","ecuador","mundo",""], f.ambito_esperado, {guayaquil:"Guayaquil",ecuador:"Resto de Ecuador",mundo:"Mundo"})}</select></label>
+      <label>Tipo<select data-c="tipo_esperado">${opciones(["accion","anuncio","declaracion","dato",""], f.tipo_esperado, {accion:"Acción",anuncio:"Anuncio",declaracion:"Declaración",dato:"Dato"})}</select></label>
+      <label>Ciudad<input data-c="ciudad_esperada" value="${esc(f.ciudad_esperada)}"></label>
+      <label>Útil<select data-c="util_esperado">${opciones(["si","no",""], f.util_esperado, {si:"Sí",no:"No (basura)"})}</select></label>
+      <label>Grupo<input data-c="grupo" value="${esc(f.grupo)}" placeholder="vacío = solo"></label>
+    </div>
+    <div class="spike">Lo que dice Spike hoy: ${esc(f.spike_seccion)} · ${esc(f.spike_temas||"sin temas")} · ${esc(f.spike_ambito)} · ${esc(f.spike_ciudad||"sin ciudad")}</div>
+    <div class="pie"><input type="text" data-c="comentario_fernando" value="${esc(f.comentario_fernando)}" placeholder="Comentario (opcional)">
+      <button class="btn${ok?" sec":""}" data-ok>${ok?"Desmarcar":"Está bien"}</button><span class="estado"></span></div>
+  </div>`;
+}
+function visibles(){
+  const q=$("#q").value.toLowerCase().trim();
+  return FILAS.filter(f=>{
+    if(q && !f.titular.toLowerCase().includes(q)) return false;
+    if(filtro==="pend") return (f.revisado_por_fernando||"").trim()!=="si";
+    if(filtro==="revisar") return /REVISAR/.test(f.nota_claude||"") || /\?$/.test(f.grupo||"");
+    return true;
+  });
+}
+function render(){
+  const n=FILAS.filter(f=>(f.revisado_por_fernando||"").trim()==="si").length;
+  $("#progTxt").textContent=`${n} de ${FILAS.length} revisadas`;
+  $("#progBar").style.width=(FILAS.length?100*n/FILAS.length:0)+"%";
+  const V=visibles();
+  $("#lista").innerHTML = V.length ? V.map(filaHTML).join("") : `<div class="vacio">${filtro==="pend"?"No quedan pendientes: ¡listo!":"Nada con este filtro."}</div>`;
+}
+async function guardar(id, cambios, el){
+  const est=el.closest(".fila").querySelector(".estado");
+  est.textContent="Guardando…";
+  try{
+    const d=await (await fetch("api/evaluacion",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,cambios})})).json();
+    if(!d.ok){ est.textContent="No se guardó: "+(d.mensaje||"error"); return false; }
+    Object.assign(FILAS.find(f=>String(f.id)===String(id)), cambios);
+    est.textContent="Guardado"; return true;
+  }catch(e){ est.textContent="No se pudo guardar (¿Spike está abierto?)"; return false; }
+}
+document.addEventListener("change", e=>{
+  const c=e.target.dataset.c; if(!c) return;
+  guardar(e.target.closest(".fila").dataset.id, {[c]: e.target.value}, e.target);
+});
+document.addEventListener("click", async e=>{
+  const b=e.target.closest("[data-ok]");
+  if(b){ const fila=b.closest(".fila"), id=fila.dataset.id, f=FILAS.find(x=>String(x.id)===id);
+    const nuevo=(f.revisado_por_fernando||"").trim()==="si"?"":"si";
+    if(await guardar(id,{revisado_por_fernando:nuevo},b)) setTimeout(render, nuevo?350:0); return; }
+  const fb=e.target.closest("#filtro button");
+  if(fb){ filtro=fb.dataset.f; document.querySelectorAll("#filtro button").forEach(x=>x.classList.toggle("on",x===fb)); render(); }
+});
+$("#q").addEventListener("input", render);
+fetch("api/evaluacion").then(r=>r.json()).then(d=>{
+  if(!d.ok){ $("#lista").innerHTML=`<div class="vacio">${esc(d.error||"No se pudo leer el CSV.")}</div>`; return; }
+  FILAS=d.filas; CATS=d.categorias; render();
+}).catch(()=>{ $("#lista").innerHTML=`<div class="vacio">Esta página necesita Spike abierto (se abre desde el dashboard).</div>`; });
+</script>
+</body>
+</html>

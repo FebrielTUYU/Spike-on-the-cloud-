@@ -35,7 +35,14 @@ IA_CTX = int(os.environ.get("MONITOR_IA_CTX", "4096"))
 # aplica nativo en cada fuente (mas barato: no se trae ni se paga lo viejo) Y
 # como respaldo centralizado en recolectar() (ver _es_reciente), por si una
 # fuente no filtra perfecto.
-SOCIAL_DIAS = int(os.environ.get("MONITOR_SOCIAL_DIAS", "7"))
+SOCIAL_DIAS = int(os.environ.get("MONITOR_SOCIAL_DIAS", "1"))
+# Fase 21 (pedido de Fernando, 2026-09-30: "estas recogiendo muchas noticias
+# viejas y tweets o videos viejos de hace 2 o 3 dias... quiero que no cojas otra
+# cosa que las cosas que se publican en las ultimas 10 horas"): ventana UNICA en
+# HORAS para todo lo que entra como nuevo desde redes. SOCIAL_DIAS (bajado de 7 a
+# 1) solo acota lo que se PIDE a cada API (su filtro nativo es por dia); el corte
+# real es VENTANA_H, re-aplicado sobre el resultado en recolectar().
+VENTANA_H = float(os.environ.get("MONITOR_VENTANA_H", "10"))
 
 # ------------------------- alcance geografico (Problema 1) -------------------------
 # Antes TODO el pulso social usaba un solo subreddit fijo (r/ecuador) y
@@ -63,19 +70,52 @@ YT_REGION_POR_AMBITO = {
     "internacional": {},  # sin regionCode/relevanceLanguage: no acota idioma/region
 }
 
-def _es_reciente(fecha, dias):
-    """True si 'fecha' (YYYY-MM-DD, o mas largo -- se usan los primeros 10
-    caracteres) esta dentro de los ultimos 'dias' dias. Sin fecha valida =
+def _iso_completo(valor):
+    """Fase 18 (P1-7): fecha COMPLETA con hora, en ISO UTC. Antes cada fuente
+    guardaba solo 'YYYY-MM-DD' (se recortaba con [:10]) -- sin hora no se
+    puede decir "hace 20 min" ni distinguir un post de esta tarde de uno de
+    anoche, y una alerta de ayer quedaba igual que una de hoy. Acepta ISO
+    (con 'Z' o con offset), epoch (segundos) o 'YYYY-MM-DD' (se deja asi:
+    no se inventa una hora que la fuente no dio). '' si no se puede leer."""
+    if valor in (None, ""):
+        return ""
+    try:
+        if isinstance(valor, (int, float)):
+            return dt.datetime.fromtimestamp(float(valor), dt.timezone.utc).isoformat(timespec="seconds")
+        v = str(valor).strip()
+        if len(v) == 10:
+            dt.datetime.strptime(v, "%Y-%m-%d")
+            return v
+        d = dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=dt.timezone.utc)
+        return d.astimezone(dt.timezone.utc).isoformat(timespec="seconds")
+    except (ValueError, OverflowError, OSError):
+        return ""
+
+
+def _fecha_dt(fecha):
+    f = _iso_completo(fecha)
+    if not f:
+        return None
+    if len(f) == 10:
+        return dt.datetime.strptime(f, "%Y-%m-%d").replace(tzinfo=dt.timezone.utc)
+    return dt.datetime.fromisoformat(f)
+
+
+def _es_reciente(fecha, dias=None, horas=None):
+    """True si 'fecha' esta dentro de los ultimos 'dias' dias (u 'horas'
+    horas, si se pasa). Acepta ISO completo o 'YYYY-MM-DD'. Sin fecha valida =
     no se puede CONFIRMAR que sea reciente = se descarta: mejor perder una
     publicacion real sin fecha clara que mostrar una vieja como si fuera de
     ahora (mismo criterio de 'ante la duda' que el resto del proyecto)."""
-    if not fecha:
+    f = _fecha_dt(fecha)
+    if f is None:
         return False
-    try:
-        f = dt.datetime.strptime(fecha[:10], "%Y-%m-%d").replace(tzinfo=dt.timezone.utc)
-    except ValueError:
-        return False
-    return 0 <= (dt.datetime.now(dt.timezone.utc) - f).days <= dias
+    delta = dt.datetime.now(dt.timezone.utc) - f
+    if horas is not None:
+        return -3600 <= delta.total_seconds() <= horas * 3600
+    return 0 <= delta.days <= (dias if dias is not None else SOCIAL_DIAS)
 
 
 @dataclass
@@ -165,7 +205,7 @@ def bluesky_buscar(query, limit=25, dias=None):
                 likes=int(p.get("likeCount", 0) or 0),
                 reposts=int(p.get("repostCount", 0) or 0),
                 comentarios_n=int(p.get("replyCount", 0) or 0),
-                fecha=(rec.get("createdAt") or p.get("indexedAt") or "")[:10],
+                fecha=_iso_completo(rec.get("createdAt") or p.get("indexedAt") or ""),
                 tipo="medio" if es_cuenta_medio(author.get("handle", ""),
                                                  author.get("displayName", "")) else "persona",
             ))
@@ -219,7 +259,7 @@ def reddit_buscar(query, subreddit="", limit=10, con_comentarios=3, dias=None):
                 reposts=int(d.get("ups", 0) or 0),
                 comentarios_n=int(d.get("num_comments", 0) or 0),
                 ratio=float(d.get("upvote_ratio", 0) or 0),
-                fecha=time.strftime("%Y-%m-%d", time.gmtime(d.get("created_utc", 0))) if d.get("created_utc") else "",
+                fecha=_iso_completo(d.get("created_utc")) if d.get("created_utc") else "",
             )
             if i < con_comentarios and permalink:
                 post.comentarios = _reddit_comentarios(permalink)
@@ -263,7 +303,9 @@ YT_COMMENTS = "https://www.googleapis.com/youtube/v3/commentThreads"
 # video (comentarios es la parte casi gratis de la cuota).
 YT_MAX_VIDEOS = 5
 YT_MAX_COMENTARIOS = 30
-YT_DIAS = 30  # solo videos de los ultimos N dias: conversacion actual, no historica
+# Fase 21: 30 -> 2 dias. Videos viejos traian comentarios viejos (y el video
+# en si aparecia en el panel). Los comentarios igual se cortan a VENTANA_H.
+YT_DIAS = int(os.environ.get("MONITOR_YT_DIAS", "2"))
 YT_CHANNELS = "https://www.googleapis.com/youtube/v3/channels"
 
 def _yt_comment_url(video_id, comment_id):
@@ -378,7 +420,7 @@ def youtube_buscar(query, max_videos=YT_MAX_VIDEOS, max_comentarios=YT_MAX_COMEN
                 texto = (sn.get("textDisplay") or "").strip()
                 if not texto:
                     continue
-                fecha = (sn.get("publishedAt") or "")[:10]
+                fecha = _iso_completo(sn.get("publishedAt") or "")
                 if not _es_reciente(fecha, dias):
                     continue  # comentario viejo en un video que sigue elegible: se descarta
                 out.append(SocialPost(
@@ -521,7 +563,7 @@ def telegram_buscar(query, canales=None, limite_por_canal=20, dias=None):
             if palabras and not any(w in _sin_acentos(texto).lower() for w in palabras):
                 continue
             tm = _RE_TG_TIME.search(bloque)
-            fecha = tm.group(1)[:10] if tm else ""
+            fecha = _iso_completo(tm.group(1)) if tm else ""
             if not _es_reciente(fecha, dias):
                 continue
             vm = _RE_TG_VIEWS.search(bloque)
@@ -631,7 +673,7 @@ def mastodon_buscar(query, instancia=None, limit=20, dias=None):
                 likes=int(p.get("favourites_count", 0) or 0),
                 reposts=int(p.get("reblogs_count", 0) or 0),
                 comentarios_n=int(p.get("replies_count", 0) or 0),
-                fecha=(p.get("created_at") or "")[:10],
+                fecha=_iso_completo(p.get("created_at") or ""),
                 tipo="medio" if es_cuenta_medio(cuenta.get("acct", ""), cuenta.get("display_name", "")) else "persona",
             ))
         return out
@@ -643,6 +685,13 @@ def mastodon_buscar(query, instancia=None, limit=20, dias=None):
 
 
 # ------------------------- unificacion -------------------------
+
+# Fase 24 (B5, pedido de Fernando): Bluesky y Mastodon fuera del Pulso social
+# (en la corrida medida aportaron 0 publicaciones utiles a Comunidad). El codigo
+# queda; se vuelven a prender con MONITOR_PULSO_BLUESKY=1 / MONITOR_PULSO_MASTODON=1.
+PULSO_BLUESKY = os.environ.get("MONITOR_PULSO_BLUESKY", "0") == "1"
+PULSO_MASTODON = os.environ.get("MONITOR_PULSO_MASTODON", "0") == "1"
+
 
 def recolectar(query, subreddit="ecuador", limite=15, youtube=True, dias=None, ambito=None, term_base=None):
     """Junta Bluesky + Reddit + YouTube (si hay MONITOR_YT_KEY y youtube=True)
@@ -686,8 +735,8 @@ def recolectar(query, subreddit="ecuador", limite=15, youtube=True, dias=None, a
     # devuelve vacio SIN fallar (0 resultados reales, no error) hereda por
     # error el ultimo mensaje que dejo la fuente anterior.
     last_error = None
-    b = bluesky_buscar(query, limit=limite, dias=dias)
-    if not b and last_error: errs.append(last_error)
+    b = bluesky_buscar(query, limit=limite, dias=dias) if PULSO_BLUESKY else []
+    if PULSO_BLUESKY and not b and last_error: errs.append(last_error)
     last_error = None
     r = reddit_buscar(query, subreddit=subreddit, limit=limite, dias=dias)
     if not r and last_error: errs.append(last_error)
@@ -708,12 +757,19 @@ def recolectar(query, subreddit="ecuador", limite=15, youtube=True, dias=None, a
     # de ambito para Mastodon queda a cargo del respaldo por texto
     # (_post_es_foraneo en monitor.py), igual que ya se hacia con Bluesky/
     # Reddit cuando el termino solo no alcanza a acotar geografia.
-    m = mastodon_buscar(term_base or query, dias=dias)
-    if not m and last_error: errs.append(last_error)
+    # Fase 18 (P1-7): Mastodon queda FUERA de los ambitos locales -- no hay
+    # comunidad ecuatoriana ahi; medido el 2026-09-30, los 20 temas del Pulso
+    # traian posts de Espana, Chile, Venezuela y Eslovaquia etiquetados como
+    # "guayaquil". Sigue sirviendo para lo internacional.
+    m = []
+    if PULSO_MASTODON and ambito not in ("ecuador", "guayaquil"):
+        m = mastodon_buscar(term_base or query, dias=dias)
+        if not m and last_error: errs.append(last_error)
     last_error = None
     t = telegram_buscar(query, dias=dias)
     if not t and last_error: errs.append(last_error)
-    recientes = [p for p in (b + r + y + m + t) if _es_reciente(p.fecha, dias)]
+    recientes = [p for p in (b + r + y + m + t)
+                 if _es_reciente(p.fecha, dias) and _es_reciente(p.fecha, horas=VENTANA_H)]
     posts = filtrar_ruido(recientes)
     return posts, errs
 

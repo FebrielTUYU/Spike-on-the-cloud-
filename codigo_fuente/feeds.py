@@ -17,6 +17,7 @@ seccion debe ser "politica" o "economia" (asi filtra el dashboard).
 #   "auto"                    -> feed general: el programa clasifica cada nota
 #                               por palabras clave y descarta lo que no sea
 #                               politica ni economia.
+# Fase 24 (B3/E): fuentes institucionales = version oficial, nunca "medio".
 FEEDS = [
     # ---- El Universo: feeds POR SECCION (verificado) ----
     {"outlet": "El Universo", "seccion": "politica",
@@ -82,21 +83,21 @@ FEEDS = [
     {"outlet": "TC Television", "seccion": "auto", "url": "https://www.tctelevision.com/feed/"},
     # ^ TV con sede en Guayaquil (30 items reales, cobertura nacional real:
     #   Fiscalia, carcel de Pascuales, salud, Presidencia).
-    {"outlet": "Municipio de Guayaquil", "seccion": "auto", "ciudad": "Guayaquil",
+    {"outlet": "Municipio de Guayaquil", "seccion": "auto", "ciudad": "Guayaquil", "institucional": True,
      "url": "https://www.guayaquil.gob.ec/feed/"},
     # ^ "ciudad":"Guayaquil" a proposito: es LITERALMENTE el gobierno de la
     #   ciudad (12 items reales probados, cultura/servicios municipales) --
     #   mismo criterio que El Universo (Guayaquil) arriba, cada nota es de
     #   Guayaquil por definicion, no hace falta que el texto lo repita.
-    {"outlet": "Prefectura del Guayas", "seccion": "auto", "url": "https://www.guayas.gob.ec/feed/"},
+    {"outlet": "Prefectura del Guayas", "seccion": "auto", "institucional": True, "url": "https://www.guayas.gob.ec/feed/"},
     # ^ SIN "ciudad" a proposito: es la PROVINCIA (10 items reales probados,
     #   agua/infraestructura), cubre varios cantones ademas de Guayaquil
     #   (Duran, Samborondon, Milagro...) -- que la clasificacion geografica
     #   normal (is_ecuador/detect_city sobre el texto) decida caso por caso.
-    {"outlet": "ECU 911", "seccion": "auto", "url": "https://www.ecu911.gob.ec/feed/"},
+    {"outlet": "ECU 911", "seccion": "auto", "institucional": True, "url": "https://www.ecu911.gob.ec/feed/"},
     # ^ servicio de emergencias NACIONAL (10 items reales probados, seguridad
     #   real) -- sin "ciudad", cubre todo el pais.
-    {"outlet": "Presidencia Ecuador", "seccion": "auto", "url": "https://www.presidencia.gob.ec/feed/"},
+    {"outlet": "Presidencia Ecuador", "seccion": "auto", "institucional": True, "url": "https://www.presidencia.gob.ec/feed/"},
     # ^ gobierno nacional (10 items reales probados) -- mas cobertura real de
     #   Ejecutivo, no especifico de Guayaquil.
     # Respaldo pedido en Fase 1: busquedas de Google News por termino
@@ -123,6 +124,53 @@ FEEDS = [
      "url": "https://news.google.com/rss/search?q=Dur%C3%A1n%20Ecuador&hl=es-419&gl=EC&ceid=EC:es-419"},
     {"outlet": "Busqueda: Samborondon", "seccion": "auto", "google_news": True,
      "url": "https://news.google.com/rss/search?q=Samborond%C3%B3n&hl=es-419&gl=EC&ceid=EC:es-419"},
+    # Fase 20 (foco comunitario en Guayaquil): busquedas por BARRIO y por la
+    # palabra que usa la prensa ecuatoriana para la voz del barrio
+    # ("moradores"). Solo nombres de sector que no existen como palabra comun
+    # ni en otros paises (Guasmo, Isla Trinitaria, Mapasingue...); "Sauces" o
+    # "Alborada" quedan fuera de la busqueda por ambiguos (siguen detectandose
+    # en el texto por comunidad.py). NO verificadas en vivo desde la sesion
+    # en la nube (sin red a Google): si alguna devuelve error, se ve en el
+    # reporte de feeds y no rompe nada.
+    {"outlet": "Busqueda: barrios sur/oeste GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Guasmo%22%20OR%20%22Isla%20Trinitaria%22%20OR%20%22Cristo%20del%20Consuelo%22%20OR%20%22Socio%20Vivienda%22%20OR%20%22Monte%20Sina%C3%AD%22&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: barrios norte/noroeste GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Mapasingue%22%20OR%20%22Pascuales%22%20OR%20%22Basti%C3%B3n%20Popular%22%20OR%20%22Flor%20de%20Basti%C3%B3n%22%20OR%20%22Mucho%20Lote%22%20OR%20%22Martha%20de%20Rold%C3%B3s%22&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: moradores Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=moradores%20Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: vecinos Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=vecinos%20Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    # Fase 24 (B3): mas busquedas de Google News por INSTITUCION, por PROBLEMA y por
+    # barrio (probadas en vivo el 2026-09-30: todas respondieron con 100 items). El
+    # dedup normal del pipeline evita repetir lo que ya trae otro feed.
+    {"outlet": "Busqueda: Interagua", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=Interagua&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: CNEL Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=CNEL+Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: ATM Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=ATM+Guayaquil+tr%C3%A1nsito&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: Bomberos Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=Bomberos+Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: problemas Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=Guayaquil+%28%22sin+agua%22+OR+apag%C3%B3n+OR+baches+OR+inundaci%C3%B3n+OR+alcantarillado+OR+basura%29&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: obras Guayaquil", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=obras+Guayaquil+Municipio&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: barrios centro/norte GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Urdesa%22+OR+%22Ceibos%22+OR+%22Garzota%22+OR+%22Kennedy+Norte%22+OR+%22Samanes%22+OR+%22V%C3%ADa+a+la+Costa%22+OR+%22V%C3%ADa+a+Daule%22&hl=es-419&gl=EC&ceid=EC:es-419"},
+    {"outlet": "Busqueda: barrios sur/centro GYE", "seccion": "auto", "google_news": True,
+     "url": "https://news.google.com/rss/search?q=%22Suburbio%22+OR+%22Batall%C3%B3n+del+Suburbio%22+OR+%22Cerro+Santa+Ana%22+OR+%22Las+Pe%C3%B1as%22+OR+%22Fertisa%22+OR+%22Pradera%22+OR+%22Esteros%22+Guayaquil&hl=es-419&gl=EC&ceid=EC:es-419"},
+    # Fase 24 (B3): fuentes INSTITUCIONALES con feed que respondio en vivo (2026-09-30).
+    # "institucional": True = es la VERSION OFICIAL de la institucion, NO un medio:
+    # nunca cuenta como "medio que corrobora" en Contraste (Parte E). Probadas y
+    # descartadas ese dia: EMAPAG, Interagua y Gobernacion del Guayas (no
+    # responden), ATM (feed vacio).
+    {"outlet": "CNEL EP", "seccion": "auto", "institucional": True, "url": "https://www.cnelep.gob.ec/feed/"},
+    {"outlet": "Bomberos Guayaquil", "seccion": "auto", "institucional": True, "url": "https://www.bomberosguayaquil.gob.ec/feed/"},
+    {"outlet": "Secretaria de Gestion de Riesgos", "seccion": "auto", "institucional": True, "url": "https://www.gestionderiesgos.gob.ec/feed/"},
+    {"outlet": "INAMHI", "seccion": "auto", "institucional": True, "url": "https://www.inamhi.gob.ec/feed/"},
+    # Fase 24 (B3): medio local con feed que respondio (80 notas). Probados sin feed
+    # util ese dia: La Hora, Teleamazonas, Ecuavisa, Vistazo, El Telegrafo, Primicias, GK.
+    {"outlet": "Metro Ecuador", "seccion": "auto", "url": "https://www.metroecuador.com.ec/arc/outboundfeeds/rss/"},
 
     # ---- INTERNACIONALES ("intl": True) ----
     # Politica y ECONOMIA DEL MUNDO desde medios de afuera. NO se filtran a Ecuador:
@@ -138,24 +186,24 @@ FEEDS = [
     {"outlet": "La Nacion (AR)","seccion": "auto", "intl": True, "url": "https://www.lanacion.com.ar/arc/outboundfeeds/rss/category/el-mundo/?outputType=xml"},
     # -- Mexico --
     # {"outlet": "El Universal (MX)","seccion":"auto","intl":True,"url":"https://www.eluniversal.com.mx/rss.xml"},  # HTTP 404
-    {"outlet": "La Jornada",       "seccion": "auto", "intl": True, "url": "https://www.jornada.com.mx/rss/mundo.xml"},
+    {"outlet": "La Jornada",       "seccion": "auto", "intl": True, "url": "https://www.jornada.com.mx/rss/mundo.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- Estados Unidos (world + business) --
     {"outlet": "NYT",          "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"},
-    {"outlet": "NYT Business", "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"},
+    {"outlet": "NYT Business", "seccion": "auto", "intl": True, "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- Reino Unido (world + business) --
     {"outlet": "The Guardian","seccion": "auto", "intl": True, "url": "https://www.theguardian.com/world/rss"},
     {"outlet": "BBC News",    "seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/world/rss.xml"},
-    {"outlet": "BBC Business","seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+    {"outlet": "BBC Business","seccion": "auto", "intl": True, "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- Alemania --
-    {"outlet": "Der Spiegel","seccion": "auto", "intl": True, "url": "https://www.spiegel.de/international/index.rss"},
+    # {"outlet": "Der Spiegel","seccion": "auto", "intl": True, "url": "https://www.spiegel.de/international/index.rss"},  # Fase 24 (D): sigue apagada: lo mas nuevo tenia 7,5 dias (probado 2026-10-01)
     {"outlet": "DW",         "seccion": "auto", "intl": True, "url": "https://rss.dw.com/rdf/rss-sp-all"},
     # -- Japon (ediciones en ingles) --
-    {"outlet": "The Japan Times","seccion": "auto", "intl": True, "url": "https://www.japantimes.co.jp/feed/"},
+    {"outlet": "The Japan Times","seccion": "auto", "intl": True, "url": "https://www.japantimes.co.jp/feed/"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # {"outlet": "NHK World",    "seccion":"auto","intl":True,"url":"https://www3.nhk.or.jp/nhkworld/en/news/rss/all.xml"},  # HTTP 404
     # -- agregados 2026-09-23 (Problema 5), probados uno por uno --
     {"outlet": "Al Jazeera",   "seccion": "auto", "intl": True, "url": "https://www.aljazeera.com/xml/rss/all.xml"},
     {"outlet": "France24 (ES)","seccion": "auto", "intl": True, "url": "https://www.france24.com/es/rss"},
-    {"outlet": "SCMP",         "seccion": "auto", "intl": True, "url": "https://www.scmp.com/rss/91/feed"},
+    {"outlet": "SCMP",         "seccion": "auto", "intl": True, "url": "https://www.scmp.com/rss/91/feed"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- probados 2026-09-23, fallaron --
     # {"outlet": "Reuters World","seccion":"auto","intl":True,"url":"https://www.reutersagency.com/feed/?best-topics=world&post_type=best"},  # HTTP 404
     # {"outlet": "AP Top",       "seccion":"auto","intl":True,"url":"https://apnews.com/apf-topnews?format=rss"},  # HTTP 403
@@ -168,20 +216,30 @@ FEEDS = [
     {"outlet": "ABC.es (Internacional)", "seccion": "auto", "intl": True, "url": "https://www.abc.es/rss/feeds/abc_Internacional.xml"},
     {"outlet": "Euronews (ES)",  "seccion": "auto", "intl": True, "url": "https://es.euronews.com/rss"},
     {"outlet": "RFI (ES)",       "seccion": "auto", "intl": True, "url": "https://www.rfi.fr/es/rss"},
-    {"outlet": "Le Figaro",      "seccion": "auto", "intl": True, "url": "https://www.lefigaro.fr/rss/figaro_international.xml"},
-    {"outlet": "Corriere della Sera", "seccion": "auto", "intl": True, "url": "https://xml2.corriereobjects.it/rss/esteri.xml"},
-    {"outlet": "Der Standard",   "seccion": "auto", "intl": True, "url": "https://www.derstandard.at/rss/international"},
+    {"outlet": "Le Figaro",      "seccion": "auto", "intl": True, "url": "https://www.lefigaro.fr/rss/figaro_international.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
+    # {"outlet": "Corriere della Sera", "seccion": "auto", "intl": True, "url": "https://xml2.corriereobjects.it/rss/esteri.xml"},  # Fase 24 (D): sigue apagada: el feed no publica desde 2025 (probado 2026-10-01)
+    {"outlet": "Der Standard",   "seccion": "auto", "intl": True, "url": "https://www.derstandard.at/rss/international"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- Reino Unido / Canada / Australia (mas anglo) --
-    {"outlet": "Sky News",       "seccion": "auto", "intl": True, "url": "https://feeds.skynews.com/feeds/rss/world.xml"},
-    {"outlet": "NPR (World)",    "seccion": "auto", "intl": True, "url": "https://feeds.npr.org/1004/rss.xml"},
-    {"outlet": "CBC News (World)","seccion": "auto", "intl": True, "url": "https://www.cbc.ca/webfeed/rss/rss-world"},
-    {"outlet": "ABC News (AU)",  "seccion": "auto", "intl": True, "url": "https://www.abc.net.au/news/feed/51120/rss.xml"},
+    {"outlet": "Sky News",       "seccion": "auto", "intl": True, "url": "https://feeds.skynews.com/feeds/rss/world.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
+    {"outlet": "NPR (World)",    "seccion": "auto", "intl": True, "url": "https://feeds.npr.org/1004/rss.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
+    {"outlet": "CBC News (World)","seccion": "auto", "intl": True, "url": "https://www.cbc.ca/webfeed/rss/rss-world"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
+    {"outlet": "ABC News (AU)",  "seccion": "auto", "intl": True, "url": "https://www.abc.net.au/news/feed/51120/rss.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- Asia --
-    {"outlet": "The Hindu",      "seccion": "auto", "intl": True, "url": "https://www.thehindu.com/news/international/feeder/default.rss"},
-    {"outlet": "Straits Times",  "seccion": "auto", "intl": True, "url": "https://www.straitstimes.com/news/world/rss.xml"},
+    {"outlet": "The Hindu",      "seccion": "auto", "intl": True, "url": "https://www.thehindu.com/news/international/feeder/default.rss"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
+    {"outlet": "Straits Times",  "seccion": "auto", "intl": True, "url": "https://www.straitstimes.com/news/world/rss.xml"},  # Fase 24 (D): reactivada; el filtro util/basura decide nota por nota
     # -- America Latina (mas fuentes, mas Colombia -- vecino directo) --
-    {"outlet": "Infobae",        "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/"},
-    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/"},
+    # Fase 18 (P1-9): el feed GENERAL de Infobae/Semana traia sobre todo
+    # noticias locales de Mexico/Colombia, plantas, vallenato y farandula
+    # (medido en fetch_cache.json del 2026-09-30: Infobae 24 de 80 items
+    # /mexico/, 10 /colombia/, 4 /teleshow/; Semana casi todo /nacion/).
+    # 'rutas_permitidas': solo se quedan los items de esas secciones de la URL
+    # (mundo/region), mas cualquier item que mencione Ecuador. Si Fernando
+    # confirma un feed propio de mundo (ver SITEMAPS_Y_FEEDS_CANDIDATOS), se
+    # puede cambiar la URL y quitar el filtro.
+    {"outlet": "Infobae",        "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/",
+     "rutas_permitidas": ["america", "estados-unidos", "mundo", "economia"]},
+    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/",
+     "rutas_permitidas": ["mundo"]},
     {"outlet": "El Tiempo (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.eltiempo.com/rss/mundo.xml"},
     # -- probados 2026-09-23 (segunda tanda), fallaron --
     # {"outlet": "DW (ES)",        "seccion":"auto","intl":True,"url":"https://rss.dw.com/xml/rss-es-all"},  # "Error: no feed by that name"
@@ -315,3 +373,33 @@ WIKI_TERMS = {
     "Migracion": "Migración humana",
     "Cultura/Comunidad": "Cultura del Ecuador",
 }
+
+
+# ------------------------- Fase 18 (P1-8/P1-9): candidatos a probar desde la PC -------------------------
+# NO estan activos: la sesion donde se escribio esto no tenia acceso a los
+# medios. `python monitor.py probar_sitemaps` los prueba uno por uno desde la
+# PC de Fernando y guarda los que respondan (con notas de las ultimas 48 h) en
+# feeds_extra.json, que monitor.py suma a FEEDS al arrancar. Resultado de cada
+# prueba: ver la salida del comando (y CLAUDE.md, Fase 18).
+SITEMAPS_Y_FEEDS_CANDIDATOS = [
+    # news sitemaps ("ultimo minuto", suelen actualizarse antes que el RSS)
+    {"outlet": "El Comercio", "seccion": "auto", "tipo": "sitemap", "url": "https://www.elcomercio.com/sitemap-news.xml"},
+    {"outlet": "El Universo", "seccion": "auto", "tipo": "sitemap", "url": "https://www.eluniverso.com/arc/outboundfeeds/sitemap-news/?outputType=xml"},
+    {"outlet": "El Universo", "seccion": "auto", "tipo": "sitemap", "url": "https://www.eluniverso.com/sitemap-news.xml"},
+    {"outlet": "Expreso", "seccion": "auto", "tipo": "sitemap", "url": "https://www.expreso.ec/sitemap-news.xml"},
+    {"outlet": "Expreso", "seccion": "auto", "tipo": "sitemap", "url": "https://www.expreso.ec/news-sitemap.xml"},
+    {"outlet": "Extra", "seccion": "auto", "tipo": "sitemap", "url": "https://www.extra.ec/sitemap-news.xml"},
+    {"outlet": "Extra", "seccion": "auto", "tipo": "sitemap", "url": "https://www.extra.ec/news-sitemap.xml"},
+    {"outlet": "Primicias", "seccion": "auto", "tipo": "sitemap", "url": "https://www.primicias.ec/sitemap-news.xml"},
+    {"outlet": "Primicias", "seccion": "auto", "tipo": "sitemap", "url": "https://www.primicias.ec/news-sitemap.xml"},
+    {"outlet": "Ecuavisa", "seccion": "auto", "tipo": "sitemap", "url": "https://www.ecuavisa.com/sitemap-news.xml"},
+    {"outlet": "Ecuavisa", "seccion": "auto", "tipo": "sitemap", "url": "https://www.ecuavisa.com/arc/outboundfeeds/news-sitemap/?outputType=xml"},
+    # feeds de mundo de Infobae/Semana (P1-9), para reemplazar el filtro por ruta
+    {"outlet": "Infobae", "seccion": "auto", "intl": True, "url": "https://www.infobae.com/arc/outboundfeeds/rss/category/america/"},
+    {"outlet": "Semana (Colombia)", "seccion": "auto", "intl": True, "url": "https://www.semana.com/arc/outboundfeeds/rss/category/mundo/"},
+]
+
+
+# Fase 24 (B3/E): nombres de las fuentes institucionales (version oficial de una
+# parte; nunca cuentan como "medios que coinciden" en Contraste).
+OUTLETS_INSTITUCIONALES = {f["outlet"] for f in FEEDS if f.get("institucional")}

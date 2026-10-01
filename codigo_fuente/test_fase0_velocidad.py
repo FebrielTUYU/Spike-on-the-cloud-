@@ -98,14 +98,16 @@ class TestLatenciaPorFeed(unittest.TestCase):
                           "un link ya visto no deberia actualizar su first_seen")
 
     def test_calcula_mediana_y_peor_caso_reales(self):
+        # Fase 18 (P1-8): solo cuentan las mediciones "valida" (feed ya
+        # vigilado); las entradas sin ese campo son backlog de arranque.
         base = m.now_utc()
         reg = {
             "https://x/1": {"outlet": "X", "pub_date": (base - dt.timedelta(minutes=5)).isoformat(),
-                             "first_seen": base.isoformat()},
+                             "first_seen": base.isoformat(), "valida": True},
             "https://x/2": {"outlet": "X", "pub_date": (base - dt.timedelta(minutes=15)).isoformat(),
-                             "first_seen": base.isoformat()},
+                             "first_seen": base.isoformat(), "valida": True},
             "https://x/3": {"outlet": "X", "pub_date": (base - dt.timedelta(minutes=1)).isoformat(),
-                             "first_seen": base.isoformat()},
+                             "first_seen": base.isoformat(), "valida": True},
         }
         m._guardar_latencia(reg)
         stats = m.calcular_latencia_por_feed()

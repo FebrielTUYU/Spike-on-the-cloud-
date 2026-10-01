@@ -1,0 +1,241 @@
+{
+  "_ayuda": "Lugares de Guayaquil que el mapa puede ubicar. 'alias': como aparece en una nota (sin tildes ni mayusculas). 'consulta': lo que se busca en OpenStreetMap. Las coordenadas NO van aca: las trae Nominatim y quedan en nominatim_cache.json.",
+  "lugares": [
+    {
+      "nombre": "Aeropuerto Jose Joaquin de Olmedo",
+      "consulta": "Aeropuerto Internacional José Joaquín de Olmedo, Guayaquil",
+      "alias": [
+        "aeropuerto de guayaquil",
+        "aeropuerto jose joaquin de olmedo",
+        "aeropuerto internacional jose joaquin de olmedo"
+      ]
+    },
+    {
+      "nombre": "Terminal Terrestre",
+      "consulta": "Terminal Terrestre Jaime Roldós Aguilera, Guayaquil",
+      "alias": [
+        "terminal terrestre"
+      ]
+    },
+    {
+      "nombre": "Malecon 2000",
+      "consulta": "Malecón Simón Bolívar, Guayaquil",
+      "alias": [
+        "malecon 2000",
+        "malecon simon bolivar"
+      ]
+    },
+    {
+      "nombre": "Malecon del Salado",
+      "consulta": "Malecón del Salado, Guayaquil",
+      "alias": [
+        "malecon del salado"
+      ]
+    },
+    {
+      "nombre": "ESPOL",
+      "consulta": "Escuela Superior Politécnica del Litoral, Guayaquil",
+      "alias": [
+        "espol",
+        "escuela superior politecnica del litoral"
+      ]
+    },
+    {
+      "nombre": "Universidad de Guayaquil",
+      "consulta": "Universidad de Guayaquil, Guayaquil",
+      "alias": [
+        "universidad de guayaquil"
+      ]
+    },
+    {
+      "nombre": "Estadio Monumental",
+      "consulta": "Estadio Monumental Isidro Romero Carbo, Guayaquil",
+      "alias": [
+        "estadio monumental",
+        "monumental banco pichincha"
+      ]
+    },
+    {
+      "nombre": "Estadio George Capwell",
+      "consulta": "Estadio George Capwell, Guayaquil",
+      "alias": [
+        "estadio capwell",
+        "george capwell"
+      ]
+    },
+    {
+      "nombre": "Estadio Modelo",
+      "consulta": "Estadio Modelo Alberto Spencer, Guayaquil",
+      "alias": [
+        "estadio modelo",
+        "modelo alberto spencer"
+      ]
+    },
+    {
+      "nombre": "Penitenciaria del Litoral",
+      "consulta": "Penitenciaría del Litoral, Guayaquil",
+      "alias": [
+        "penitenciaria del litoral",
+        "carcel del litoral"
+      ]
+    },
+    {
+      "nombre": "Hospital Luis Vernaza",
+      "consulta": "Hospital Luis Vernaza, Guayaquil",
+      "alias": [
+        "hospital luis vernaza",
+        "luis vernaza"
+      ]
+    },
+    {
+      "nombre": "Hospital Teodoro Maldonado Carbo",
+      "consulta": "Hospital Teodoro Maldonado Carbo, Guayaquil",
+      "alias": [
+        "teodoro maldonado carbo"
+      ]
+    },
+    {
+      "nombre": "Hospital de Los Ceibos",
+      "consulta": "Hospital General del Norte de Guayaquil Los Ceibos",
+      "alias": [
+        "hospital los ceibos",
+        "hospital de los ceibos",
+        "hospital del iess los ceibos"
+      ]
+    },
+    {
+      "nombre": "Hospital Abel Gilbert Ponton",
+      "consulta": "Hospital Abel Gilbert Pontón, Guayaquil",
+      "alias": [
+        "abel gilbert",
+        "hospital guayaquil abel gilbert"
+      ]
+    },
+    {
+      "nombre": "Hospital Francisco Icaza Bustamante",
+      "consulta": "Hospital Francisco de Icaza Bustamante, Guayaquil",
+      "alias": [
+        "icaza bustamante"
+      ]
+    },
+    {
+      "nombre": "Puente de la Unidad Nacional",
+      "consulta": "Puente de la Unidad Nacional, Guayaquil",
+      "alias": [
+        "puente de la unidad nacional",
+        "puente de la unidad"
+      ]
+    },
+    {
+      "nombre": "Puerto Santa Ana",
+      "consulta": "Puerto Santa Ana, Guayaquil",
+      "alias": [
+        "puerto santa ana"
+      ]
+    },
+    {
+      "nombre": "Parque Seminario",
+      "consulta": "Parque Seminario, Guayaquil",
+      "alias": [
+        "parque seminario",
+        "parque de las iguanas"
+      ]
+    },
+    {
+      "nombre": "Museo Presley Norton",
+      "consulta": "Museo Presley Norton, Guayaquil",
+      "alias": [
+        "presley norton"
+      ]
+    },
+    {
+      "nombre": "Guayarte",
+      "consulta": "Guayarte, Guayaquil",
+      "alias": [
+        "guayarte"
+      ]
+    },
+    {
+      "nombre": "Mall del Sol",
+      "consulta": "Mall del Sol, Guayaquil",
+      "alias": [
+        "mall del sol"
+      ]
+    },
+    {
+      "nombre": "Mall del Sur",
+      "consulta": "Mall del Sur, Guayaquil",
+      "alias": [
+        "mall del sur"
+      ]
+    },
+    {
+      "nombre": "San Marino",
+      "consulta": "San Marino Shopping, Guayaquil",
+      "alias": [
+        "san marino shopping",
+        "centro comercial san marino"
+      ]
+    },
+    {
+      "nombre": "Policentro",
+      "consulta": "Policentro, Guayaquil",
+      "alias": [
+        "policentro"
+      ]
+    },
+    {
+      "nombre": "City Mall",
+      "consulta": "City Mall, Guayaquil",
+      "alias": [
+        "city mall"
+      ]
+    },
+    {
+      "nombre": "Mercado de la Caraguay",
+      "consulta": "Mercado Caraguay, Guayaquil",
+      "alias": [
+        "caraguay"
+      ]
+    },
+    {
+      "nombre": "La Bahia",
+      "consulta": "La Bahía, Guayaquil",
+      "alias": [
+        "la bahia de guayaquil",
+        "bahia de guayaquil"
+      ]
+    },
+    {
+      "nombre": "Florida Norte",
+      "consulta": "Florida Norte, Guayaquil",
+      "alias": [
+        "florida norte",
+        "sector de la florida",
+        "sector la florida"
+      ]
+    },
+    {
+      "nombre": "Isla Santay",
+      "consulta": "Isla Santay",
+      "alias": [
+        "isla santay"
+      ]
+    },
+    {
+      "nombre": "Cerro Blanco",
+      "consulta": "Bosque Protector Cerro Blanco, Guayaquil",
+      "alias": [
+        "cerro blanco"
+      ]
+    },
+    {
+      "nombre": "Puerto Maritimo",
+      "consulta": "Puerto Marítimo Simón Bolívar, Guayaquil",
+      "alias": [
+        "puerto maritimo de guayaquil",
+        "contecon"
+      ]
+    }
+  ]
+}

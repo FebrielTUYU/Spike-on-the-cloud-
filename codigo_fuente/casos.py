@@ -585,7 +585,10 @@ def procesar_ingesta(caso_id, doc_id, nombre_archivo):
         emb, modelo_emb = None, None
         if ia is not None:
             try:
-                emb = ia.embed(frag["texto"])
+                # Fase 24 (revision de Codex): privacidad EXPLICITA -- un documento de un
+                # caso nunca va a un proveedor gratuito, aunque se indexe en segundo plano.
+                with ia.modulo("casos"):
+                    emb = ia.embed(frag["texto"])
                 if emb:
                     modelo_emb = ia.EMBED_MODEL
             except Exception:

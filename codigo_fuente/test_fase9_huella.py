@@ -49,12 +49,17 @@ class TestHuellaGetIA(unittest.TestCase):
             return {"temas": [], "geo": ["internacional"]}
 
         ia.analizar = _analizar_falso
+        # Fase 24 (A1): get_ia pide el triaje en lotes; el lote falso usa la misma funcion.
+        self._orig_lote = getattr(ia, "analizar_lote", None)
+        ia.analizar_lote = lambda items, **k: [_analizar_falso(i["titular"], i.get("resumen", ""), i.get("temas_kw"))
+                                               for i in items]
         ia.interpretar = lambda *a, **k: "una lectura cualquiera"
 
     def tearDown(self):
         m.IA_CACHE = self._orig_cache
         ia.disponible = self._orig_disponible
         ia.analizar = self._orig_analizar
+        ia.analizar_lote = self._orig_lote
         ia.interpretar = self._orig_interpretar
 
     def test_representante_cambia_marca_desactualizada_en_modo_lectura(self):

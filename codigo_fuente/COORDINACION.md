@@ -1,4 +1,37 @@
-# Coordinación — dos frentes activos
+# Coordinación — frentes activos
+
+## Frente C (2026-09-30): Fase 23 — más voces de la comunidad + rediseño por sección
+
+**Quién es quién**: Claude diagnostica, implementa y verifica; Codex (`codex exec`) revisa cada
+cambio grande antes de cerrarlo (flujo de CLAUDE.md, "Flujo de delegación a Codex CLI"). Un
+archivo, un dueño a la vez.
+
+| Archivo | Dueño | Estado | Nota |
+|---|---|---|---|
+| `CLAUDE.md` | Claude | libre | Paso 0 hecho (Fases 20-22c documentadas); Fase 23 al cierre |
+| `comunidad.py`, `redes.py`, `xapi.py` | Claude | libre | Parte A: tipo `comunitaria`, descubrimiento, frecuencia por presupuesto |
+| `monitor.py` | Claude | libre | Parte A: API del panel de cuentas |
+| `x_cuentas_locales.json`, `facebook_fuentes.json` | Fernando (vía panel) | solo se escriben desde el panel | nada se agrega solo |
+| `test_fase23_*.py` (nuevos) | Claude | hecho | Codex los revisa |
+| `dashboard_template.html` | Claude | libre | Parte B |
+
+**Reglas**: no tocar los archivos de estado en tiempo de ejecución salvo para leerlos; no
+recompilar con `Spike.exe` abierto; respetar el tope de $4.70/mes de Apify.
+
+### Estado final (2026-09-30)
+- [x] Paso 0 — CLAUDE.md al día (Fases 20-22c).
+- [x] Parte A — `cuentas.py`, tipo `comunitaria`, panel en Comunidad, capa `pasada_comunitarias`,
+  `test_fase23_cuentas.py` (24). Revisado por Codex: aplicado techo de cobro por consulta, handles
+  ASCII y más casos de URL; pendiente la reserva atómica de presupuesto entre hilos.
+- [x] Parte B — Estadísticas, Noticias, Pulso social, Asistente y sistema visual común
+  (`estadisticas.py`, `pulso.py`). Revisado por Codex: aplicado KPI de alertas activas vs activas,
+  enlaces solo http(s), chat sin re-dibujar.
+- Todos los archivos quedan libres. Detalle en CLAUDE.md, "Fase 23".
+
+### Paso 0 — documentación al día (hecho)
+Secciones de las Fases 20, 20b, 21, 22, 22b y 22c agregadas al final de CLAUDE.md, sacadas del
+código y de las pruebas (39 pruebas de Fases 20-21 OK; no hay pruebas de la Fase 22).
+
 
 ## Frente B (nuevo, 2026-09-29): el `.exe` tarda muchísimo en cargar o no termina
 

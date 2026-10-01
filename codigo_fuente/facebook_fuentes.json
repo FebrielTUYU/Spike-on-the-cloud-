@@ -1,0 +1,5 @@
+{
+  "_ayuda": "Pega aqui URLs de Facebook PUBLICAS de Guayaquil. 'paginas': de sus ultimas publicaciones se leen los comentarios de la gente. 'grupos': grupos publicos de barrio, se leen las publicaciones. Ej.: https://www.facebook.com/MunicipioGuayaquil",
+  "paginas": [],
+  "grupos": []
+}

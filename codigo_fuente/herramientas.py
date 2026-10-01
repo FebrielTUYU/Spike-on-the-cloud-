@@ -34,6 +34,10 @@ _STOPWORDS_Q = {
     "para", "esta", "este", "estos", "estas", "sobre", "hoy", "que", "quien",
     "como", "cuando", "donde", "cual", "cuales", "algo", "algun", "alguna",
     "tras", "desde", "hasta", "entre", "mas", "menos", "muy", "dijo", "dice",
+    # Fase 18 (P2-13): palabras de la PREGUNTA, no del tema (caso real: "medir
+    # una noticia comunitaria ... que idea podriamos trabajar")
+    "noticia", "noticias", "nota", "notas", "idea", "ideas", "trabajar", "podriamos", "proximos",
+    "dias", "realizar", "realizarla", "medir", "queramos", "tema", "temas", "historia", "historias",
 }
 
 
@@ -131,19 +135,67 @@ def _resumen_historia(h):
         "veredicto_texto": v.get("texto") if veredicto_real else None,
         "n_contratos_sercop": len(h.get("contratos") or []),
         "n_verificaciones_factcheck": len(h.get("factcheck") or []),
+        # Fase 18: evento en curso (historia madre) con sus notas por sector
+        "evento_en_curso": ({"tipo": (h.get("evento_en_curso") or {}).get("etiqueta"),
+                             "sectores": (h.get("evento_en_curso") or {}).get("sectores"),
+                             "notas": [("%s: %s" % (u.get("sector"), u.get("titular")) if u.get("sector") else u.get("titular"))
+                                       for u in (h.get("sub_actualizaciones") or [])][:10]}
+                            if h.get("evento_en_curso") else None),
+        "localidad": h.get("localidad") or None,
     }
 
 
 # ------------------------- 1. historias del feed -------------------------
 
+def _match_barrio(barrio, h):
+    b = _norm_q(barrio).strip()
+    return bool(b) and re.search(r"\b" + re.escape(b) + r"\b",
+                                 _norm_q((h.get("titular") or "") + " " + (h.get("resumen") or ""))) is not None
+
+
+def _buscar_semantico(q, candidatas, limite):
+    """Fase 18 (P2-13): si las palabras de 'q' no aparecen en ningun
+    titular, se compara el SENTIDO usando los embeddings que el trabajador ya
+    calculo para cada historia (historias_registro.json). Una sola llamada
+    de IA (el vector de la pregunta, ~0 USD). [] si no hay IA o embeddings."""
+    try:
+        import ia as _ia
+        vq = _ia.embed(q)
+    except Exception:
+        vq = None
+    if not vq:
+        return []
+    reg = _cargar("historias_registro.json", {}) or {}
+    vec_por_link = {}
+    for e in reg.values():
+        if e.get("embedding") and e.get("embedding_modelo") == getattr(_ia, "EMBED_MODEL", None):
+            for f in e.get("fuentes") or []:
+                if f.get("link"):
+                    vec_por_link[f["link"]] = e["embedding"]
+
+    def _cos(a, b):
+        num = sum(x * y for x, y in zip(a, b))
+        na = sum(x * x for x in a) ** 0.5
+        nb = sum(y * y for y in b) ** 0.5
+        return num / (na * nb) if na and nb else 0.0
+    puntuadas = []
+    for h in candidatas:
+        v = next((vec_por_link[f.get("link")] for f in (h.get("fuentes") or []) if f.get("link") in vec_por_link), None)
+        if v and len(v) == len(vq):
+            puntuadas.append((_cos(vq, v), h))
+    puntuadas.sort(key=lambda x: -x[0])
+    return [h for c, h in puntuadas[:limite] if c >= 0.55]
+
+
 def buscar_historias(tema=None, ambito=None, seccion=None, medio=None, q=None,
-                      dias=None, veredicto=None, limite=15):
+                      dias=None, veredicto=None, limite=15, ciudad=None, barrio=None):
     """Busca historias del feed actual por tema, ambito (local/internacional),
     seccion (politica/economia/seguridad/sociedad/general), medio (nombre o
     parte del nombre de un outlet), texto libre (q, busca en titular+resumen),
-    antiguedad maxima en dias, y 'veredicto' del sector Contraste ("coincide",
-    "contradice", "sin_datos" o "pendiente") -- usar veredicto="contradice"
-    para preguntas del tipo "hay contradicciones entre medios" en vez de
+    antiguedad maxima en dias, y 'veredicto' del sector Contraste (Fase 18:
+    "hallazgo", "documento_oficial", "corroborado_medios" o "sin_hallazgo")
+    -- usar veredicto="hallazgo" para preguntas del tipo "hay contradicciones
+    entre medios" en vez de
     adivinar con otra herramienta (el propio monitor YA calcula ese veredicto
     por historia, cruzando contexto+SERCOP+FactCheck, ver Contraste). Devuelve
     resumenes cortos, ordenados por interes (mas relevante primero). 'limite'
@@ -157,8 +209,15 @@ def buscar_historias(tema=None, ambito=None, seccion=None, medio=None, q=None,
         al = str(ambito).strip().lower()
         ambito = "local" if al in ("local", "ecuador", "guayaquil") else (
                   "internacional" if al in ("internacional", "mundo", "exterior") else ambito)
-    out = []
+    # Fase 18 (P2-13): filtros por ciudad (Guayaquil incluye Gran Guayaquil)
+    # y por barrio/sector (texto de la nota).
+    ciudad_n = _norm_q(ciudad).strip() if ciudad else ""
+    out, sin_q = [], []
     for h in _historias():
+        if ciudad_n and _norm_q(h.get("ciudad") or "").strip() != ciudad_n:
+            continue
+        if barrio and not _match_barrio(barrio, h):
+            continue
         if tema and tema not in (h.get("temas") or []):
             continue
         if ambito and h.get("ambito") != ambito:
@@ -173,13 +232,62 @@ def buscar_historias(tema=None, ambito=None, seccion=None, medio=None, q=None,
             horas = h.get("hours")
             if horas is None or horas > float(dias) * 24:
                 continue
-        if q and not _coincide_texto_libre(q, h.get("titular", ""), h.get("resumen", "")):
-            continue
         if veredicto and (h.get("veredicto") or {}).get("estado") != veredicto:
             continue
+        sin_q.append(h)
+        if q and not _coincide_texto_libre(q, h.get("titular", ""), h.get("resumen", "")):
+            continue
         out.append(h)
+    if q and not out and sin_q:
+        out = _buscar_semantico(q, sin_q, limite)
     out.sort(key=lambda h: -(h.get("interes") or 0))
     return [_resumen_historia(h) for h in out[:limite]]
+
+
+def senales_oportunidad(ambito=None, limite=10):
+    """Fase 18 (P2-13): senales del motor de la Fase 15 (historias concretas
+    para mover hoy: un solo medio, acelera, brecha, sin resolver...), con el
+    'por que ahora' y el primer paso si existe. Solo lectura de
+    senales_estado.json. ambito: "guayaquil" o "ecuador"."""
+    est = _cargar("senales_estado.json", {}) or {}
+    out = []
+    for s in est.get("activas") or []:
+        if ambito and str(ambito).lower() in ("guayaquil", "ecuador") and s.get("ambito") != str(ambito).lower():
+            continue
+        out.append({"tipo": s.get("tipo"), "titulo": s.get("titulo"), "por_que_ahora": s.get("por_que_ahora"),
+                    "primer_paso": s.get("primer_paso"), "ambito": s.get("ambito"), "link": s.get("link"),
+                    "certeza": (s.get("certeza") or {}).get("nivel")})
+    return out[:int(limite or 10)]
+
+
+def temas_comunitarios(categoria=None, barrio=None, sin_cubrir=False, limite=10):
+    """Fase 20 (v2): problemas que la GENTE de Guayaquil menciona en redes
+    (X, Bluesky, YouTube, alertas), agrupados por sector y categoria, con
+    cuantas personas distintas lo dicen, si la prensa ya lo cubrio, las
+    publicaciones de respaldo y pistas de reporteo. Solo lectura de
+    data.json["comunidad"]. categoria: texto libre ("agua", "basura",
+    "inseguridad"...), se compara con la etiqueta. sin_cubrir=True: solo lo
+    que la prensa todavia no publico."""
+    d = _cargar("data.json", {}) or {}
+    temas = (d.get("comunidad") or {}).get("temas") or []
+    c = _norm_q(categoria or "").strip()
+    b = _norm_q(barrio or "").strip()
+    out = []
+    for t in temas:
+        if c and c not in _norm_q((t.get("categoria") or "") + " " + (t.get("categoria_label") or "")):
+            continue
+        if b and b not in _norm_q(t.get("barrio") or ""):
+            continue
+        if sin_cubrir and t.get("cubierto"):
+            continue
+        out.append({"tema": t.get("titulo"), "categoria": t.get("categoria_label"), "barrio": t.get("barrio"),
+                    "personas_distintas": t.get("personas"), "publicaciones": t.get("n"),
+                    "ya_cubierto_por_prensa": t.get("cubierto"), "por_que": t.get("por_que"),
+                    "pistas_reporteo_sugeridas": t.get("pistas"),
+                    "voces": [{"autor": p.get("autor"), "texto": p.get("texto"), "red": p.get("fuente"),
+                               "fecha": p.get("fecha"), "link": p.get("url")}
+                              for p in (t.get("publicaciones") or [])[:4]]})
+    return out[:int(limite or 10)]
 
 
 def detalle_historia(clave):
@@ -525,4 +633,6 @@ HERRAMIENTAS = {
     "buscar_constitucion": buscar_constitucion,
     "buscar_boletines_oficiales": buscar_boletines_oficiales,
     "buscar_declaraciones": buscar_declaraciones,
+    "senales_oportunidad": senales_oportunidad,
+    "temas_comunitarios": temas_comunitarios,
 }

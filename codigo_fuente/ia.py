@@ -51,10 +51,13 @@ catalogo, solo decide para CADA NOTA cuales de esas categorias ya existentes
 le aplican.
 """
 
+import contextlib
 import datetime as dt
 import json
+import sys
 import os
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -173,22 +176,217 @@ def gasto_mes():
     return _cargar_gasto().get("meses", {}).get(_mes(), 0.0)
 
 
-def _registrar_gasto(monto, motivo=""):
+# Fase 24 (Parte 0): QUE modulo hizo cada llamada. Antes el historial solo
+# decia "generar (rapido, ...)" y no se sabia quien se comia el tope diario.
+# Prioridad: etiqueta explicita (`with ia.modulo("..."):`) > funcion publica de
+# ia.py por la que entro la llamada > archivo/funcion que llamo a ia.py.
+_MODULO_POR_FUNCION_IA = {
+    "analizar": "triaje", "analizar_lote": "triaje", "interpretar": "interpretacion", "es_literal": "interpretacion",
+    "extraer_entidades": "contexto", "extraer_entidades_con_evento": "contexto",
+    "contextualizar": "contexto", "coincide_dominio": "contexto",
+    "veredicto_contraste": "veredicto", "clasificar_posturas": "social",
+    "verificar_coherencia": "agrupamiento", "mismo_hecho_lote": "agrupamiento", "traducir_titular": "traduccion",
+    "clasificar_geo_evidencia": "geo", "extraer_declaracion": "declaraciones",
+    "comparar_declaraciones": "declaraciones", "extraer_entidades_chat": "chat",
+    "chat_stream": "chat", "embed": "embeddings", "embed_lote": "embeddings",
+    "extraer_sugerencias_caso": "casos",
+}
+_MODULO_POR_ARCHIVO = {"agente.py": "chat", "herramientas.py": "chat", "comunidad.py": "comunidad",
+                       "contexto.py": "contexto", "casos.py": "casos", "declaraciones.py": "declaraciones",
+                       "senales.py": "senales", "social.py": "social", "contraste.py": "veredicto"}
+_MODULO_POR_FUNCION_MONITOR = {"get_triaje_intl": "triaje", "get_clase_contraste": "clasificacion",
+                               "_ia_desenlace": "senales", "_ia_texto_rapido": "senales", "get_veredicto": "veredicto",
+                               "get_contexto": "contexto", "get_ia": "triaje",
+                               "_material_caso": "casos", "_procesar_sugerencias_caso": "casos"}
+
+
+@contextlib.contextmanager
+def modulo(nombre):
+    """Etiqueta explicita para el registro de gasto (por hilo)."""
+    previo = getattr(_ctx, "modulo", None)
+    _ctx.modulo = nombre
+    try:
+        yield
+    finally:
+        _ctx.modulo = previo
+
+
+def _modulo_actual():
+    explicito = getattr(_ctx, "modulo", None)
+    if explicito:
+        return explicito
+    import inspect
+    aqui = os.path.abspath(__file__)
+    f = inspect.currentframe()
+    entrada_ia = None
+    try:
+        while f is not None:
+            archivo = os.path.abspath(f.f_code.co_filename)
+            fn = f.f_code.co_name
+            if archivo == aqui:
+                if not fn.startswith("_") and fn in _MODULO_POR_FUNCION_IA:
+                    entrada_ia = _MODULO_POR_FUNCION_IA[fn]
+            else:
+                base = os.path.basename(archivo)
+                # Privacidad (Fase 24): si quien llama es un modulo privado (casos:
+                # documentos y notas de Fernando), eso manda SIEMPRE, aunque la
+                # llamada haya entrado por una funcion publica como embed(). Bug
+                # real encontrado al revisar: la indexacion de un documento de un
+                # caso quedaba como "embeddings" e iba a la clave gratuita.
+                privado = _MODULO_POR_ARCHIVO.get(base) or (
+                    _MODULO_POR_FUNCION_MONITOR.get(fn) if base == "monitor.py" else None)
+                if privado in ("casos", "chat"):
+                    return privado
+                if entrada_ia:
+                    return entrada_ia
+                if base in _MODULO_POR_ARCHIVO:
+                    return _MODULO_POR_ARCHIVO[base]
+                if base == "monitor.py":
+                    if fn in _MODULO_POR_FUNCION_MONITOR:
+                        return _MODULO_POR_FUNCION_MONITOR[fn]
+                    if "chat" in fn or "asistente" in fn or fn.startswith("_do_") or fn.startswith("_responder"):
+                        return "chat"
+                    return "otro:monitor.%s" % fn
+                return "otro:%s.%s" % (base.replace(".py", ""), fn)
+            f = f.f_back
+    finally:
+        del f
+    return entrada_ia or "otro"
+
+
+_GASTO_LOCK = threading.Lock()  # revision de Codex (Fase 24): leer-sumar-guardar sin pisarse entre hilos
+
+
+def _registrar_gasto(monto, motivo="", tokens_in=0, tokens_out=0):
     if monto <= 0:
         return
+    mod = _modulo_actual()
+    try:
+        with _GASTO_LOCK:
+            _registrar_gasto_sin_lock(monto, motivo, tokens_in, tokens_out, mod)
+    except Exception as e:  # nunca anular una respuesta que ya se pago por no poder anotarla
+        print("ia: no se pudo anotar el gasto (%s)" % e)
+
+
+def _registrar_gasto_sin_lock(monto, motivo, tokens_in, tokens_out, mod):
     g = _cargar_gasto()
     hoy, mes = _hoy(), _mes()
     g.setdefault("dias", {})[hoy] = round(g.get("dias", {}).get(hoy, 0.0) + monto, 6)
     g.setdefault("meses", {})[mes] = round(g.get("meses", {}).get(mes, 0.0) + monto, 6)
     hist = g.setdefault("historial", [])
-    hist.append({"ts": dt.datetime.now(dt.timezone.utc).isoformat(), "monto": round(monto, 6), "motivo": motivo})
+    hist.append({"ts": dt.datetime.now(dt.timezone.utc).isoformat(), "monto": round(monto, 6), "motivo": motivo,
+                 "modulo": mod, "tokens_in": int(tokens_in or 0), "tokens_out": int(tokens_out or 0),
+                 "interactivo": es_interactivo()})
     g["historial"] = hist[-300:]
+    # Totales por dia y modulo (el historial se recorta a 300 y no alcanza para un dia entero).
+    dm = g.setdefault("modulos", {}).setdefault(hoy, {}).setdefault(
+        mod, {"usd": 0.0, "llamadas": 0, "tokens_in": 0, "tokens_out": 0})
+    dm["usd"] = round(dm["usd"] + monto, 6)
+    dm["llamadas"] += 1
+    dm["tokens_in"] += int(tokens_in or 0)
+    dm["tokens_out"] += int(tokens_out or 0)
+    for d in sorted(g["modulos"])[:-31]:
+        del g["modulos"][d]
     _guardar_gasto(g)
 
 
+# Fase 24 (Parte A2): el trabajo de FONDO va por servicios gratuitos
+# (ia_router.py) y nunca por la clave pagada. Lo que Fernando pide en persona
+# (`with ia.interactivo()`) y lo privado (casos, chat: pueden llevar sus
+# documentos y notas) sigue por la clave pagada, como siempre.
+# MONITOR_IA_FONDO_GRATIS=0 vuelve al comportamiento anterior (todo pagado).
+try:
+    import ia_router
+except Exception:  # pragma: no cover
+    ia_router = None
+MODULOS_PRIVADOS = {"casos", "chat"}
+
+
+def _por_router(mod=None):
+    """True si esta llamada debe ir por el enrutador gratuito."""
+    if ia_router is None or os.environ.get("MONITOR_IA_FONDO_GRATIS", "1") == "0" or es_interactivo():
+        return False
+    # Candado para las pruebas automaticas: nunca salir a la red por el
+    # enrutador salvo que la prueba lo pida (y ella simula el transporte).
+    # Bug real de la Fase 24: pruebas viejas que simulaban la clave pagada
+    # terminaron llamando de verdad a los servicios gratuitos.
+    if "unittest" in sys.modules and os.environ.get("MONITOR_IA_ROUTER_PRUEBAS") != "1":
+        return False
+    mod = mod or _modulo_actual()
+    return mod not in MODULOS_PRIVADOS
+
+
+def fondo_disponible():
+    """Para el trabajo de fondo: hay al menos un proveedor gratuito con clave
+    y sin agotar. Si no, el fondo ESPERA (nunca pasa a la pagada)."""
+    global last_error
+    if ia_router is None:
+        return False
+    e = ia_router.estado_dashboard()
+    if not any(f["clave"] for f in e["filas"]):
+        last_error = "sin claves gratuitas (GROQ_API_KEY / CEREBRAS_API_KEY / GEMINI_FREE_KEY en .env)"
+        return False
+    if e["todos_agotados"]:
+        last_error = "todos los proveedores gratuitos estan agotados por hoy; el fondo espera (no usa la clave pagada)"
+        return False
+    return True
+
+
+def gasto_por_modulo(dias=7):
+    """{'hoy': {modulo: {...}}, 'ultimos': {modulo: {...}}, 'dias': n} -- sin datos, vacios."""
+    m = _cargar_gasto().get("modulos") or {}
+    claves = sorted(m)[-dias:]
+    tot = {}
+    for d in claves:
+        for mod, v in m[d].items():
+            t = tot.setdefault(mod, {"usd": 0.0, "llamadas": 0, "tokens_in": 0, "tokens_out": 0})
+            for k in t:
+                t[k] = round(t[k] + v.get(k, 0), 6) if k == "usd" else t[k] + v.get(k, 0)
+    return {"hoy": m.get(_hoy(), {}), "ultimos": tot, "dias": len(claves), "desde": claves[0] if claves else None}
+
+
+# Fase 22c (bug real, reportado por Fernando: el Asistente respondia "presupuesto
+# agotado" -- el trabajador de fondo gastaba el tope diario entero y no dejaba
+# NADA para las preguntas que el hace a mano). Una parte del tope diario queda
+# RESERVADA para lo interactivo (chat, Asistente, Buscar, contexto bajo
+# demanda): el trabajador de fondo solo puede gastar TOPE - RESERVA. Lo
+# interactivo se marca con `with ia.interactivo():` (monitor.py lo pone en
+# cada pedido del navegador); es por hilo, asi no se mezcla con el fondo.
+RESERVA_INTERACTIVA_USD = float(os.environ.get("MONITOR_IA_RESERVA_USD", "0.30"))
+_ctx = threading.local()
+
+
+@contextlib.contextmanager
+def interactivo():
+    previo = getattr(_ctx, "interactivo", False)
+    _ctx.interactivo = True
+    try:
+        yield
+    finally:
+        _ctx.interactivo = previo
+
+
+def es_interactivo():
+    return bool(getattr(_ctx, "interactivo", False))
+
+
+def tope_dia_efectivo():
+    """Lo que puede gastar HOY quien llama: el tope entero si es una consulta
+    del usuario, el tope menos la reserva si es trabajo de fondo."""
+    if es_interactivo():
+        return TOPE_DIA_USD
+    return max(0.0, TOPE_DIA_USD - min(RESERVA_INTERACTIVA_USD, TOPE_DIA_USD))
+
+
 def _cabe_en_presupuesto(costo_max):
-    if gasto_hoy() + costo_max > TOPE_DIA_USD:
-        return False, "tope diario de IA (%.4f + %.4f > %.2f USD)" % (gasto_hoy(), costo_max, TOPE_DIA_USD)
+    tope = tope_dia_efectivo()
+    if gasto_hoy() + costo_max > tope:
+        if es_interactivo():
+            return False, ("se acabo el presupuesto diario de IA (%.2f de %.2f USD usados hoy); "
+                           "se renueva a medianoche, o sube MONITOR_IA_TOPE_DIA_USD en .env"
+                           % (gasto_hoy(), TOPE_DIA_USD))
+        return False, ("tope del trabajo de fondo (%.4f + %.4f > %.2f USD; %.2f quedan reservados "
+                       "para tus consultas)" % (gasto_hoy(), costo_max, tope, TOPE_DIA_USD - tope))
     if gasto_mes() + costo_max > TOPE_MES_USD:
         return False, "tope mensual de IA (%.4f + %.4f > %.2f USD)" % (gasto_mes(), costo_max, TOPE_MES_USD)
     return True, ""
@@ -205,7 +403,9 @@ def estado_gasto():
     return {"gasto_hoy": round(gasto_hoy(), 5), "gasto_mes": round(gasto_mes(), 5),
             "tope_dia": TOPE_DIA_USD, "tope_mes": TOPE_MES_USD,
             "restante_hoy": round(max(0.0, TOPE_DIA_USD - gasto_hoy()), 5),
-            "restante_mes": round(max(0.0, TOPE_MES_USD - gasto_mes()), 5)}
+            "reserva_consultas": RESERVA_INTERACTIVA_USD,
+            "restante_mes": round(max(0.0, TOPE_MES_USD - gasto_mes()), 5),
+            "por_modulo": gasto_por_modulo()}
 
 
 # ------------------------- estado: modelos confirmados + pausa por 429 -------------------------
@@ -299,7 +499,10 @@ def configurada():
 
 def backend_listo():
     """True cuando hay clave Y el modelo rapido (el minimo indispensable)
-    existe de verdad en el catalogo de Gemini Y no esta pausado por 429."""
+    existe de verdad en el catalogo de Gemini Y no esta pausado por 429.
+    Fase 24: para el trabajo de fondo, el enrutador gratuito."""
+    if _por_router():
+        return fondo_disponible()
     if not configurada():
         return False
     if _pausado(PERFIL_RAPIDO):
@@ -311,6 +514,8 @@ def disponible(forzado=""):
     """monitor.py lo usa antes de cada lote del hilo trabajador y en las
     rutas /api/chat, /api/asistente, /api/buscar_leer y el chat de casos."""
     global last_error
+    if _por_router():
+        return fondo_disponible()
     if not configurada():
         last_error = _PENDIENTE
         return False
@@ -483,6 +688,17 @@ def _generar(prompt="", sistema=None, mensajes=None, json_mode=False, perfil=PER
     el motivo en last_error, SIN la clave)."""
     global last_error
     last_error = None
+    mod = _modulo_actual()
+    if _por_router(mod):
+        # Fase 24: fondo -> gratis, repartido por tarea. None = la tarea espera.
+        texto_prompt = prompt or (chr(10) * 2).join("%s: %s" % (m.get("role", "user"), m.get("content", ""))
+                                                for m in (mensajes or []))
+        texto = ia_router.generar(ia_router.TAREA_DE_MODULO.get(mod, "general"), texto_prompt, sistema=sistema,
+                                  json_mode=json_mode, temperatura=temperatura, max_tokens=max_tokens,
+                                  timeout=max(timeout, 60))
+        if texto is None:
+            last_error = ia_router.last_error
+        return texto
     if not configurada():
         last_error = _PENDIENTE
         return None
@@ -529,7 +745,8 @@ def _generar(prompt="", sistema=None, mensajes=None, json_mode=False, perfil=PER
     uso = data.get("usageMetadata") or {}
     costo_real = _costo_generacion(perfil_efectivo, uso.get("promptTokenCount", 0) or 0,
                                     uso.get("candidatesTokenCount", 0) or 0)
-    _registrar_gasto(costo_real, "generar (%s, %s)" % (perfil_efectivo, modelo))
+    _registrar_gasto(costo_real, "generar (%s, %s)" % (perfil_efectivo, modelo),
+                     uso.get("promptTokenCount", 0), uso.get("candidatesTokenCount", 0))
     if not texto:
         last_error = "respuesta vacia (finishReason=%s)" % finish
         return None
@@ -616,7 +833,8 @@ def _generar_stream(prompt, on_delta, sistema=None, perfil=PERFIL_PROFUNDO,
             return None
     costo_real = _costo_generacion(perfil_efectivo, uso_final.get("promptTokenCount", 0) or 0,
                                     uso_final.get("candidatesTokenCount", 0) or 0)
-    _registrar_gasto(costo_real, "generar_stream (%s, %s)" % (perfil_efectivo, modelo))
+    _registrar_gasto(costo_real, "generar_stream (%s, %s)" % (perfil_efectivo, modelo),
+                     uso_final.get("promptTokenCount", 0), uso_final.get("candidatesTokenCount", 0))
     return "".join(acumulado) or None
 
 
@@ -728,6 +946,92 @@ def analizar(titular, resumen="", temas_kw=None, forzado="", timeout=120):
 # de la nota: mejor no mostrar nada que mostrar relleno. Perfil PROFUNDO
 # (lectura editorial, no triaje).
 
+_PROMPT_LOTE = (
+    "Vas a clasificar %d noticias. Para CADA una responde temas y geo con las mismas reglas:\n"
+    "- 'temas': SOLO puedes QUITAR categorias de la lista pre-etiquetada de esa noticia (nunca agregar), "
+    "con un score 0-1 de confianza en cada una que mantengas; si ninguna aplica, [{\"cat\": \"otros\", \"score\": 1}].\n"
+    "- 'geo': \"guayaquil\" si ocurre en o trata de Guayaquil (incluye tambien \"ecuador\"); \"ecuador\" si es "
+    "nacional de Ecuador (Quito y otras ciudades son \"ecuador\"); \"internacional\" si el foco esta fuera de Ecuador. "
+    "Un caso ecuatoriano contado desde el exterior (capturas, juicios, empresas de Ecuador) es \"ecuador\".\n"
+    "Catalogo fijo: %s\n"
+    # Fase 24 (C1/C2): categoria nueva con su razon, y tipo de afirmacion con quien la hace.
+    "- 'categoria': UNA de politica, economia, empleo, seguridad, justicia, obras_servicios, movilidad, "
+    "riesgos_clima, salud, educacion, sociedad_cultura, entretenimiento_deporte (justicia = tribunales, fiscalia, "
+    "juicios, corrupcion; seguridad = crimen, policia, guerra; obras_servicios = agua, luz, basura, calles, obras; "
+    "riesgos_clima = lluvias, clima, sismos, emergencias). 'razon': por que, en menos de 15 palabras.\n"
+    "- 'tipo' de la afirmacion principal del titular: \"accion\" (algo que ya paso o que alguien hizo), "
+    "\"anuncio\" (algo que va a pasar o que se promete), \"declaracion\" (lo que alguien dice, opina o atribuye; "
+    "por ejemplo 'segun el Municipio'), \"dato\" (una cifra, encuesta o pronostico). 'quien': quien lo afirma o lo "
+    "hace, copiado tal cual del titular o resumen, o \"\" si no se nombra.\n"
+    # Fase 24 (D): utilidad de lo internacional para un periodista de Guayaquil.
+    "- 'util' (solo si geo es internacional; si no, \"si\"): \"si\" si le sirve a un periodista de Guayaquil "
+    "(politica internacional que afecta a la region, economia y precios, migracion, Estados Unidos, China, Colombia, "
+    "Peru, narcotrafico, petroleo, desastres grandes, elecciones de la region); \"no\" si es farandula, deporte, "
+    "curiosidades, opinion o analisis, explicativos tipo 'como funciona', o noticias locales de otra ciudad sin "
+    "efecto aqui. 'importa': si util es \"si\" y es internacional, en menos de 20 palabras por que le importa a "
+    "Ecuador o Guayaquil, sin inventar datos; si no hay relacion directa, \"\".\n\n"
+    "Responde SOLO un JSON: {\"items\": [{\"n\": <numero>, \"temas\": [...], \"geo\": [...], \"categoria\": \"...\", "
+    "\"razon\": \"...\", \"tipo\": \"...\", \"quien\": \"...\", \"util\": \"...\", \"importa\": \"...\"}, ...]} con un "
+    "item por noticia, en el mismo orden.\n\n%s"
+)
+
+
+def analizar_lote(items, timeout=120):
+    """Fase 24 (A1): triaje de VARIAS noticias en UNA llamada. 'items' =
+    [{"titular", "resumen", "temas_kw"}]. Devuelve una lista del mismo largo
+    con {"temas","geo"} o None en la posicion que no vino; None entero si la
+    llamada fallo (la tarea espera). Mismo candado que analizar(): la IA solo
+    puede quitar categorias del catalogo fijo, nunca inventar."""
+    global last_error
+    last_error = None
+    if not items:
+        return []
+    lineas = []
+    for i, it in enumerate(items, 1):
+        lineas.append("%d. Titular: %s\n   Resumen: %s\n   Pre-etiquetadas: %s" % (
+            i, (it.get("titular") or "")[:220], (it.get("resumen") or "")[:260],
+            ", ".join(it.get("temas_kw") or []) or "(ninguna)"))
+    r = _generar_json(_PROMPT_LOTE % (len(items), _CATALOGO_TXT, "\n".join(lineas)), perfil=PERFIL_RAPIDO,
+                      temperatura=0.1, max_tokens=190 * len(items) + 200, timeout=timeout)
+    if r is None:
+        return None
+    out = [None] * len(items)
+    for x in (r.get("items") or []):
+        try:
+            k = int(x.get("n")) - 1
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if not 0 <= k < len(items) or out[k] is not None:
+            continue
+        temas = []
+        for t in (x.get("temas") or []):
+            if not isinstance(t, dict):
+                continue
+            cat = _TEMA_LOOKUP.get(str(t.get("cat", "")).strip().lower())
+            if not cat:
+                continue
+            try:
+                score = float(t.get("score", 0))
+            except (TypeError, ValueError):
+                score = 0.0
+            temas.append({"cat": cat, "score": max(0.0, min(1.0, score))})
+        geo = [g for g in (str(y).lower().strip() for y in (x.get("geo") or [])) if g in GEO_CATALOG]
+        out[k] = {"temas": temas, "geo": geo}
+        # Fase 24 (C1/C2): candado de categorias.py (solo valores validos y un
+        # "quien" que este de verdad en el texto).
+        try:
+            import categorias as _cat
+            cat, tipo, quien, razon = _cat.candado(
+                str(x.get("categoria") or "").strip().lower(), str(x.get("tipo") or "").strip().lower(),
+                x.get("quien"), x.get("razon"), items[k].get("titular") or "", items[k].get("resumen") or "")
+            out[k].update({"cat24": cat, "razon24": razon if cat else "", "tipo24": tipo, "quien24": quien})
+            util, importa = _cat.candado_util(x.get("util"), x.get("importa"))
+            out[k].update({"util24": util, "importa24": importa})
+        except Exception:
+            pass
+    return out
+
+
 _INTERP_SISTEMA = (
     "Eres editor de una redaccion en Ecuador. Un reportero te pasa un titular y "
     "tu le respondes en UNA o DOS frases (maximo 40 palabras) que hay DETRAS del "
@@ -787,7 +1091,7 @@ def es_literal(texto, titular=""):
         return True
     return False
 
-def interpretar(titular, resumen="", forzado="", timeout=90):
+def interpretar(titular, resumen="", forzado="", timeout=90, perfil=None):
     """Lectura editorial de UNA nota (texto libre). Devuelve el texto, "" si
     el modelo solo produjo parafrasis (dos intentos), o None si la IA fallo."""
     global last_error
@@ -798,7 +1102,9 @@ def interpretar(titular, resumen="", forzado="", timeout=90):
     msgs.append({"role": "user", "content": "Titular: %s\nResumen: %s" % (
         titular or "", (resumen or "")[:400])})
     for temp in (0.5, 0.8):
-        texto = _generar(sistema=_INTERP_SISTEMA, mensajes=msgs, perfil=PERFIL_PROFUNDO,
+        # Fase 18 (P2-10): 'perfil' permite usar el rapido para la cobertura
+        # masiva de lo local (el profundo queda para las mas importantes).
+        texto = _generar(sistema=_INTERP_SISTEMA, mensajes=msgs, perfil=perfil or PERFIL_PROFUNDO,
                          temperatura=temp, max_tokens=900, timeout=timeout)
         if texto is None:
             return None
@@ -1078,6 +1384,49 @@ _PROMPT_COHERENCIA = (
     "grupo -- ninguno se puede quedar afuera ni repetirse en dos grupos.\n\n"
     "Responde SOLO el JSON, sin texto extra."
 )
+
+
+_PROMPT_MISMO_HECHO = (
+    "Eres editor de una redaccion. Para cada PAR de noticias decide si cuentan el MISMO HECHO concreto "
+    "(el mismo suceso, el mismo dia, el mismo lugar, contado por dos medios o desde dos angulos), o no.\n"
+    "- Mismo hecho: 'Municipio retira un poste para renovar el alcantarillado en la avenida X' y 'Un poste "
+    "retraso las obras en La Alborada, segun el Municipio' (la misma obra).\n"
+    "- NO es el mismo hecho: dos notas del mismo TEMA o con el mismo FORMATO (dos pronosticos del clima, dos "
+    "temblores de dias distintos, dos crimenes distintos en la misma ciudad, dos declaraciones de la misma "
+    "persona sobre asuntos distintos).\n"
+    "Ante la duda, \"no\".\n"
+    "Responde SOLO un JSON: {\"pares\": [{\"n\": <numero>, \"mismo\": \"si\" o \"no\"}, ...]}.\n\n%s"
+)
+
+
+def mismo_hecho_lote(pares, timeout=90):
+    """Fase 24 (C3): pares = [(a, b)] con a/b = {"titular", "resumen"}.
+    Devuelve una lista alineada de True/False/None (None = sin respuesta para
+    ese par); None entero si la llamada fallo. Lo usa monitor.py solo para pares
+    que ya tienen coseno alto y una entidad o cifra en comun."""
+    global last_error
+    last_error = None
+    if not pares:
+        return []
+    bloques = []
+    for i, (a, b) in enumerate(pares, 1):
+        bloques.append("%d. A: %s -- %s\n   B: %s -- %s" % (
+            i, (a.get("titular") or "")[:200], (a.get("resumen") or "")[:200],
+            (b.get("titular") or "")[:200], (b.get("resumen") or "")[:200]))
+    r = _generar_json(_PROMPT_MISMO_HECHO % "\n".join(bloques), perfil=PERFIL_RAPIDO, temperatura=0.0,
+                      max_tokens=40 * len(pares) + 150, timeout=timeout)
+    if r is None:
+        return None
+    out = [None] * len(pares)
+    for x in (r.get("pares") or []):
+        try:
+            k = int(x.get("n")) - 1
+        except (TypeError, ValueError, AttributeError):
+            continue
+        v = str(x.get("mismo") or "").strip().lower()
+        if 0 <= k < len(pares) and out[k] is None and v in ("si", "sí", "no"):
+            out[k] = v != "no"
+    return out
 
 
 def verificar_coherencia(fuentes, forzado="", timeout=90):
@@ -1442,6 +1791,8 @@ def embed_disponible(modelo=None):
     real de Gemini Y no esta pausado por 429 -- sin red en cada llamada
     (_listar_modelos_reales ya cachea con TTL)."""
     modelo = modelo or EMBED_MODEL
+    if _por_router():
+        return fondo_disponible()
     if not configurada():
         return False
     if _pausado("embed"):
@@ -1451,6 +1802,9 @@ def embed_disponible(modelo=None):
 
 def estado_embeddings():
     """Texto honesto para data.json/'Salud de los datos'."""
+    if _por_router():
+        return ("ok (gratis: %s por la clave sin facturacion)" % EMBED_MODEL if fondo_disponible()
+                else "en espera: %s" % last_error)
     if not configurada():
         return "apagados: %s" % _PENDIENTE
     if _pausado("embed"):
@@ -1467,6 +1821,11 @@ def embed(texto, timeout=30, modelo=None):
     global last_error
     last_error = None
     modelo = modelo or EMBED_MODEL
+    if _por_router(_modulo_actual()):
+        v = ia_router.embed((texto or "")[:20000], modelo=modelo, timeout=timeout)
+        if v is None:
+            last_error = ia_router.last_error
+        return v
     if not embed_disponible(modelo):
         last_error = last_error or ("modelo de embeddings '%s' no disponible" % modelo)
         return None
@@ -1487,7 +1846,7 @@ def embed(texto, timeout=30, modelo=None):
     # caracteres de entrada (barato, sin output) si no viene el real.
     uso = data.get("usageMetadata") or {}
     tokens_in = uso.get("promptTokenCount") or (len(texto or "") / 4)
-    _registrar_gasto(tokens_in * PRECIO_EMBED_INPUT, "embed (%s)" % modelo)
+    _registrar_gasto(tokens_in * PRECIO_EMBED_INPUT, "embed (%s)" % modelo, tokens_in, 0)
     return valores
 
 
@@ -1499,11 +1858,17 @@ def embed_lote(textos, timeout=60, modelo=None):
     global last_error
     last_error = None
     modelo = modelo or EMBED_MODEL
+    if not textos:
+        return []
+    if _por_router(_modulo_actual()):
+        out = [ia_router.embed((t or "")[:20000], modelo=modelo, timeout=timeout) for t in textos]
+        if not any(v is not None for v in out):
+            last_error = ia_router.last_error
+            return None
+        return out
     if not embed_disponible(modelo):
         last_error = last_error or ("modelo de embeddings '%s' no disponible" % modelo)
         return None
-    if not textos:
-        return []
     costo_max = sum((len(t or "") / 4) * PRECIO_EMBED_INPUT for t in textos)
     ok, razon = _cabe_en_presupuesto(costo_max)
     if not ok:
@@ -1516,7 +1881,8 @@ def embed_lote(textos, timeout=60, modelo=None):
         return None
     respuestas = data.get("embeddings") or []
     out = [(r.get("values") if isinstance(r, dict) else None) for r in respuestas]
-    _registrar_gasto(costo_max, "embed_lote (%s, %d textos)" % (modelo, len(textos)))
+    _registrar_gasto(costo_max, "embed_lote (%s, %d textos)" % (modelo, len(textos)),
+                     int(sum(len(t or "") for t in textos) / 4), 0)  # tokens estimados: el lote no los reporta
     return out
 
 
